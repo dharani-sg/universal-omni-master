@@ -1,0 +1,33 @@
+#!/bin/sh
+# omni-service — init-agnostic service management CLI
+set -u
+
+_OMNI_ROOT="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)"
+
+. "$_OMNI_ROOT/src/core/logging.sh"
+. "$_OMNI_ROOT/src/core/utils.sh"
+. "$_OMNI_ROOT/src/core/priv.sh"
+. "$_OMNI_ROOT/src/core/detect.sh"
+. "$_OMNI_ROOT/src/init/interface.sh"
+
+if [ $# -lt 2 ]; then
+    printf 'usage: omni-service <action> <service>\n' >&2
+    printf 'actions: enable disable start stop restart status logs\n' >&2
+    exit 2
+fi
+
+ACTION="$1"; SVC="$2"
+
+case "$ACTION" in
+    enable)  svc_enable  "$SVC" ;;
+    disable) svc_disable "$SVC" ;;
+    start)   svc_start   "$SVC" ;;
+    stop)    svc_stop    "$SVC" ;;
+    restart) svc_restart "$SVC" ;;
+    status)  svc_status  "$SVC" ;;
+    logs)    svc_logs    "$SVC" ;;
+    *)
+        log_error "unknown action: $ACTION"
+        exit 2
+        ;;
+esac
