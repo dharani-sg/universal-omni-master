@@ -1,0 +1,53 @@
+#!/bin/sh
+# omni-detect — read-only system discovery. Emits JSON to stdout, logs to stderr.
+set -u
+
+_here="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)"
+. "$_here/src/core/logging.sh"
+. "$_here/src/core/utils.sh"
+. "$_here/src/core/priv.sh"
+. "$_here/src/core/detect.sh"
+. "$_here/src/core/detect_hw.sh"
+
+log_info "omni-detect: probing system (sysroot='${OMNI_SYSROOT:-/}')"
+
+_distro=$(detect_distro)
+_init=$(detect_init)
+_libc=$(detect_libc)
+_arch=$(detect_arch)
+_pkg=$(detect_pkgmgr)
+_priv=$(detect_priv)
+_boot=$(detect_bootloader)
+_seat=$(detect_seat_model)
+
+_cpu_vendor=$(detect_cpu_vendor)
+_cpu_model=$(detect_cpu_model)
+_cpu_count=$(detect_cpu_count)
+_cpu_hybrid=$(detect_cpu_hybrid)
+_gpu_count=$(detect_gpu_count)
+_gpu_vendors=$(detect_gpu_vendors)
+_gpu_hybrid=$(detect_gpu_hybrid)
+_storage=$(detect_storage_types)
+_power=$(detect_power_source)
+
+log_info "distro=$_distro init=$_init libc=$_libc pkg=$_pkg priv=$_priv"
+
+printf '{\n'
+json_kv distro        "$_distro"
+json_kv init          "$_init"
+json_kv libc          "$_libc"
+json_kv arch          "$_arch"
+json_kv pkgmgr        "$_pkg"
+json_kv priv_helper   "$_priv"
+json_kv bootloader    "$_boot"
+json_kv seat_model    "$_seat"
+json_kv cpu_vendor    "$_cpu_vendor"
+json_kv cpu_model     "$_cpu_model"
+json_kv cpu_count     "$_cpu_count"
+json_kv cpu_hybrid    "$_cpu_hybrid"
+json_kv gpu_count     "$_gpu_count"
+json_kv gpu_vendors   "$_gpu_vendors"
+json_kv gpu_hybrid    "$_gpu_hybrid"
+json_kv storage       "$_storage"
+json_kv power_source  "$_power" ""
+printf '}\n'

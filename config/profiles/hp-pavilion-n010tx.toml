@@ -1,0 +1,39 @@
+# Universal Omni-Master — Hardware Profile
+# Generated: 2026-07-10T07:58:58Z
+# Host: hp-pavilion
+
+[hardware]
+cpu_vendor      = "GenuineIntel"
+cpu_model       = "Intel(R) Core(TM) i3-3217U CPU @ 1.80GHz"
+cpu_count       = 4
+cpu_hybrid      = false
+gpu_count       = 2
+gpu_vendors     = "AMD,Intel"
+gpu_hybrid      = true
+storage         = "sda:ssd"
+power_source    = "ac"
+
+[software]
+distro          = "alpine"
+init            = "openrc"
+libc            = "musl"
+arch            = "x86_64"
+pkgmgr          = "apk"
+priv_helper     = "doas"
+bootloader      = "grub"
+seat_model      = "elogind"
+
+[policy]
+ac_only_no_pm   = true
+dgpu_default    = "unbound"
+sata_ncq        = false
+sata_link_speed = "3.0Gbps"
+sata_crc_baseline = 5360
+
+[policy.no_pm]
+cpu_governor              = "performance"
+snd_hda_intel_power_save  = 0
+snd_hda_intel_controller  = "N"
+wifi_power_save           = false
+pcie_aspm                 = "off"
+usb_autosuspend           = -1
