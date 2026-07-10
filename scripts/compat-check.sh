@@ -25,7 +25,12 @@ run_one() {
     _name="$1"
     _out="$ROOT/sandbox/run/$_name.json"
     mkdir -p "$ROOT/sandbox/run"
-    OMNI_SYSROOT="$FX/$_name" OMNI_LOG_LEVEL=error "$DETECT" > "$_out" 2>/dev/null
+    _lspci_fx="$FX/$_name/lspci.txt"
+    if [ -f "$_lspci_fx" ]; then
+        OMNI_SYSROOT="$FX/$_name" OMNI_LSPCI="$_lspci_fx" OMNI_LOG_LEVEL=error "$DETECT" > "$_out" 2>/dev/null
+    else
+        OMNI_SYSROOT="$FX/$_name" OMNI_LOG_LEVEL=error "$DETECT" > "$_out" 2>/dev/null
+    fi
     echo "$_out"
 }
 
@@ -49,9 +54,29 @@ f=$(run_one debian)
 check debian distro debian "$f"; check debian init systemd "$f"
 check debian pkgmgr apt "$f"
 
+
 f=$(run_one busybox-min)
 check busybox-min init unknown "$f"; check busybox-min libc musl "$f"
 check busybox-min pkgmgr none "$f"
+
+echo
+echo "=== Hardware-layer assertions (previously untested) ==="
+f=$(run_one arch)
+check arch cpu_vendor AuthenticAMD "$f"
+check arch cpu_count 4 "$f"
+check arch gpu_vendors NVIDIA "$f"
+check arch power_source ac "$f"
+
+f=$(run_one debian)
+check debian cpu_vendor GenuineIntel "$f"
+check debian gpu_vendors Intel "$f"
+check debian power_source battery "$f"
+
+f=$(run_one void)
+check void cpu_vendor GenuineIntel "$f"
+check void gpu_vendors AMD,Intel "$f"
+check void gpu_hybrid yes "$f"
+check void power_source ac "$f"
 
 echo "=================================================="
 printf 'RESULT: %d passed, %d failed\n' "$PASS" "$FAIL"

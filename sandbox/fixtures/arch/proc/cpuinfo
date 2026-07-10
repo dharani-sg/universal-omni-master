@@ -1,2 +1,6 @@
 vendor_id	: AuthenticAMD
+model name	: AMD Ryzen 5 5600X 6-Core Processor
 processor	: 0
+processor	: 1
+processor	: 2
+processor	: 3
