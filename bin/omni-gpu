@@ -1,0 +1,46 @@
+#!/bin/sh
+# omni-gpu — GPU management CLI
+set -u
+
+_OMNI_ROOT="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)"
+. "$_OMNI_ROOT/src/core/logging.sh"
+. "$_OMNI_ROOT/src/core/utils.sh"
+. "$_OMNI_ROOT/src/core/priv.sh"
+. "$_OMNI_ROOT/src/core/detect.sh"
+. "$_OMNI_ROOT/src/gpu/interface.sh"
+
+USAGE="usage: omni-gpu <count|vendors|hybrid|list|dgpu-vendor|dgpu-bdf|dgpu-driver|dgpu-bound|dgpu-users|intel-status|load|unload|status>"
+
+[ $# -lt 1 ] && { echo "$USAGE" >&2; exit 2; }
+ACTION="$1"
+
+case "$ACTION" in
+    count)         gpu_count ;;
+    vendors)       gpu_vendors ;;
+    hybrid)        gpu_hybrid ;;
+    list)          _gpu_enumerate ;;
+    dgpu-vendor)   echo "$_OMNI_DGPU" ;;
+    dgpu-bdf)      gpu_dgpu_bdf || echo "none" ;;
+    dgpu-driver)   gpu_dgpu_driver ;;
+    dgpu-bound)    gpu_dgpu_bound && echo yes || echo no ;;
+    dgpu-users)    gpu_dgpu_users ;;
+    intel-status)  gpu_intel_status ;;
+    load)          [ -z "${OMNI_SYSROOT:-}" ] && prime_privileges
+                   [ "$_OMNI_DGPU" = "none" ] && { log_error "no dGPU present"; exit 1; }
+                   gpu_dgpu_load ;;
+    unload)        [ -z "${OMNI_SYSROOT:-}" ] && prime_privileges
+                   [ "$_OMNI_DGPU" = "none" ] && { log_error "no dGPU present"; exit 1; }
+                   gpu_dgpu_unload ;;
+    status)
+        printf 'vendors:      %s\n' "$(gpu_vendors)"
+        printf 'count:        %s\n' "$(gpu_count)"
+        printf 'hybrid:       %s\n' "$(gpu_hybrid)"
+        printf 'intel_status: %s\n' "$(gpu_intel_status)"
+        printf 'dgpu_vendor:  %s\n' "$_OMNI_DGPU"
+        _bdf=$(gpu_dgpu_bdf 2>/dev/null) && printf 'dgpu_bdf:     %s\n' "$_bdf"
+        printf 'dgpu_driver:  %s\n' "$(gpu_dgpu_driver)"
+        printf 'dgpu_bound:   %s\n' "$(gpu_dgpu_bound && echo yes || echo no)"
+        printf 'dgpu_users:   %s\n' "$(gpu_dgpu_users)"
+        ;;
+    *) log_error "unknown action: $ACTION"; exit 2 ;;
+esac
