@@ -1,0 +1,28 @@
+#!/bin/sh
+# omni-boot — bootloader management CLI
+set -u
+
+_OMNI_ROOT="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)"
+. "$_OMNI_ROOT/src/core/logging.sh"
+. "$_OMNI_ROOT/src/core/utils.sh"
+. "$_OMNI_ROOT/src/core/priv.sh"
+. "$_OMNI_ROOT/src/core/detect.sh"
+. "$_OMNI_ROOT/src/boot/interface.sh"
+
+[ $# -lt 1 ] && { printf 'usage: omni-boot <detect|uefi|secureboot|list|default|count|verify|regenerate> [args]\n' >&2; exit 2; }
+
+ACTION="$1"; shift
+
+case "$ACTION" in
+    detect)     echo "$_OMNI_BOOT" ;;
+    uefi)       boot_is_uefi && echo "yes" || echo "no" ;;
+    secureboot) boot_is_secureboot && echo "enabled" || echo "disabled" ;;
+    list)       boot_list_entries ;;
+    default)    boot_get_default ;;
+    count)      boot_entry_count ;;
+    verify)     [ $# -ge 1 ] || { log_error "usage: omni-boot verify <entry-id>"; exit 2; }
+                boot_verify_entry "$1" && echo "valid" || echo "not_found" ;;
+    regenerate) [ -z "${OMNI_SYSROOT:-}" ] && prime_privileges
+                boot_regenerate ;;
+    *)          log_error "unknown action: $ACTION"; exit 2 ;;
+esac
