@@ -85,50 +85,43 @@ printf 'RESULT: %d passed, %d failed\n' "$PASS" "$FAIL"
 echo
 echo "=== Service-layer assertions ==="
 
-# OpenRC (alpine): sshd=running, networkmanager=stopped
-OMNI_INIT_OVERRIDE=openrc OMNI_SYSROOT="$FX/alpine" \
-    "$ROOT/bin/omni-service" status sshd 2>/dev/null | \
-    grep -q "^running$" && \
-    { printf '  \033[0;32mPASS\033[0m alpine       svc:sshd     = running\n'; PASS=$((PASS+1)); } || \
-    { printf '  \033[1;31mFAIL\033[0m alpine       svc:sshd     want=running\n'; FAIL=$((FAIL+1)); }
+# OpenRC / Alpine
+r=$(OMNI_INIT_OVERRIDE=openrc OMNI_SYSROOT="$FX/alpine" "$ROOT/bin/omni-service" exists sshd 2>/dev/null)
+check "alpine openrc svc-exists sshd" "yes" "$r"
+r=$(OMNI_INIT_OVERRIDE=openrc OMNI_SYSROOT="$FX/alpine" "$ROOT/bin/omni-service" status sshd 2>/dev/null)
+check "alpine openrc svc-status sshd" "running" "$r"
+r=$(OMNI_INIT_OVERRIDE=openrc OMNI_SYSROOT="$FX/alpine" "$ROOT/bin/omni-service" status networkmanager 2>/dev/null)
+check "alpine openrc svc-status nm" "stopped" "$r"
+r=$(OMNI_INIT_OVERRIDE=openrc OMNI_SYSROOT="$FX/alpine" "$ROOT/bin/omni-service" exists ghost-svc-xyz 2>/dev/null)
+check "alpine openrc svc-exists ghost" "no" "$r"
+r=$(OMNI_INIT_OVERRIDE=openrc OMNI_SYSROOT="$FX/alpine" "$ROOT/bin/omni-service" status ghost-svc-xyz 2>/dev/null)
+check "alpine openrc svc-status ghost" "not_found" "$r"
 
-OMNI_INIT_OVERRIDE=openrc OMNI_SYSROOT="$FX/alpine" \
-    "$ROOT/bin/omni-service" status networkmanager 2>/dev/null | \
-    grep -q "^stopped$" && \
-    { printf '  \033[0;32mPASS\033[0m alpine       svc:nm       = stopped\n'; PASS=$((PASS+1)); } || \
-    { printf '  \033[1;31mFAIL\033[0m alpine       svc:nm       want=stopped\n'; FAIL=$((FAIL+1)); }
+# Runit / Void
+r=$(OMNI_INIT_OVERRIDE=runit OMNI_SYSROOT="$FX/void" "$ROOT/bin/omni-service" exists sshd 2>/dev/null)
+check "void runit svc-exists sshd" "yes" "$r"
+r=$(OMNI_INIT_OVERRIDE=runit OMNI_SYSROOT="$FX/void" "$ROOT/bin/omni-service" status sshd 2>/dev/null)
+check "void runit svc-status sshd" "running" "$r"
+r=$(OMNI_INIT_OVERRIDE=runit OMNI_SYSROOT="$FX/void" "$ROOT/bin/omni-service" status NetworkManager 2>/dev/null)
+check "void runit svc-status nm" "stopped" "$r"
+r=$(OMNI_INIT_OVERRIDE=runit OMNI_SYSROOT="$FX/void" "$ROOT/bin/omni-service" exists ghost-svc-xyz 2>/dev/null)
+check "void runit svc-exists ghost" "no" "$r"
 
-# Runit (void): sshd=running, NetworkManager=stopped
-OMNI_INIT_OVERRIDE=runit OMNI_SYSROOT="$FX/void" \
-    "$ROOT/bin/omni-service" status sshd 2>/dev/null | \
-    grep -q "^running$" && \
-    { printf '  \033[0;32mPASS\033[0m void         svc:sshd     = running\n'; PASS=$((PASS+1)); } || \
-    { printf '  \033[1;31mFAIL\033[0m void         svc:sshd     want=running\n'; FAIL=$((FAIL+1)); }
+# Systemd / Arch
+r=$(OMNI_INIT_OVERRIDE=systemd OMNI_SYSROOT="$FX/arch" "$ROOT/bin/omni-service" exists sshd 2>/dev/null)
+check "arch systemd svc-exists sshd" "yes" "$r"
+r=$(OMNI_INIT_OVERRIDE=systemd OMNI_SYSROOT="$FX/arch" "$ROOT/bin/omni-service" status sshd 2>/dev/null)
+check "arch systemd svc-status sshd" "running" "$r"
+r=$(OMNI_INIT_OVERRIDE=systemd OMNI_SYSROOT="$FX/arch" "$ROOT/bin/omni-service" status chronyd 2>/dev/null)
+check "arch systemd svc-status chronyd" "stopped" "$r"
+r=$(OMNI_INIT_OVERRIDE=systemd OMNI_SYSROOT="$FX/arch" "$ROOT/bin/omni-service" exists ghost-svc-xyz 2>/dev/null)
+check "arch systemd svc-exists ghost" "no" "$r"
 
-OMNI_INIT_OVERRIDE=runit OMNI_SYSROOT="$FX/void" \
-    "$ROOT/bin/omni-service" status NetworkManager 2>/dev/null | \
-    grep -q "^stopped$" && \
-    { printf '  \033[0;32mPASS\033[0m void         svc:nm       = stopped\n'; PASS=$((PASS+1)); } || \
-    { printf '  \033[1;31mFAIL\033[0m void         svc:nm       want=stopped\n'; FAIL=$((FAIL+1)); }
-
-# Systemd (arch): sshd=running, chronyd=stopped
-OMNI_INIT_OVERRIDE=systemd OMNI_SYSROOT="$FX/arch" \
-    "$ROOT/bin/omni-service" status sshd 2>/dev/null | \
-    grep -q "^running$" && \
-    { printf '  \033[0;32mPASS\033[0m arch         svc:sshd     = running\n'; PASS=$((PASS+1)); } || \
-    { printf '  \033[1;31mFAIL\033[0m arch         svc:sshd     want=running\n'; FAIL=$((FAIL+1)); }
-
-OMNI_INIT_OVERRIDE=systemd OMNI_SYSROOT="$FX/arch" \
-    "$ROOT/bin/omni-service" status chronyd 2>/dev/null | \
-    grep -q "^stopped$" && \
-    { printf '  \033[0;32mPASS\033[0m arch         svc:chronyd  = stopped\n'; PASS=$((PASS+1)); } || \
-    { printf '  \033[1;31mFAIL\033[0m arch         svc:chronyd  want=stopped\n'; FAIL=$((FAIL+1)); }
-
-# "not installed" service: all fixtures should return unknown
-for _fx in alpine void arch; do
-    OMNI_INIT_OVERRIDE=openrc OMNI_SYSROOT="$FX/$_fx" \
-        "$ROOT/bin/omni-service" status nonexistent_svc_xyz 2>/dev/null | \
-        grep -q "^unknown$" && \
-        { printf '  \033[0;32mPASS\033[0m %-12s svc:missing  = unknown\n' "$_fx"; PASS=$((PASS+1)); } || \
-        { printf '  \033[1;31mFAIL\033[0m %-12s svc:missing  want=unknown\n' "$_fx"; FAIL=$((FAIL+1)); }
+# Safety guard: ALL mutation actions MUST refuse under OMNI_SYSROOT (exit 126)
+for _backend in openrc runit systemd; do
+    _fx_name="alpine"; [ "$_backend" = "runit" ] && _fx_name="void"; [ "$_backend" = "systemd" ] && _fx_name="arch"
+    _rc=0
+    OMNI_INIT_OVERRIDE="$_backend" OMNI_SYSROOT="$FX/$_fx_name" \
+        "$ROOT/bin/omni-service" start sshd >/dev/null 2>&1 || _rc=$?
+    check "$_backend mutation-guard exit-code" "126" "$_rc"
 done

@@ -11,21 +11,32 @@ _OMNI_ROOT="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)"
 . "$_OMNI_ROOT/src/init/interface.sh"
 
 if [ $# -lt 2 ]; then
-    printf 'usage: omni-service <action> <service>\n' >&2
-    printf 'actions: enable disable start stop restart status logs\n' >&2
+    printf 'usage: omni-service <action> <service> [n_log_lines]\n' >&2
+    printf 'read-only:   exists  status\n' >&2
+    printf 'mutating:    enable  disable  start  stop  restart  logs\n' >&2
     exit 2
 fi
 
-ACTION="$1"; SVC="$2"
+ACTION="$1"; SVC="$2"; N="${3:-50}"
+
+# Prime credentials once for any mutating action (avoids repeated prompts)
+case "$ACTION" in
+    enable|disable|start|stop|restart)
+        [ -z "${OMNI_SYSROOT:-}" ] && prime_privileges
+        ;;
+esac
 
 case "$ACTION" in
+    exists)
+        svc_exists "$SVC" && echo "yes" || echo "no"
+        ;;
+    status)  svc_status  "$SVC" ;;
     enable)  svc_enable  "$SVC" ;;
     disable) svc_disable "$SVC" ;;
     start)   svc_start   "$SVC" ;;
     stop)    svc_stop    "$SVC" ;;
     restart) svc_restart "$SVC" ;;
-    status)  svc_status  "$SVC" ;;
-    logs)    svc_logs    "$SVC" ;;
+    logs)    svc_logs    "$SVC" "$N" ;;
     *)
         log_error "unknown action: $ACTION"
         exit 2

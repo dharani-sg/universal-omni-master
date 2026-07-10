@@ -1,17 +1,14 @@
 #!/bin/sh
-# interface.sh — dispatcher that loads the correct backend.
-# MUST be sourced AFTER logging.sh, utils.sh, priv.sh, detect.sh are sourced.
-# Caller MUST have set _OMNI_ROOT to the project root directory.
+# interface.sh — dispatcher. Loads common guards then the correct backend.
+# Caller MUST set _OMNI_ROOT before sourcing this file.
 
-# Validate prerequisites
-if [ -z "${_OMNI_ROOT:-}" ]; then
-    echo "[omni] FATAL: _OMNI_ROOT not set before sourcing interface.sh" >&2
-    return 1
-fi
+[ -n "${_OMNI_ROOT:-}" ] || { echo "[omni] FATAL: _OMNI_ROOT not set" >&2; return 1; }
 
-if ! command -v detect_init >/dev/null 2>&1; then
-    . "$_OMNI_ROOT/src/core/detect.sh" || { echo "[omni] FATAL: cannot load detect.sh" >&2; return 1; }
-fi
+command -v detect_init >/dev/null 2>&1 || \
+    . "$_OMNI_ROOT/src/core/detect.sh" || { echo "[omni] FATAL: detect.sh load failed" >&2; return 1; }
+
+# Common guards MUST be loaded before any backend.
+. "$_OMNI_ROOT/src/init/common.sh" || { echo "[omni] FATAL: common.sh load failed" >&2; return 1; }
 
 _OMNI_INIT="${OMNI_INIT_OVERRIDE:-$(detect_init)}"
 log_debug "service interface: backend=$_OMNI_INIT"
@@ -22,8 +19,5 @@ case "$_OMNI_INIT" in
     runit)   . "$_OMNI_ROOT/src/init/runit.sh"   ;;
     dinit)   . "$_OMNI_ROOT/src/init/dinit.sh"   ;;
     s6)      . "$_OMNI_ROOT/src/init/s6.sh"      ;;
-    *)
-        log_error "service interface: no backend for init system '$_OMNI_INIT'"
-        return 1
-        ;;
+    *)  log_error "no service backend for init system '$_OMNI_INIT'"; return 1 ;;
 esac
