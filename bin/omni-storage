@@ -1,0 +1,34 @@
+#!/bin/sh
+# omni-storage — storage telemetry CLI
+set -u
+
+_OMNI_ROOT="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)"
+. "$_OMNI_ROOT/src/core/logging.sh"
+. "$_OMNI_ROOT/src/core/utils.sh"
+. "$_OMNI_ROOT/src/core/priv.sh"
+. "$_OMNI_ROOT/src/core/detect.sh"
+. "$_OMNI_ROOT/src/storage/interface.sh"
+
+USAGE="usage: omni-storage <list|type|health|mode|crc|baseline|set-baseline|luks|btrfs-subvols|btrfs-count|btrfs-free|fsck-policy> [dev]"
+
+[ $# -lt 1 ] && { echo "$USAGE" >&2; exit 2; }
+ACTION="$1"; shift
+
+case "$ACTION" in
+    list)           storage_enumerate ;;
+    type)           [ $# -ge 1 ] || { log_error "need device"; exit 2; }; storage_device_type "$1" ;;
+    health)         [ $# -ge 1 ] || { log_error "need device"; exit 2; }; storage_health "$1" ;;
+    mode)           cablewatch_mode "${1:-}" ;;
+    crc)            [ $# -ge 1 ] || { log_error "need device"; exit 2; }; smart_sata_crc "$1" ;;
+    baseline)       [ $# -ge 1 ] || { log_error "need device"; exit 2; }; smart_read_baseline "$1" ;;
+    set-baseline)   [ $# -ge 1 ] || { log_error "need device"; exit 2; }
+                    [ -z "${OMNI_SYSROOT:-}" ] && prime_privileges
+                    smart_set_baseline "$1" ;;
+    luks)           [ $# -ge 1 ] || { log_error "need device"; exit 2; }
+                    storage_is_luks "$1" && echo "yes" || echo "no" ;;
+    btrfs-subvols)  btrfs_list_subvolumes "${1:-/}" ;;
+    btrfs-count)    btrfs_subvolume_count "${1:-/}" ;;
+    btrfs-free)     btrfs_unallocated_bytes "${1:-/}" ;;
+    fsck-policy)    cablewatch_fsck_policy ;;
+    *)              log_error "unknown action: $ACTION"; exit 2 ;;
+esac

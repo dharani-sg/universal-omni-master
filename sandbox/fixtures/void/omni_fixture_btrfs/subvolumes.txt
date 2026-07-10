@@ -1,0 +1,5 @@
+@
+@home
+@var_log
+@xbps_cache
+@snapshots
