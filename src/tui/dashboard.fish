@@ -1,18 +1,32 @@
-# src/tui/dashboard.fish — read-only status view (no mutations possible here)
+#!/usr/bin/env fish
+# src/tui/dashboard.fish — read-only status view. Uses $OMNI_ROOT.
+
 function tui_action_dashboard
-    set -l root (dirname (status filename))/../..
     tui_header "Dashboard"
     echo
-    echo "── omni-healer ──"
-    $root/bin/omni-healer status 2>/dev/null; or echo "  not running"
+
+    tui_separator; echo "HEALER STATUS"; tui_separator
+    if test -x "$OMNI_ROOT/bin/omni-healer"
+        $OMNI_ROOT/bin/omni-healer status 2>/dev/null; or echo "  not running"
+    else
+        echo "  omni-healer: not installed"
+    end
     echo
-    echo "── snapshots ──"
-    $root/bin/omni-snapshot status 2>/dev/null; or echo "  (non-Btrfs or unavailable)"
+
+    tui_separator; echo "SNAPSHOT STATUS"; tui_separator
+    if test -x "$OMNI_ROOT/bin/omni-snapshot"
+        $OMNI_ROOT/bin/omni-snapshot status 2>/dev/null; or echo "  (unavailable)"
+    else
+        echo "  omni-snapshot: not installed"
+    end
     echo
-    echo "── last 5 audit events ──"
+
+    tui_separator; echo "LAST 5 AUDIT EVENTS"; tui_separator
     if test -r /var/log/omni-audit.json
         tail -5 /var/log/omni-audit.json
     else
-        echo "  no audit log readable"
+        echo "  /var/log/omni-audit.json not readable"
     end
+    echo
+    return 0   # dashboard is read-only; always succeeds
 end

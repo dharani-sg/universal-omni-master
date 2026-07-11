@@ -1,43 +1,112 @@
-# src/tui/snapshots.fish — dispatch layer over bin/omni-snapshot (all guards live there)
+#!/usr/bin/env fish
+# src/tui/snapshots.fish — M10/M11 lifecycle and restore dispatch.
+# All snapshot mutation guards live in omni-snapshot CLI.
+# Restore requires: scroll+select + type name + type RESTORE (spec §4).
+
 function tui_action_snap_list
-    set -l root (dirname (status filename))/../..
-    $root/bin/omni-snapshot list
+    if test -x "$OMNI_ROOT/bin/omni-snapshot"
+        $OMNI_ROOT/bin/omni-snapshot list
+    else
+        echo "omni-snapshot not installed"
+        return 1
+    end
 end
 
 function tui_action_snap_restore
-    set -l root (dirname (status filename))/../..
-    set -l snaps ($root/bin/omni-snapshot list)
-    if test (count $snaps) -eq 0
+    # D15: mutation guard at TUI layer before any user interaction
+    _tui_guard_mutation; or return 126
+
+    set -l _snaps ($OMNI_ROOT/bin/omni-snapshot list 2>/dev/null)
+    if test (count $_snaps) -eq 0
         echo "No snapshots available."; return 1
     end
-    for i in (seq (count $snaps))
-        printf '  %2d) %s\n' $i $snaps[$i]
+
+    echo
+    echo "Available snapshots:"
+    for _i in (seq (count $_snaps))
+        printf '  %2d)  %s\n' $_i $_snaps[$_i]
     end
-    read -P "Select snapshot number: " -l n
-    string match -qr '^[0-9]+$' -- $n; or begin; echo "invalid"; return 1; end
-    test $n -ge 1 -a $n -le (count $snaps); or begin; echo "out of range"; return 1; end
-    # omni-snapshot restore has its own typed-yes gate (G4) — TUI adds no bypass
-    $root/bin/omni-snapshot restore $snaps[$n]
+    echo
+
+    read --prompt-str "Select snapshot number: " -l _n
+    if not string match -qr '^[0-9]+$' -- $_n
+        echo "Invalid input."; return 1
+    end
+    if test $_n -lt 1; or test $_n -gt (count $_snaps)
+        echo "Out of range."; return 1
+    end
+
+    set -l _target $_snaps[$_n]
+    echo
+    echo "  Selected: $_target"
+    echo
+
+    # D10/spec §4 snapshot confirmation: type exact name + type RESTORE
+    if tui_confirm_two "snapshot name" "$_target" RESTORE
+        echo
+        # omni-snapshot restore has its own internal confirmation gate (G4)
+        # TUI does NOT bypass it — two confirmation layers are intentional
+        tui_run $OMNI_ROOT/bin/omni-snapshot restore $_target
+    else
+        echo "Aborted — no changes made."
+    end
 end
 
 function tui_action_snap_menu
-    tui_header "Snapshots"
-    echo "  1) List    2) Create manual    3) Prune    4) Restore    5) Boot-once    q) Back"
-    read -P "> " -l c
-    switch $c
-        case 1; tui_action_snap_list
+    tui_header "Snapshot Manager"
+    echo
+    echo "  1) List snapshots"
+    echo "  2) Create manual snapshot"
+    echo "  3) Prune (enforce retention)"
+    echo "  4) Stage restore"
+    echo "  5) Boot-once"
+    echo "  q) Back"
+    echo
+    read --prompt-str "> " -l _c
+    switch $_c
+        case 1
+            tui_action_snap_list
+
         case 2
-            read -P "Label: " -l lbl
-            set -l root (dirname (status filename))/../..
-            $root/bin/omni-snapshot create manual $lbl
+            read --prompt-str "Label for snapshot: " -l _lbl
+            if test -n "$_lbl"
+                tui_run $OMNI_ROOT/bin/omni-snapshot create manual $_lbl
+            else
+                echo "Label required."
+            end
+
         case 3
-            set -l root (dirname (status filename))/../..
-            tui_confirm "Prune per retention policy" PRUNE; and $root/bin/omni-snapshot prune
-        case 4; tui_action_snap_restore
+            _tui_guard_mutation; or return 126
+            if tui_confirm "Enforce retention policy (will delete old snapshots)" PRUNE
+                tui_run $OMNI_ROOT/bin/omni-snapshot prune
+            else
+                echo "Aborted."
+            end
+
+        case 4
+            tui_action_snap_restore
+
         case 5
-            set -l root (dirname (status filename))/../..
-            read -P "Snapshot name: " -l sn
-            $root/bin/omni-snapshot boot-once $sn
+            _tui_guard_mutation; or return 126
+            set -l _snaps ($OMNI_ROOT/bin/omni-snapshot list 2>/dev/null)
+            if test (count $_snaps) -eq 0
+                echo "No snapshots available."; return 1
+            end
+            for _i in (seq (count $_snaps))
+                printf '  %2d)  %s\n' $_i $_snaps[$_i]
+            end
+            read --prompt-str "Select snapshot number for boot-once: " -l _n
+            if string match -qr '^[0-9]+$' -- $_n
+                and test $_n -ge 1; and test $_n -le (count $_snaps)
+                tui_run $OMNI_ROOT/bin/omni-snapshot boot-once $_snaps[$_n]
+            else
+                echo "Invalid selection."
+            end
+
         case q
+            return 0
+
+        case '*'
+            echo "Unknown option: $_c"
     end
 end

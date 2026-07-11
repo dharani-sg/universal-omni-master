@@ -1,19 +1,40 @@
 #!/bin/sh
-# bin/omni-tui — launcher: env checks, then hand off to fish main loop.
-command -v fish >/dev/null 2>&1 || { echo "omni-tui requires fish (apk add fish)"; exit 3; }
-[ -t 0 ] || { echo "omni-tui requires an interactive TTY"; exit 4; }
-_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-exec fish -c "
-for f in $_ROOT/src/tui/*.fish; source \$f; end
-while true
-    tui_header 'Main Menu'
-    echo '  1) Dashboard   2) Snapshots   3) Installer   q) Quit'
-    read -P '> ' c
-    switch \$c
-        case 1; tui_action_dashboard
-        case 2; tui_action_snap_menu
-        case 3; tui_action_installer
-        case q; exit 0
-    end
-    echo
-end"
+# bin/omni-tui — deterministic POSIX launcher for Fish 4.x TUI.
+
+if ! command -v fish >/dev/null 2>&1; then
+    printf 'omni-tui: Fish 4.x is required (apk add fish).\n' >&2
+    exit 3
+fi
+
+# Extract Fish major version via parameter expansion — NEVER `set --`,
+# which would clobber "$@" (the real subcommands).
+# `fish --version` => "fish, version 4.6.0"
+_fv=$(fish --version 2>/dev/null)
+_fver=${_fv##* }        # "4.6.0"
+_fm=${_fver%%.*}        # "4"
+case "$_fm" in
+    ''|*[!0-9]*) printf 'omni-tui: cannot parse Fish version: %s\n' "$_fv" >&2; exit 3 ;;
+esac
+[ "$_fm" -eq 4 ] || { printf 'omni-tui: Fish 4.x required; found %s\n' "$_fver" >&2; exit 3; }
+
+_d=${0%/*}; [ "$_d" = "$0" ] && _d=.
+_R=$(CDPATH= cd "$_d/.." 2>/dev/null && pwd) || { printf 'omni-tui: no root\n' >&2; exit 1; }
+[ -r "$_R/src/tui/main.fish" ] || { printf 'omni-tui: missing main.fish\n' >&2; exit 1; }
+
+# "$@" is now INTACT — argument scan works correctly.
+_need_tty=1; _plain=0
+for _a in "$@"; do
+    case "$_a" in
+        --plain) _plain=1; _need_tty=0 ;;
+        dashboard|snapshots|help|--help|-h|internal-test-mutation) _need_tty=0 ;;
+    esac
+done
+
+if [ "$_need_tty" -eq 1 ] && { [ ! -t 0 ] || [ ! -t 1 ]; }; then
+    printf 'omni-tui: interactive mode requires a TTY.\n' >&2
+    exit 4
+fi
+
+[ "$_plain" -eq 1 ] && export NO_COLOR=1
+export OMNI_ROOT="$_R"
+exec fish --no-config "$_R/src/tui/main.fish" "$@"

@@ -15,7 +15,7 @@ deploy_install_snapshot() {
     mkdir -p "$_target/usr/lib/omni-master/src/snapshot"
     cp "$_src_root/bin/omni-snapshot" "$_target/usr/bin/omni-snapshot"
     chmod 755 "$_target/usr/bin/omni-snapshot"
-    for _lib in common.sh prune.sh periodic.sh; do
+    for _lib in common.sh prune.sh periodic.sh boot_entry.sh restore.sh; do
         [ -f "$_src_root/src/snapshot/$_lib" ] && \
             cp "$_src_root/src/snapshot/$_lib" "$_target/usr/lib/omni-master/src/snapshot/$_lib"
     done
