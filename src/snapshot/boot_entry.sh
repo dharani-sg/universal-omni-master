@@ -134,3 +134,25 @@ snap_boot_entry_sync() {
         fi
     done
 }
+
+# ── M11.1 G3 fix: UUID of the device backing / (strips [/subvol] suffix) ─────
+_snap_root_uuid() {
+    _src=$(findmnt -no SOURCE / 2>/dev/null | sed 's/\[.*\]//')
+    [ -n "$_src" ] && blkid -s UUID -o value "$_src" 2>/dev/null
+}
+
+# ── M11.1 G2 fix: btrfs-relative subvol path for a snapshot name ─────────────
+# Reads the actual path from btrfs subvolume list — never constructs with '..'
+_snap_subvol_rel_path() {
+    _name="$1"
+    _broot=$(_snap_btrfs_root)
+    btrfs subvolume list -ro "$_broot" 2>/dev/null \
+        | awk '{print $NF}' | grep -F "$_name" | head -1
+}
+
+# ── M11.1 G1 fix: scrub cmdline of root=/rootflags=/subvol= before re-adding ─
+_snap_scrub_cmdline() {
+    printf '%s' "$1" \
+        | sed 's/root=[^ ]*//g; s/rootflags=[^ ]*//g; s/subvol=[^ ]*//g' \
+        | tr -s ' '
+}
