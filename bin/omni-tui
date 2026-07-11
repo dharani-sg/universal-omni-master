@@ -1,0 +1,19 @@
+#!/bin/sh
+# bin/omni-tui — launcher: env checks, then hand off to fish main loop.
+command -v fish >/dev/null 2>&1 || { echo "omni-tui requires fish (apk add fish)"; exit 3; }
+[ -t 0 ] || { echo "omni-tui requires an interactive TTY"; exit 4; }
+_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+exec fish -c "
+for f in $_ROOT/src/tui/*.fish; source \$f; end
+while true
+    tui_header 'Main Menu'
+    echo '  1) Dashboard   2) Snapshots   3) Installer   q) Quit'
+    read -P '> ' c
+    switch \$c
+        case 1; tui_action_dashboard
+        case 2; tui_action_snap_menu
+        case 3; tui_action_installer
+        case q; exit 0
+    end
+    echo
+end"
