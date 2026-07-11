@@ -1,0 +1,12 @@
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Operation = Remove
+Type = Package
+Target = *
+
+[Action]
+Description = Omni-Master: Pre-transaction Btrfs snapshot
+When = PreTransaction
+Exec = /usr/bin/omni-snapshot create pretxn pacman
+NeedsTargets

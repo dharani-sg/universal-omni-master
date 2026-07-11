@@ -1,0 +1,98 @@
+#!/bin/sh
+# bin/omni-snapshot — Btrfs snapshot lifecycle manager CLI.
+# R1 fix: parses both 'create <category> [reason]' and
+#         'create --reason <reason>' (hook-compatible forms).
+set -u
+
+_OMNI_ROOT="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)"
+. "$_OMNI_ROOT/src/core/logging.sh" 2>/dev/null || true
+. "$_OMNI_ROOT/src/snapshot/common.sh"
+. "$_OMNI_ROOT/src/snapshot/prune.sh"
+. "$_OMNI_ROOT/src/snapshot/periodic.sh"
+
+snap_load_conf
+
+_usage() {
+    cat << HELP
+omni-snapshot — Btrfs Snapshot Lifecycle Manager
+
+Usage: omni-snapshot <command> [args]
+
+Commands:
+  create <category> [reason]     Create snapshot (categories: pretxn hourly daily weekly manual emergency)
+  create --reason <reason>       Create manual snapshot with reason tag (hook-compatible)
+  list                           List all managed snapshots (names)
+  prune                          Enforce per-category retention policy
+  sweep [max_age_days]           Remove M8 emergency orphans older than N days (default: RETAIN_PRETXN)
+  periodic                       Run all due periodic snapshots (call from cron/timer)
+  status                         Show snapshot counts per category and free space
+  help                           Show this message
+
+Examples:
+  omni-snapshot create pretxn pacman         # pacman hook form
+  omni-snapshot create --reason pretxn-apt   # apt hook form (legacy)
+  omni-snapshot create manual my-label       # manual with label
+  omni-snapshot prune                        # enforce retention
+  omni-snapshot sweep 7                      # purge M8 orphans older than 7 days
+HELP
+}
+
+_cmd_status() {
+    _snap_require_btrfs / || return 0
+    printf 'Snapshot categories:\n'
+    for _cat in pretxn hourly daily weekly manual emergency; do
+        _n=$(snap_list_names | grep "_${_cat}" | wc -l)
+        printf '  %-12s %3d\n' "$_cat" "$_n"
+    done
+    printf '\nFree space at /:\n'
+    df -Ph / | tail -1
+}
+
+# ── Argument parsing (R1 fix) ─────────────────────────────────────────────────
+COMMAND="${1:-help}"
+[ "$COMMAND" != "help" ] && shift || true
+
+case "$COMMAND" in
+    create)
+        # Two accepted forms:
+        #   create <category> [reason]         → positional
+        #   create --reason <reason_str>       → hook-compat flag form
+        if [ "${1:-}" = "--reason" ]; then
+            # Flag form: omni-snapshot create --reason pretxn-pacman
+            # Reason string encodes category — extract it
+            _raw="${2:-manual}"
+            # Map "pretxn-pacman" → category=pretxn reason=pacman
+            _cat=$(printf '%s' "$_raw" | cut -d'-' -f1)
+            _rsn=$(printf '%s' "$_raw" | cut -d'-' -f2-)
+            [ "$_cat" = "$_rsn" ] && _rsn=""   # single-word, no suffix
+        else
+            _cat="${1:-manual}"
+            _rsn="${2:-}"
+        fi
+        snap_create "$_cat" "$_rsn"
+        ;;
+    list)
+        snap_list_names
+        ;;
+    prune)
+        snap_prune
+        ;;
+    sweep)
+        healer_snapshot_prune_orphans "${1:-}"
+        ;;
+    periodic)
+        snap_run_periodic
+        ;;
+    status)
+        _cmd_status
+        ;;
+    help|--help|-h)
+        _usage
+        exit 0
+        ;;
+    *)
+        printf 'omni-snapshot: unknown command: %s\n' "$COMMAND" >&2
+        _usage >&2
+        exit 2
+        ;;
+esac

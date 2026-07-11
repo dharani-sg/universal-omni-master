@@ -1,0 +1,18 @@
+# /etc/omni-snapshot.conf — omni-snapshot lifecycle manager configuration
+
+# Feature flags
+SNAPSHOT_PERIODIC=1          # 1 = enable hourly/daily/weekly periodic snapshots
+SNAPSHOT_PRETXN=1            # 1 = enable pre-transaction hooks
+
+# Retention counts per category
+SNAPSHOT_RETAIN_HOURLY=24    # keep last 24 hourly snapshots
+SNAPSHOT_RETAIN_DAILY=7      # keep last 7 daily snapshots
+SNAPSHOT_RETAIN_WEEKLY=4     # keep last 4 weekly snapshots
+SNAPSHOT_RETAIN_PRETXN=10    # keep last 10 pre-transaction snapshots
+
+# Space safety threshold — refuse snapshot if free space below this
+SNAPSHOT_MIN_FREE_GB=5
+
+# Btrfs layout (must match /etc/fstab subvol= mount options)
+SNAPSHOT_ROOT_SUBVOL=@root   # subvol name of the root filesystem
+SNAPSHOT_MOUNT=/.snapshots   # where the snapshots subvol is mounted

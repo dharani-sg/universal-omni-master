@@ -22,6 +22,7 @@ _OMNI_ROOT="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)"
 . "$_OMNI_ROOT/src/deploy/bootloader.sh"
 . "$_OMNI_ROOT/src/deploy/rollback.sh"
 . "$_OMNI_ROOT/src/deploy/healer_install.sh"
+. "$_OMNI_ROOT/src/deploy/snapshot_install.sh"
 . "$_OMNI_ROOT/src/deploy/verify.sh"
 
 # ── Defaults ──────────────────────────────────────────────────────────────────
@@ -188,6 +189,8 @@ HELP
         [ -n "$DEPLOY_USER" ] && deploy_create_user "$DEPLOY_TARGET"
         [ "$DEPLOY_INIT" != "systemd" ] && deploy_setup_dbus "$DEPLOY_TARGET"
         deploy_install_healer "$DEPLOY_TARGET" "$DEPLOY_INIT"
+        deploy_install_snapshot "$DEPLOY_TARGET" "$DEPLOY_INIT" "$DEPLOY_DISTRO"
+        deploy_snapshot_enable_periodic "$DEPLOY_TARGET" "$DEPLOY_INIT"
         deploy_enable_services "$DEPLOY_TARGET" "$DEPLOY_INIT" \
             NetworkManager dbus sshd
 
