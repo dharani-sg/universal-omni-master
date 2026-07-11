@@ -1,10 +1,8 @@
 #!/bin/sh
-# bin/omni-snapshot — Btrfs snapshot lifecycle manager CLI.
-# R1 fix: parses both 'create <category> [reason]' and
-#         'create --reason <reason>' (hook-compatible forms).
+# bin/omni-snapshot — Btrfs snapshot lifecycle + atomic rollback CLI.
 set -u
 
-_OMNI_ROOT="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)"
+_OMNI_ROOT="${OMNI_ROOT:-$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)}"
 . "$_OMNI_ROOT/src/core/logging.sh" 2>/dev/null || true
 . "$_OMNI_ROOT/src/snapshot/common.sh"
 . "$_OMNI_ROOT/src/snapshot/prune.sh"
@@ -16,26 +14,29 @@ snap_load_conf
 
 _usage() {
     cat << HELP
-omni-snapshot — Btrfs Snapshot Lifecycle Manager
+omni-snapshot — Btrfs Snapshot Lifecycle + Rollback
 
-Usage: omni-snapshot <command> [args]
+Lifecycle:
+  create <category> [reason]   pretxn|hourly|daily|weekly|manual|emergency
+  create --reason <reason>     hook-compatible form
+  list                         list managed snapshot names
+  prune                        per-category retention (+ boot-entry sync)
+  sweep [days]                 remove M8 emergency orphans
+  periodic                     run due periodic snapshots
+  status                       counts + free space + boot entries
 
-Commands:
-  create <category> [reason]     Create snapshot (categories: pretxn hourly daily weekly manual emergency)
-  create --reason <reason>       Create manual snapshot with reason tag (hook-compatible)
-  list                           List all managed snapshots (names)
-  prune                          Enforce per-category retention policy
-  sweep [max_age_days]           Remove M8 emergency orphans older than N days (default: RETAIN_PRETXN)
-  periodic                       Run all due periodic snapshots (call from cron/timer)
-  status                         Show snapshot counts per category and free space
-  help                           Show this message
+Boot entries:
+  boot-entry add <snap>        add bootloader entry
+  boot-entry list              list omni-snap entries
+  boot-entry remove <snap>     remove entry
+  boot-entry sync              drop entries for deleted snapshots
 
-Examples:
-  omni-snapshot create pretxn pacman         # pacman hook form
-  omni-snapshot create --reason pretxn-apt   # apt hook form (legacy)
-  omni-snapshot create manual my-label       # manual with label
-  omni-snapshot prune                        # enforce retention
-  omni-snapshot sweep 7                      # purge M8 orphans older than 7 days
+Rollback:
+  restore <snap>               stage restore (RW clone + boot entry)
+  rollback <snap>              alias of restore
+  restore-cancel               undo a staged restore
+  boot-once <snap>             boot snapshot once, then revert
+  help
 HELP
 }
 
@@ -43,72 +44,47 @@ _cmd_status() {
     _snap_require_btrfs / || return 0
     printf 'Snapshot categories:\n'
     for _cat in pretxn hourly daily weekly manual emergency; do
-        _n=$(snap_list_names | grep "_${_cat}" | wc -l)
+        _n=$(snap_list_names | grep -c "_${_cat}" 2>/dev/null || echo 0)
         printf '  %-12s %3d\n' "$_cat" "$_n"
     done
-    printf '\nFree space at /:\n'
-    df -Ph / | tail -1
+    printf '\nBoot entries:\n'; snap_boot_entry_list 2>/dev/null || true
+    printf '\nFree space at /:\n'; df -Ph / 2>/dev/null | tail -1
 }
 
-# ── Argument parsing (R1 fix) ─────────────────────────────────────────────────
 COMMAND="${1:-help}"
-[ "$COMMAND" != "help" ] && shift || true
+[ $# -gt 0 ] && shift || true
 
 case "$COMMAND" in
     create)
-        # Two accepted forms:
-        #   create <category> [reason]         → positional
-        #   create --reason <reason_str>       → hook-compat flag form
         if [ "${1:-}" = "--reason" ]; then
-            # Flag form: omni-snapshot create --reason pretxn-pacman
-            # Reason string encodes category — extract it
             _raw="${2:-manual}"
-            # Map "pretxn-pacman" → category=pretxn reason=pacman
             _cat=$(printf '%s' "$_raw" | cut -d'-' -f1)
             _rsn=$(printf '%s' "$_raw" | cut -d'-' -f2-)
-            [ "$_cat" = "$_rsn" ] && _rsn=""   # single-word, no suffix
+            [ "$_cat" = "$_rsn" ] && _rsn=""
         else
-            _cat="${1:-manual}"
-            _rsn="${2:-}"
+            _cat="${1:-manual}"; _rsn="${2:-}"
         fi
-        snap_create "$_cat" "$_rsn"
-        ;;
-    list)
-        snap_list_names
-        ;;
-    prune)
-        snap_prune
-        ;;
-    sweep)
-        healer_snapshot_prune_orphans "${1:-}"
-        ;;
-    periodic)
-        snap_run_periodic
-        ;;
-    status)
-        _cmd_status
-        ;;
+        snap_create "$_cat" "$_rsn" ;;
+    list)     snap_list_names ;;
+    prune)    snap_prune ;;
+    sweep)    healer_snapshot_prune_orphans "${1:-}" ;;
+    periodic) snap_run_periodic ;;
+    status)   _cmd_status ;;
     boot-entry)
-        _subcmd="${1:-list}"; shift || true
-        case "$_subcmd" in
-            add)    snap_boot_entry_add "${1:?snapshot name required}" ;;
+        _sub="${1:-list}"; shift 2>/dev/null || true
+        case "$_sub" in
+            add)    snap_boot_entry_add "${1:?snap name required}" ;;
             list)   snap_boot_entry_list ;;
-            remove) snap_boot_entry_remove "${1:?snapshot name required}" ;;
+            remove) snap_boot_entry_remove "${1:?snap name required}" ;;
             sync)   snap_boot_entry_sync ;;
-            *)      printf "boot-entry subcommands: add|list|remove|sync\n" >&2; exit 2 ;;
-        esac
-        ;;
-    rollback)
-        snap_restore "${1:?snapshot name required}"
-        ;;
-
-    help|--help|-h)
-        _usage
-        exit 0
-        ;;
-    *)
-        printf 'omni-snapshot: unknown command: %s\n' "$COMMAND" >&2
-        _usage >&2
-        exit 2
-        ;;
+            *)      printf 'unknown boot-entry sub: %s\n' "$_sub" >&2; exit 2 ;;
+        esac ;;
+    restore|rollback)
+        snap_restore "${1:?snapshot name required}" ;;
+    restore-cancel)
+        snap_restore_cancel ;;
+    boot-once)
+        snap_boot_once "${1:?snapshot name required}" ;;
+    help|--help|-h) _usage; exit 0 ;;
+    *) printf 'omni-snapshot: unknown command: %s\n' "$COMMAND" >&2; _usage >&2; exit 2 ;;
 esac
