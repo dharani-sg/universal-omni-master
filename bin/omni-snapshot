@@ -9,6 +9,8 @@ _OMNI_ROOT="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)"
 . "$_OMNI_ROOT/src/snapshot/common.sh"
 . "$_OMNI_ROOT/src/snapshot/prune.sh"
 . "$_OMNI_ROOT/src/snapshot/periodic.sh"
+. "$_OMNI_ROOT/src/snapshot/boot_entry.sh"
+. "$_OMNI_ROOT/src/snapshot/restore.sh"
 
 snap_load_conf
 
@@ -86,6 +88,20 @@ case "$COMMAND" in
     status)
         _cmd_status
         ;;
+    boot-entry)
+        _subcmd="${1:-list}"; shift || true
+        case "$_subcmd" in
+            add)    snap_boot_entry_add "${1:?snapshot name required}" ;;
+            list)   snap_boot_entry_list ;;
+            remove) snap_boot_entry_remove "${1:?snapshot name required}" ;;
+            sync)   snap_boot_entry_sync ;;
+            *)      printf "boot-entry subcommands: add|list|remove|sync\n" >&2; exit 2 ;;
+        esac
+        ;;
+    rollback)
+        snap_restore "${1:?snapshot name required}"
+        ;;
+
     help|--help|-h)
         _usage
         exit 0
