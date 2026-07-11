@@ -25,8 +25,6 @@ btrfs_has_subvolume() {
     btrfs_list_subvolumes "$_mnt" 2>/dev/null | grep -qxF "$_sub"
 }
 
-# True unallocated bytes — the correct Btrfs headroom metric.
-# High used-of-allocated is NOT a failure when unallocated headroom is healthy.
 btrfs_unallocated_bytes() {
     _mnt="${1:-/}"
     if [ -n "${OMNI_SYSROOT:-}" ]; then
@@ -39,17 +37,16 @@ btrfs_unallocated_bytes() {
              END{if(!found) print 0}'
 }
 
-# Btrfs device stats — reports per-counter with severity classification.
-# Returns: lines of "<counter> <value> <severity>"
-# Severity: ok(0), fail(nonzero io err), critical(corruption/generation)
+# Btrfs device stats — per-counter with severity classification.
 btrfs_device_stats() {
     _mnt="${1:-/}"
     if [ -n "${OMNI_SYSROOT:-}" ]; then
         _f="$(_sysfile /omni_fixture_btrfs/device_stats.txt)"
         [ -r "$_f" ] || return 0
         while IFS= read -r _line; do
-            _key=$(echo "$_line" | sed 's/.*\.\([a-z_]*\).*/\1/')
-            _val=$(echo "$_line" | awk '{print $NF}')
+            _key=$(printf '%s' "$_line" | sed 's/.*\.\([a-z_]*\).*/\1/')
+            _val=$(printf '%s' "$_line" | awk '{print $NF}')
+            [ -n "$_val" ] || continue
             case "$_key" in
                 corruption_errs|generation_errs)
                     printf '%s %s %s\n' "$_key" "$_val" \
@@ -61,12 +58,12 @@ btrfs_device_stats() {
         done < "$_f"
         return 0
     fi
-
     command -v btrfs >/dev/null 2>&1 || return 0
     run_as_root btrfs device stats "$_mnt" 2>/dev/null |
         while IFS= read -r _line; do
             _key=$(printf '%s' "$_line" | sed 's/.*\.\([a-z_]*\).*/\1/')
             _val=$(printf '%s' "$_line" | awk '{print $NF}')
+            [ -n "$_val" ] || continue
             case "$_key" in
                 corruption_errs|generation_errs)
                     printf '%s %s %s\n' "$_key" "$_val" \
@@ -78,26 +75,26 @@ btrfs_device_stats() {
         done
 }
 
-# Overall Btrfs device health: ok | fail | critical (based on device stats)
+# Overall Btrfs device health.
+# FIX: temp file uses /tmp directly — NEVER _sysfile for runtime temp files.
 btrfs_device_health() {
     _mnt="${1:-/}"
-    _worst=ok
-    btrfs_device_stats "$_mnt" 2>/dev/null | while read -r _k _v _sev; do
-        case "$_sev" in
-            critical) printf critical; return 0 ;;
-            fail)     printf fail ;;
-        esac
-    done || true
+    # Use a real /tmp path, never sysroot-prefixed
+    _tmp="/tmp/omni_btrfs_health_$$"
+    echo ok > "$_tmp" 2>/dev/null || { echo unknown; return 1; }
 
-    # The while runs in a subshell; use temp file for worst severity
-    _tmp="$(_sysfile /tmp/btrfs_health_$$)"
-    echo ok > "$_tmp"
     btrfs_device_stats "$_mnt" 2>/dev/null | while read -r _k _v _sev; do
         case "$_sev" in
-            critical) echo critical > "$_tmp" ;;
-            fail) _cur=$(cat "$_tmp" 2>/dev/null); [ "$_cur" != "critical" ] && echo fail > "$_tmp" ;;
+            critical)
+                echo critical > "$_tmp"
+                ;;
+            fail)
+                _cur=$(cat "$_tmp" 2>/dev/null)
+                [ "$_cur" != "critical" ] && echo fail > "$_tmp"
+                ;;
         esac
     done
+
     cat "$_tmp" 2>/dev/null || echo ok
     rm -f "$_tmp"
 }
@@ -112,9 +109,9 @@ btrfs_scrub_last_status() {
     fi
     command -v btrfs >/dev/null 2>&1 || { echo unknown; return 1; }
     _out=$(run_as_root btrfs scrub status "$_mnt" 2>/dev/null)
-    if echo "$_out" | grep -qi "no stats available"; then echo no_scrub; return 0; fi
-    if echo "$_out" | grep -qi "running"; then echo running; return 0; fi
-    if echo "$_out" | grep -qi "no errors found"; then echo ok; return 0; fi
-    if echo "$_out" | grep -qiE "csum_errors|uncorrectable|error summary"; then echo errors; return 0; fi
+    if printf '%s' "$_out" | grep -qi "no stats available"; then echo no_scrub; return 0; fi
+    if printf '%s' "$_out" | grep -qi "running"; then echo running; return 0; fi
+    if printf '%s' "$_out" | grep -qi "no errors found"; then echo ok; return 0; fi
+    if printf '%s' "$_out" | grep -qiE "csum_errors|uncorrectable|error summary"; then echo errors; return 0; fi
     echo unknown
 }
