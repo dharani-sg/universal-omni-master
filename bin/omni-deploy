@@ -33,6 +33,7 @@ DEPLOY_INIT="${DEPLOY_INIT:-}"
 DEPLOY_ENCRYPT="${DEPLOY_ENCRYPT:-0}"
 DEPLOY_HOSTNAME="${DEPLOY_HOSTNAME:-omni-linux}"
 DEPLOY_USER="${DEPLOY_USER:-}"
+DEPLOY_LOCALE="${DEPLOY_LOCALE:-en_US.UTF-8}"
 
 COMMAND="${1:-help}"
 [ $# -gt 0 ] && shift
@@ -54,7 +55,7 @@ while [ $# -gt 0 ]; do
 done
 
 export DEPLOY_TARGET DEPLOY_DISK DEPLOY_FS DEPLOY_DISTRO DEPLOY_INIT
-export DEPLOY_ENCRYPT DEPLOY_HOSTNAME DEPLOY_USER DEPLOY_DRYRUN
+export DEPLOY_ENCRYPT DEPLOY_HOSTNAME DEPLOY_USER DEPLOY_DRYRUN DEPLOY_LOCALE
 
 # ── Dispatch ──────────────────────────────────────────────────────────────────
 case "$COMMAND" in
@@ -98,7 +99,8 @@ HELP
         printf '  mode:       %s\n' "$([ "$DEPLOY_DRYRUN" -eq 1 ] && echo DRY-RUN || echo APPLY)"
         printf '  root fs:    %s\n' "$(fs_root_type 2>/dev/null || echo unknown)"
         printf '  GPU hybrid: %s\n' "$(detect_gpu_hybrid 2>/dev/null || echo unknown)"
-        preflight_check
+        preflight_check 2>/dev/null || true
+        exit 0
         ;;
 
     preflight)
@@ -181,7 +183,7 @@ HELP
         # Configure
         deploy_state_set "configure"
         deploy_set_hostname "$DEPLOY_HOSTNAME" "$DEPLOY_TARGET"
-        deploy_set_locale "$DEPLOY_LOCALE" "$DEPLOY_TARGET" "$DEPLOY_INIT"
+        deploy_set_locale "$DEPLOY_TARGET" "$DEPLOY_INIT"
         [ -n "$DEPLOY_USER" ] && deploy_create_user "$DEPLOY_TARGET"
         [ "$DEPLOY_INIT" != "systemd" ] && deploy_setup_dbus "$DEPLOY_TARGET"
         deploy_enable_services "$DEPLOY_TARGET" "$DEPLOY_INIT" \

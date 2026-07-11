@@ -1,6 +1,5 @@
 #!/bin/sh
 # omni-healer — parallel self-healing watchdog daemon (M8).
-# Sub-daemons: storage (dmesg), services (init-agnostic), gpu (M4 policy).
 set -u
 
 _OMNI_ROOT="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)"
@@ -18,14 +17,16 @@ _spawn() { "$@" & _children="$_children $!"; }
 
 _shutdown() {
     healer_emit "healer" "shutdown" "omni-healer stopping"
-    for _pid in $_children; do kill "$_pid" 2>/dev/null || true; done
+    # L11 fix: use printf + read to iterate pids safely (IFS-immune)
+    echo "$_children" | tr ' ' '\n' | while read -r _pid; do
+        [ -n "$_pid" ] && kill "$_pid" 2>/dev/null || true
+    done
     rm -f "$HEALER_PIDFILE"
     exit 0
 }
 
 case "${1:-run}" in
     run)
-        # Single-instance guard
         if [ -f "$HEALER_PIDFILE" ] && kill -0 "$(cat "$HEALER_PIDFILE")" 2>/dev/null; then
             echo "omni-healer already running (pid $(cat "$HEALER_PIDFILE"))" >&2
             exit 1
@@ -49,10 +50,13 @@ case "${1:-run}" in
         [ -f "$HEALER_PIDFILE" ] && kill "$(cat "$HEALER_PIDFILE")" 2>/dev/null
         rm -f "$HEALER_PIDFILE"; echo "stopped"
         ;;
-    test-emit)  # CI hook: verify audit emission + backoff math without root
+    test-emit)
         HEALER_AUDIT_LOG="${2:-/tmp/omni-audit-test.json}"
         healer_emit "healer" "selftest" 'quote " and backslash \ survive escaping'
         healer_backoff 0; echo; healer_backoff 3; echo; healer_backoff 99; echo
         ;;
-    *) echo "usage: omni-healer {run|status|stop|test-emit}" >&2; exit 2 ;;
+    *)
+        echo "usage: omni-healer {run|status|stop|test-emit}" >&2
+        exit 2
+        ;;
 esac

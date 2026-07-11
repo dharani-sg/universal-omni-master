@@ -18,7 +18,7 @@ healer_load_conf() {
     :
 }
 
-# Minimal JSON string escaping: backslash, double-quote, control chars stripped.
+# Minimal JSON escaping: backslash, double-quote, control chars stripped.
 _json_escape() {
     printf '%s' "$1" | tr -d '\000-\037' | sed 's/\\/\\\\/g; s/"/\\"/g'
 }
@@ -33,8 +33,8 @@ healer_emit() {
         "$_ts" "$_comp" "$_evt" "$_msg" >> "$HEALER_AUDIT_LOG" 2>/dev/null || true
 }
 
-# Clamped exponential backoff — POSIX has no '**'; double iteratively.
-# usage: healer_backoff <fail_count>  -> prints interval seconds
+# Clamped exponential backoff — POSIX (no '**' operator).
+# T_poll = min(T_max, T_base * 2^n), computed iteratively.
 healer_backoff() {
     _n="${1:-0}"
     _iv="$HEALER_INTERVAL_BASE"
@@ -47,23 +47,34 @@ healer_backoff() {
     printf '%s' "$_iv"
 }
 
-# Init-agnostic service status/restart (M2 abstraction pattern)
+# Init-agnostic service status (M2 pattern)
 healer_svc_active() {
     _svc="$1"
-    if [ -d /run/systemd/system ]; then systemctl is-active "$_svc" >/dev/null 2>&1
-    elif [ -d /run/openrc ]; then rc-service "$_svc" status >/dev/null 2>&1
-    elif [ -d /var/service ] || [ -d /run/runit ]; then sv status "$_svc" 2>/dev/null | grep -q '^run:'
-    elif command -v dinitctl >/dev/null 2>&1; then dinitctl status "$_svc" 2>/dev/null | grep -qi started
-    else return 0  # unknown init: assume healthy, never thrash
+    if [ -d /run/systemd/system ]; then
+        systemctl is-active "$_svc" >/dev/null 2>&1
+    elif [ -d /run/openrc ]; then
+        rc-service "$_svc" status >/dev/null 2>&1
+    elif [ -d /var/service ] || [ -d /run/runit ]; then
+        sv status "$_svc" 2>/dev/null | grep -q '^run:'
+    elif command -v dinitctl >/dev/null 2>&1; then
+        dinitctl status "$_svc" 2>/dev/null | grep -qi started
+    else
+        return 0  # unknown init: assume healthy, never thrash
     fi
 }
 
+# Init-agnostic service restart (M2 pattern)
 healer_svc_restart() {
     _svc="$1"
-    if [ -d /run/systemd/system ]; then systemctl restart "$_svc" 2>/dev/null
-    elif [ -d /run/openrc ]; then rc-service "$_svc" restart 2>/dev/null
-    elif [ -d /var/service ] || [ -d /run/runit ]; then sv restart "$_svc" 2>/dev/null
-    elif command -v dinitctl >/dev/null 2>&1; then dinitctl restart "$_svc" 2>/dev/null
-    else return 1
+    if [ -d /run/systemd/system ]; then
+        systemctl restart "$_svc" 2>/dev/null
+    elif [ -d /run/openrc ]; then
+        rc-service "$_svc" restart 2>/dev/null
+    elif [ -d /var/service ] || [ -d /run/runit ]; then
+        sv restart "$_svc" 2>/dev/null
+    elif command -v dinitctl >/dev/null 2>&1; then
+        dinitctl restart "$_svc" 2>/dev/null
+    else
+        return 1
     fi
 }
