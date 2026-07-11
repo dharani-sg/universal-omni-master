@@ -1,0 +1,4 @@
+#!/bin/sh
+# svlogd -t: single-t = tai64n timestamps. -tt is not valid (A7 fix).
+mkdir -p /var/log/omni-healer
+exec svlogd -t /var/log/omni-healer

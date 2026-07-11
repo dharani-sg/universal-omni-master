@@ -1,0 +1,5 @@
+type = process
+command = /usr/bin/omni-healer run
+restart = true
+smooth-recovery = true
+waits-for = boot

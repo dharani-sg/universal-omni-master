@@ -37,3 +37,10 @@ check "unknown cmd rc=2" "2" "$rc"
 echo "=================================================="
 printf 'RESULT: %d passed, %d failed\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]
+
+echo; echo "=== L12 regression: dmesg follow-capability detection ==="
+. "$ROOT/src/healer/storage.sh" 2>/dev/null
+grep -q "_dmesg_has_follow" "$ROOT/src/healer/storage.sh" && \
+    check "storage.sh has capability detection" yes yes || check "storage.sh has capability detection" yes no
+grep -q "poll-diff" "$ROOT/src/healer/storage.sh" && \
+    check "storage.sh has poll fallback" yes yes || check "storage.sh has poll fallback" yes no

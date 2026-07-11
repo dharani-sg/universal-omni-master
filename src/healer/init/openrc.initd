@@ -1,0 +1,17 @@
+#!/sbin/openrc-run
+# /etc/init.d/omni-healer
+
+name="omni-healer"
+description="Universal Omni-Master Self-Healing Watchdog"
+command="/usr/bin/omni-healer"
+command_args="run"
+command_background="yes"
+pidfile="/run/${RC_SVCNAME}.pid"
+output_log="/var/log/omni-healer.log"
+error_log="/var/log/omni-healer.log"
+
+depend() {
+    need localmount
+    after bootmisc
+    use dbus
+}

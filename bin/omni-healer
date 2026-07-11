@@ -11,6 +11,7 @@ _OMNI_ROOT="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)"
 . "$_OMNI_ROOT/src/gpu/interface.sh" 2>/dev/null || true
 
 healer_load_conf
+healer_ensure_paths
 
 _children=""
 _spawn() { "$@" & _children="$_children $!"; }

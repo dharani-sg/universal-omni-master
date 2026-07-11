@@ -78,3 +78,13 @@ healer_svc_restart() {
         return 1
     fi
 }
+
+# Ensure runtime directories exist. Called from bin/omni-healer at startup.
+# On fresh installs, /var/log and /run may exist but sub-dirs may not.
+healer_ensure_paths() {
+    _logdir=$(dirname "$HEALER_AUDIT_LOG")
+    [ -n "$_logdir" ] && [ ! -d "$_logdir" ] && mkdir -p "$_logdir" 2>/dev/null
+    _piddir=$(dirname "$HEALER_PIDFILE")
+    [ -n "$_piddir" ] && [ ! -d "$_piddir" ] && mkdir -p "$_piddir" 2>/dev/null
+    :
+}
