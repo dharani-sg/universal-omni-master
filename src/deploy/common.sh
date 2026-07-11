@@ -81,3 +81,16 @@ deploy_list_inits() {
     printf '  dinit      Chimera, Artix-dinit\n'
     printf '  s6         Artix-s6, Obarun\n'
 }
+
+# Auto-detect best init system for a distro
+deploy_auto_detect_init() {
+    case "${1:-}" in
+        alpine)  echo openrc ;;
+        void)    echo runit ;;
+        arch)    echo systemd ;;
+        artix)   echo "${DEPLOY_INIT:-openrc}" ;;
+        debian|ubuntu|fedora) echo systemd ;;
+        chimera) echo dinit ;;
+        *) echo systemd ;;
+    esac
+}
