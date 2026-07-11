@@ -1,0 +1,168 @@
+#!/bin/sh
+# omni-deploy — Universal Omni-Master deployment CLI.
+# Usage: omni-deploy [--dry-run] [--distro NAME] [--fs TYPE] [--disk DEV] [--target DIR]
+set -u
+
+_OMNI_ROOT="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)"
+
+. "$_OMNI_ROOT/src/core/logging.sh"
+. "$_OMNI_ROOT/src/core/utils.sh"
+. "$_OMNI_ROOT/src/core/priv.sh"
+. "$_OMNI_ROOT/src/core/detect.sh"
+. "$_OMNI_ROOT/src/core/detect_hw.sh"
+. "$_OMNI_ROOT/src/gpu/interface.sh"     2>/dev/null || true
+. "$_OMNI_ROOT/src/storage/interface.sh" 2>/dev/null || true
+
+. "$_OMNI_ROOT/src/deploy/common.sh"
+. "$_OMNI_ROOT/src/deploy/preflight.sh"
+. "$_OMNI_ROOT/src/deploy/chroot.sh"
+. "$_OMNI_ROOT/src/deploy/partition.sh"
+. "$_OMNI_ROOT/src/deploy/bootstrap.sh"
+. "$_OMNI_ROOT/src/deploy/configure.sh"
+. "$_OMNI_ROOT/src/deploy/verify.sh"
+
+# Parse arguments
+DEPLOY_DRYRUN=0
+DEPLOY_DISTRO=""
+DEPLOY_FS=""
+DEPLOY_DISK=""
+DEPLOY_TARGET="${DEPLOY_TARGET:-/mnt}"
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --dry-run)    DEPLOY_DRYRUN=1 ;;
+        --distro)     shift; DEPLOY_DISTRO="$1" ;;
+        --fs)         shift; DEPLOY_FS="$1" ;;
+        --disk)       shift; DEPLOY_DISK="$1" ;;
+        --target)     shift; DEPLOY_TARGET="$1" ;;
+        --help|-h)
+            cat << HELP
+omni-deploy — Universal Omni-Master Installer
+
+Usage: omni-deploy [OPTIONS]
+
+Options:
+  --dry-run          Show what would be done without making changes
+  --distro NAME      Target distro (alpine|void|arch|debian|artix)
+  --fs TYPE          Filesystem (ext4|btrfs|xfs|f2fs)
+  --disk DEV         Target disk device (e.g. sda, nvme0n1)
+  --target DIR       Mount target (default: /mnt)
+  -h, --help         Show this help
+
+Supported distros:
+$(deploy_list_distros)
+
+Supported filesystems:
+$(deploy_list_filesystems)
+
+Supported bootloaders:
+$(deploy_list_bootloaders)
+
+Supported init systems:
+$(deploy_list_inits)
+HELP
+            exit 0
+            ;;
+        *)
+            log_error "unknown option: $1"
+            exit 2
+            ;;
+    esac
+    shift
+done
+
+export DEPLOY_DISK DEPLOY_TARGET
+
+echo "══════════════════════════════════════════════════"
+echo "  Universal Omni-Master Deployment Engine"
+echo "══════════════════════════════════════════════════"
+
+# Phase 1: Preflight
+preflight_check || exit 1
+
+# Phase 2: Selection (interactive if not specified via flags)
+if [ -z "$DEPLOY_DISTRO" ]; then
+    echo; echo "Select distribution:"
+    deploy_list_distros
+    printf "Choice: "; read -r DEPLOY_DISTRO
+fi
+
+if [ -z "$DEPLOY_FS" ]; then
+    echo; echo "Select filesystem:"
+    deploy_list_filesystems
+    printf "Choice: "; read -r DEPLOY_FS
+fi
+
+if [ -z "$DEPLOY_DISK" ]; then
+    echo; echo "Available disks:"
+    storage_enumerate 2>/dev/null
+    printf "Target disk (e.g. sda): "; read -r DEPLOY_DISK
+fi
+
+echo
+echo "═══ DEPLOYMENT PLAN ═══"
+echo "  Distro:     $DEPLOY_DISTRO"
+echo "  Filesystem: $DEPLOY_FS"
+echo "  Disk:       /dev/$DEPLOY_DISK"
+echo "  Target:     $DEPLOY_TARGET"
+echo "  GPU hybrid: $(gpu_hybrid 2>/dev/null || echo unknown)"
+echo "  Root FS:    $(fs_root_type)"
+echo "  Mode:       $([ "$DEPLOY_DRYRUN" -eq 1 ] && echo DRY-RUN || echo LIVE)"
+
+if [ "$DEPLOY_DRYRUN" -eq 1 ]; then
+    echo
+    echo "DRY-RUN mode — no changes will be made."
+    echo "Remove --dry-run to execute the deployment."
+    exit 0
+fi
+
+deploy_confirm "Proceed with deployment to /dev/$DEPLOY_DISK?" || exit 1
+
+# Phase 3: Execute
+deploy_state_init
+
+deploy_state_set "formatting"
+partition_format "$DEPLOY_DISK" "$DEPLOY_FS" || exit 1
+
+if [ "$DEPLOY_FS" = "btrfs" ]; then
+    deploy_state_set "btrfs_subvols"
+    partition_btrfs_subvols "$DEPLOY_DISK" || exit 1
+else
+    deploy_state_set "mounting"
+    mkdir -p "$DEPLOY_TARGET"
+    mount "/dev/$DEPLOY_DISK" "$DEPLOY_TARGET" || exit 1
+fi
+
+deploy_state_set "fstab"
+partition_generate_fstab "$DEPLOY_DISK" "$DEPLOY_FS" || exit 1
+
+deploy_state_set "bootstrap"
+bootstrap_install "$DEPLOY_DISTRO" "$DEPLOY_TARGET" || exit 1
+
+deploy_state_set "chroot_mount"
+chroot_mount "$DEPLOY_TARGET" || exit 1
+
+deploy_state_set "configure"
+deploy_set_hostname "omni-host" "$DEPLOY_TARGET"
+deploy_copy_resolv "$DEPLOY_TARGET"
+
+deploy_state_set "verify"
+deploy_verify "$DEPLOY_TARGET"
+_rc=$?
+
+deploy_state_set "chroot_unmount"
+chroot_unmount "$DEPLOY_TARGET"
+
+if [ "$_rc" -eq 0 ]; then
+    deploy_state_set "complete"
+    echo
+    echo "══════════════════════════════════════════════════"
+    echo "  DEPLOYMENT COMPLETE"
+    echo "  Target: $DEPLOY_TARGET"
+    echo "  Reboot and select the new system from your bootloader."
+    echo "══════════════════════════════════════════════════"
+else
+    deploy_state_set "failed"
+    log_error "Deployment verification failed. Do NOT reboot."
+    exit 1
+fi
