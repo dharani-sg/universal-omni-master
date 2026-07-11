@@ -16,7 +16,7 @@ boot_list_entries() {
 
 boot_get_default() {
     _cfg="$(_grub_cfg)" || return 1
-    awk -F'"' '/^set default=/ {print $2; exit}' "$_cfg"
+    awk -F'"' '/set default=/ && NF>=3 {print $2; exit}' "$_cfg"
 }
 
 boot_entry_count() {

@@ -1,14 +1,24 @@
 #!/bin/sh
-# omni-audit — unified read-only system audit (M1–M5 orchestration)
+# omni-audit — unified read-only diagnostics for Universal Omni-Master.
 set -u
 
 _OMNI_ROOT="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)"
 . "$_OMNI_ROOT/src/diag/interface.sh"
 
-# Optional: prime doas/sudo once so SMART reads don't spam prompts on live systems
 if [ -z "${OMNI_SYSROOT:-}" ] && [ "${OMNI_AUDIT_PRIME:-1}" = "1" ]; then
     prime_privileges 2>/dev/null || true
 fi
 
-diag_run_all
-exit $?
+if [ "${OMNI_AUDIT_FORMAT:-human}" != "json" ]; then
+    printf 'Universal Omni-Master Audit\n'
+fi
+
+audit_overall
+rc=$?
+
+if [ "${OMNI_AUDIT_FORMAT:-human}" = "json" ]; then
+    audit_json_finish
+fi
+
+audit_cleanup
+exit "$rc"
