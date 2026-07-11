@@ -1,29 +1,32 @@
 #!/bin/sh
-# storage/cablewatch.sh — Resource governor modes based on storage health.
+# storage/cablewatch.sh — Resource governor based on storage health.
 # Modes: normal | cable_watch | conservation | rescue
-# CRITICAL: fsck is NEVER disabled in any mode — degraded storage makes
-# integrity checks MORE important, not less. Only I/O intensity is reduced.
+#
+# INVARIANT: fsck is NEVER disabled in any mode.
+# Degraded storage makes integrity checks MORE important, not less.
+# Only I/O intensity and polling frequency change.
 
 cablewatch_mode() {
     _dev="${1:-}"
     if [ -z "$_dev" ]; then
-        # Auto-detect: check the device backing the root filesystem
-        _root_dev=$(awk '$2=="/"{print $1; exit}' "$(_sysfile /proc/mounts)" 2>/dev/null)
+        _rm="$(_sysfile /proc/mounts)"
+        [ -r "$_rm" ] && \
+            _root_dev=$(awk '$2=="/"{print $1; exit}' "$_rm" 2>/dev/null)
         _dev=$(basename "${_root_dev:-}" | sed 's/[0-9]*$//')
     fi
-    [ -z "$_dev" ] && { echo "normal"; return 0; }
+    [ -z "$_dev" ] && { echo normal; return 0; }
 
-    _health=$(storage_health "$_dev")
-    case "$_health" in
-        degraded) echo "cable_watch" ;;
-        unknown)  echo "normal" ;;   # cannot assess -> do not restrict unnecessarily
-        ok)       echo "normal" ;;
+    _h=$(storage_health "$_dev" 2>/dev/null)
+    case "$_h" in
+        degraded) echo cable_watch ;;
+        critical) echo rescue ;;
+        *)        echo normal ;;
     esac
 }
 
-# Returns the recommended SMART/health poll interval in seconds for a mode.
+# Poll interval in seconds for each mode
 cablewatch_poll_interval() {
-    case "$1" in
+    case "${1:-normal}" in
         normal)       echo 60 ;;
         cable_watch)  echo 300 ;;
         conservation) echo 3600 ;;
@@ -32,17 +35,18 @@ cablewatch_poll_interval() {
     esac
 }
 
-# Returns whether heavy I/O operations (deep scans, aggressive scrub) are permitted.
+# Whether heavy I/O (scrub, balance) is permitted in this mode
 cablewatch_allow_heavy_io() {
-    case "$1" in
+    case "${1:-normal}" in
         normal) return 0 ;;
-        *)      return 1 ;;
+        cable_watch)
+            # Allow scrub but throttled (rate-limited by caller)
+            return 0 ;;
+        *) return 1 ;;
     esac
 }
 
-# Explicit safety statement: fsck policy is NEVER touched by this module.
-# This function exists so any caller/plugin that might be tempted to disable
-# fsck has a documented, auditable single point to check against.
+# INVARIANT ASSERTION — fsck is never disabled (auditable single point)
 cablewatch_fsck_policy() {
     echo "never_disabled"
 }

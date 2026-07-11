@@ -9,26 +9,53 @@ _OMNI_ROOT="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)"
 . "$_OMNI_ROOT/src/core/detect.sh"
 . "$_OMNI_ROOT/src/storage/interface.sh"
 
-USAGE="usage: omni-storage <list|type|health|mode|crc|baseline|set-baseline|luks|btrfs-subvols|btrfs-count|btrfs-free|fsck-policy> [dev]"
+USAGE="usage: omni-storage <action> [device|mountpoint]
+  Actions (read-only):
+    list            enumerate block devices with type
+    type <dev>      get type of one device
+    health <dev>    ok|degraded|critical|unknown
+    mode [dev]      normal|cable_watch|rescue
+    crc <dev>       SATA UDMA_CRC_Error_Count raw value
+    attr <dev> <id> SATA attribute RAW_VALUE by ID number
+    baseline <dev>  read stored baseline (numeric or key)
+    nvme-cw <dev>   NVMe critical_warning hex value
+    nvme-cw-sev <dev> NVMe critical_warning severity: ok|warn|critical
+    nvme-cw-explain <dev>  decode each warning bit
+    luks <dev>      yes|no
+    btrfs-subvols [mnt]    list Btrfs subvolumes
+    btrfs-count [mnt]      count subvolumes
+    btrfs-free [mnt]       unallocated bytes
+    btrfs-device-stats [mnt] per-counter health rows
+    btrfs-device-health [mnt] ok|fail|critical
+    btrfs-scrub [mnt]      ok|running|errors|no_scrub|unknown
+    fsck-policy     print fsck invariant
+  Actions (mutating — refused under OMNI_SYSROOT):
+    set-baseline <dev>      persist current values as baseline"
 
-[ $# -lt 1 ] && { echo "$USAGE" >&2; exit 2; }
+[ $# -lt 1 ] && { printf '%s\n' "$USAGE" >&2; exit 2; }
 ACTION="$1"; shift
 
 case "$ACTION" in
-    list)           storage_enumerate ;;
-    type)           [ $# -ge 1 ] || { log_error "need device"; exit 2; }; storage_device_type "$1" ;;
-    health)         [ $# -ge 1 ] || { log_error "need device"; exit 2; }; storage_health "$1" ;;
-    mode)           cablewatch_mode "${1:-}" ;;
-    crc)            [ $# -ge 1 ] || { log_error "need device"; exit 2; }; smart_sata_crc "$1" ;;
-    baseline)       [ $# -ge 1 ] || { log_error "need device"; exit 2; }; smart_read_baseline "$1" ;;
-    set-baseline)   [ $# -ge 1 ] || { log_error "need device"; exit 2; }
-                    [ -z "${OMNI_SYSROOT:-}" ] && prime_privileges
-                    smart_set_baseline "$1" ;;
-    luks)           [ $# -ge 1 ] || { log_error "need device"; exit 2; }
-                    storage_is_luks "$1" && echo "yes" || echo "no" ;;
-    btrfs-subvols)  btrfs_list_subvolumes "${1:-/}" ;;
-    btrfs-count)    btrfs_subvolume_count "${1:-/}" ;;
-    btrfs-free)     btrfs_unallocated_bytes "${1:-/}" ;;
-    fsck-policy)    cablewatch_fsck_policy ;;
-    *)              log_error "unknown action: $ACTION"; exit 2 ;;
+    list)               storage_enumerate ;;
+    type)               [ $# -ge 1 ] || { log_error "need device"; exit 2; }; storage_device_type "$1" ;;
+    health)             [ $# -ge 1 ] || { log_error "need device"; exit 2; }; storage_health "$1" ;;
+    mode)               cablewatch_mode "${1:-}" ;;
+    crc)                [ $# -ge 1 ] || { log_error "need device"; exit 2; }; smart_sata_crc "$1" ;;
+    attr)               [ $# -ge 2 ] || { log_error "need device and attr ID"; exit 2; }; smart_sata_attr "$1" "$2" ;;
+    baseline)           [ $# -ge 1 ] || { log_error "need device"; exit 2; }; smart_read_baseline "$1" ;;
+    nvme-cw)            [ $# -ge 1 ] || { log_error "need device"; exit 2; }; smart_nvme_critical_warning "$1" ;;
+    nvme-cw-sev)        [ $# -ge 1 ] || { log_error "need device"; exit 2; }; smart_nvme_cw_severity "$1" ;;
+    nvme-cw-explain)    [ $# -ge 1 ] || { log_error "need device"; exit 2; }; smart_nvme_cw_explain "$1" ;;
+    luks)               [ $# -ge 1 ] || { log_error "need device"; exit 2; }; storage_is_luks "$1" && echo "yes" || echo "no" ;;
+    btrfs-subvols)      btrfs_list_subvolumes "${1:-/}" ;;
+    btrfs-count)        btrfs_subvolume_count "${1:-/}" ;;
+    btrfs-free)         btrfs_unallocated_bytes "${1:-/}" ;;
+    btrfs-device-stats) btrfs_device_stats "${1:-/}" ;;
+    btrfs-device-health) btrfs_device_health "${1:-/}" ;;
+    btrfs-scrub)        btrfs_scrub_last_status "${1:-/}" ;;
+    fsck-policy)        cablewatch_fsck_policy ;;
+    set-baseline)       [ $# -ge 1 ] || { log_error "need device"; exit 2; }
+                        [ -z "${OMNI_SYSROOT:-}" ] && prime_privileges
+                        smart_set_baseline "$1" ;;
+    *)                  log_error "unknown action: $ACTION"; exit 2 ;;
 esac

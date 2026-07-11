@@ -1,0 +1,5 @@
+[/dev/sda3].write_io_errs    0
+[/dev/sda3].read_io_errs     0
+[/dev/sda3].flush_io_errs    0
+[/dev/sda3].corruption_errs  0
+[/dev/sda3].generation_errs  0
