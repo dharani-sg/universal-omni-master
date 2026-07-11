@@ -1,97 +1,92 @@
 #!/bin/sh
-# build-monolith.sh — POSIX-compliant bundler. Produces a single self-extracting script.
+# scripts/build-monolith.sh — bundle all POSIX CLIs + libraries into one file.
+# Output: a single #!/bin/sh executable containing the entire framework.
 set -eu
+
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-OUT="$ROOT/omni-master-core"
+OUT="${1:-$ROOT/omni-monolith.sh}"
+STAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-# Header: self-extracting wrapper
-cat > "$OUT" << 'HEADER'
-#!/bin/sh
-# omni-master-core — Universal Omni-Master detection monolith
-# Auto-generated. Do not edit; modify src/ and rebuild.
-set -u
-OMI_TMP="${TMPDIR:-/tmp}/omni-master-$$"
-mkdir -p "$OMI_TMP/src/core" "$OMI_TMP/bin"
-trap 'rm -rf "$OMI_TMP"' EXIT INT TERM
-HEADER
+# POSIX CLIs to embed (fish TUI excluded — not single-file portable)
+TOOLS="omni-detect omni-service omni-boot omni-gpu omni-storage
+       omni-audit omni-deploy omni-healer omni-snapshot"
 
-# Embed each source module as a heredoc extraction block
-for mod in \
-    src/core/logging.sh \
-    src/core/utils.sh \
-    src/core/priv.sh \
-    src/core/detect.sh \
-    src/core/detect_hw.sh \
-    src/core/config.sh; do
+# Strip: shebang line, and any `. "$_OMNI_ROOT/..."`/`. "$OMNI_ROOT/..."` source lines,
+# and the local _OMNI_ROOT assignment (everything is inlined already).
+_strip() {
+    sed -e '1{/^#!/d;}' \
+        -e '/^[[:space:]]*\. "\$_OMNI_ROOT/d' \
+        -e '/^[[:space:]]*\. "\$OMNI_ROOT/d' \
+        -e '/^_OMNI_ROOT=/d' \
+        -e '/^_OMNI_ROOT="/d' "$1"
+}
 
-    [ -f "$ROOT/$mod" ] || { echo "MISSING: $mod" >&2; exit 1; }
+{
+    printf '#!/bin/sh\n'
+    printf '# omni-monolith.sh — generated %s\n' "$STAMP"
+    printf '# Self-contained Universal Omni-Master bundle. DO NOT EDIT.\n'
+    printf '# Dispatch: symlink to a tool name, OR run: omni-monolith.sh <tool> [args]\n'
+    printf 'set -u\n\n'
 
-    # Use a unique delimiter per file to avoid collisions
-    _delim="OMNI_EOF_$(echo "$mod" | sed 's/[\/.]/_/g')"
+    # 1) Inline every library module (function definitions), load order: core first
+    printf '# ===== LIBRARIES =====\n'
+    {
+        find "$ROOT/src/core" -name '*.sh' 2>/dev/null | sort
+        find "$ROOT/src" -name '*.sh' ! -path '*/core/*' ! -path '*/tui/*' 2>/dev/null | sort
+    } | while IFS= read -r _f
+    do
+        printf '# ---- %s ----\n' "${_f#"$ROOT"/}"
+        _strip "$_f"
+        printf '\n'
+    done
 
-    printf '\ncat > "$OMI_TMP/%s" << '\''%s'\''\n' "$mod" "$_delim" >> "$OUT"
-    cat "$ROOT/$mod" >> "$OUT"
-    printf '\n%s\n' "$_delim" >> "$OUT"
-done
+    # 2) Inline each CLI as a dispatchable function __main_<tool>
+    printf '# ===== CLI ENTRYPOINTS =====\n'
+    for _t in $TOOLS; do
+        [ -f "$ROOT/bin/$_t" ] || continue
+        _fn=$(printf '%s' "$_t" | tr '-' '_')
+        printf '__main_%s() {\n' "$_fn"
+        _strip "$ROOT/bin/$_t"
+        printf '\n}\n\n'
+    done
 
-# Embed the driver script inline (not as a separate file)
-cat >> "$OUT" << 'DRIVER'
+    # 3) Multiplexer: pick tool by $0 basename, else by first arg
+    printf '# ===== DISPATCHER =====\n'
+    cat << 'MUX'
+_prog=$(basename "$0" .sh)
+case "$_prog" in
+    omni-detect)   __main_omni_detect   "$@"; exit $? ;;
+    omni-service)  __main_omni_service  "$@"; exit $? ;;
+    omni-boot)     __main_omni_boot     "$@"; exit $? ;;
+    omni-gpu)      __main_omni_gpu      "$@"; exit $? ;;
+    omni-storage)  __main_omni_storage  "$@"; exit $? ;;
+    omni-audit)    __main_omni_audit    "$@"; exit $? ;;
+    omni-deploy)   __main_omni_deploy   "$@"; exit $? ;;
+    omni-healer)   __main_omni_healer   "$@"; exit $? ;;
+    omni-snapshot) __main_omni_snapshot "$@"; exit $? ;;
+esac
 
-# Source all modules from the extracted tree
-for _m in \
-    src/core/logging.sh \
-    src/core/utils.sh \
-    src/core/priv.sh \
-    src/core/detect.sh \
-    src/core/detect_hw.sh; do
-    . "$OMI_TMP/$_m"
-done
+_sub="${1:-help}"; [ $# -gt 0 ] && shift
+case "$_sub" in
+    detect)   __main_omni_detect   "$@" ;;
+    service)  __main_omni_service  "$@" ;;
+    boot)     __main_omni_boot     "$@" ;;
+    gpu)      __main_omni_gpu      "$@" ;;
+    storage)  __main_omni_storage  "$@" ;;
+    audit)    __main_omni_audit    "$@" ;;
+    deploy)   __main_omni_deploy   "$@" ;;
+    healer)   __main_omni_healer   "$@" ;;
+    snapshot) __main_omni_snapshot "$@" ;;
+    help|--help|-h)
+        printf 'omni-monolith — Universal Omni-Master (bundled)\n'
+        printf 'Usage: %s <tool> [args]\n' "$(basename "$0")"
+        printf 'Tools: detect service boot gpu storage audit deploy healer snapshot\n'
+        printf 'Or symlink this file to a tool name to invoke it directly.\n' ;;
+    *) printf 'omni-monolith: unknown tool: %s\n' "$_sub" >&2; exit 2 ;;
+esac
+MUX
+} > "$OUT"
 
-# Run detection (same logic as bin/omni-detect)
-log_info "omni-master-core: probing system (sysroot='${OMNI_SYSROOT:-/}')"
-
-_distro=$(detect_distro)
-_init=$(detect_init)
-_libc=$(detect_libc)
-_arch=$(detect_arch)
-_pkg=$(detect_pkgmgr)
-_priv=$(detect_priv)
-_boot=$(detect_bootloader)
-_seat=$(detect_seat_model)
-_cpu_vendor=$(detect_cpu_vendor)
-_cpu_model=$(detect_cpu_model)
-_cpu_count=$(detect_cpu_count)
-_cpu_hybrid=$(detect_cpu_hybrid)
-_gpu_count=$(detect_gpu_count)
-_gpu_vendors=$(detect_gpu_vendors)
-_gpu_hybrid=$(detect_gpu_hybrid)
-_storage=$(detect_storage_types)
-_power=$(detect_power_source)
-
-log_info "distro=$_distro init=$_init libc=$_libc pkg=$_pkg priv=$_priv"
-
-printf '{\n'
-json_kv distro        "$_distro"
-json_kv init          "$_init"
-json_kv libc          "$_libc"
-json_kv arch          "$_arch"
-json_kv pkgmgr        "$_pkg"
-json_kv priv_helper   "$_priv"
-json_kv bootloader    "$_boot"
-json_kv seat_model    "$_seat"
-json_kv cpu_vendor    "$_cpu_vendor"
-json_kv cpu_model     "$_cpu_model"
-json_kv cpu_count     "$_cpu_count"
-json_kv cpu_hybrid    "$_cpu_hybrid"
-json_kv gpu_count     "$_gpu_count"
-json_kv gpu_vendors   "$_gpu_vendors"
-json_kv gpu_hybrid    "$_gpu_hybrid"
-json_kv storage       "$_storage"
-json_kv power_source  "$_power" ""
-printf '}\n'
-DRIVER
-
-chmod +x "$OUT"
-_sz=$(wc -c < "$OUT" | tr -d ' ')
-echo "Built: $OUT (${_sz} bytes)"
-sh -n "$OUT" && echo "Monolith syntax: OK"
+chmod 755 "$OUT"
+_lines=$(wc -l < "$OUT")
+printf 'Monolith built: %s (%s lines)\n' "$OUT" "$_lines"
