@@ -1,113 +1,144 @@
-# 🛰️ Universal Omni-Master
+<p align="center">
+  <img src="https://img.shields.io/badge/POSIX-sh%20%7C%20BusyBox%20Ash-blue?style=for-the-badge&logo=gnu-bash&logoColor=white" alt="POSIX sh">
+  <img src="https://img.shields.io/badge/Zero-Bashisms-red?style=for-the-badge" alt="Zero Bashisms">
+  <img src="https://img.shields.io/badge/Milestone-M15%20Sealed%20%7C%20v0.15.0-success?style=for-the-badge" alt="Milestone">
+  <img src="https://img.shields.io/badge/Cross--Libc-musl%20%E2%86%94%20glibc-purple?style=for-the-badge" alt="Cross-Libc">
+</p>
 
-**A distribution-agnostic, self-healing Linux deployment & orchestration framework**
-
-![Shell](https://img.shields.io/badge/shell-POSIX%20%2F%20sh-1f6feb?logo=gnubash&logoColor=white)
-![BusyBox](https://img.shields.io/badge/busybox-ash--safe-3fb950)
-![License](https://img.shields.io/badge/license-MIT-a371f7)
-![Tests](https://img.shields.io/badge/tests-M10--A%20gate%20green-3fb950)
-![Milestone](https://img.shields.io/badge/milestone-M10--A%20complete-1f6feb)
-![Release](https://img.shields.io/badge/release-v0.10.0-a371f7)
-
-> **One framework. Any distro. Any init. Any bootloader. Any GPU. Any libc.**
+<h1 align="center">🛰️ Universal Omni-Master (UOM)</h1>
+<p align="center">
+  <b>The Universal Bare-Metal Provisioning & Self-Healing Engine.</b><br>
+  <i>One framework. Any distro. Any init. Any bootloader. Any GPU. Any libc. Any terminal.</i>
+</p>
 
 ---
 
 ## 🎯 What is this?
 
-**Universal Omni-Master (UOM)** is a POSIX-shell framework that detects, deploys, manages, and heals Linux systems across the entire heterogeneous ecosystem — from **musl-based Alpine** to **glibc-based Void/Arch/Debian**, from **systemd** to **runit / OpenRC / s6 / dinit**, from **GRUB** to **systemd-boot**. Born from taming a degraded dual-boot HP Pavilion (muxless AMD dGPU, failing SATA cable at UDMA_CRC baseline 5360, AC-only power), it generalizes every hard-won fix into a universal, testable abstraction — and now installs entire systems from scratch across all four distros with a single command.
+**Universal Omni-Master (UOM)** is a strictly POSIX-compliant, distribution-agnostic deployment and orchestration framework. Born from the extreme hardware constraints of taming a degraded dual-boot laptop (muxless AMD dGPU, failing SATA cable at UDMA_CRC baseline 5360, 4GB RAM), UOM has evolved from a localized survival tool into a **Class-1 Bare-Metal Provisioning Engine**.
+
+UOM generalizes every hard-won hardware and software fix into a universal, testable abstraction. Today, it can bootstrap, deploy, manage, and heal Linux systems across the entire heterogeneous ecosystem. Whether you are deploying Alpine (musl/OpenRC), Void (glibc/runit), Arch (systemd), or Debian from a single **SystemRescue** Live ISO via an Android phone over SSH, UOM handles the cross-libc chroot, bootloader wiring, and crash-resume logic autonomously.
+
+## ✨ The UOM Manifesto (Core Principles)
+
+*   🐚 **POSIX-First & BusyBox-Safe:** `#!/bin/sh` everywhere. Zero bashisms (no `local`, no `**`, no arrays). Fish shell is strictly confined to the interactive TUI layer.
+*   🧠 **Heuristic Crash-Resume:** Deployments are driven by a persistent state machine. If power fails or the network drops during a 2-hour `pacstrap`, re-running the seed script intelligently detects the broken session and resumes exactly where it left off.
+*   📱 **Aspect-Ratio Adaptive TUI:** The interface dynamically reads `$COLUMNS`. Desktop (16:9) renders wide ASCII grids; Android Termux SSH (9:16 portrait) instantly reflows into stacked, thumb-optimized vertical menus with progressive log disclosure.
+*   🛡️ **Mutation Safety Guard:** Any state-changing action hard-refuses (`exit 126`) when `OMNI_SYSROOT` is set, cleanly separating offline fixture testing from live bare-metal mutation.
+*   📉 **Baseline-Relative Telemetry:** A stable non-zero SMART value (like UDMA_CRC = 5360) is not a failure. UOM alerts only on negative deltas from a learned baseline.
+*   🧩 **Monolithic Delivery:** 11 CLIs and 40+ library modules compile into a single, self-contained, `scp`-able POSIX script. No Python, no Git, no external dependencies required on the target node.
+*   🧬 **Cross-Libc Correctness:** Seamlessly bridges musl hosts to glibc targets via hardcoded `.interp` resolution (`/lib64/ld-linux-x86-64.so.2`) and efivarfs bridging for UEFI NVRAM writes.
 
 ---
 
-## ✨ Core Principles
+## 🗺️ The Roadmap: From Abstraction to Bare-Metal
 
-- 🐚 **POSIX-first** — `#!/bin/sh` everywhere; BusyBox ash-safe; zero bashisms (no `local`, no `**`, no arrays). Fish is confined to interactive TUIs only.
-- 🧪 **Fixture-driven testing** — every detector runs against simulated sysroots (`OMNI_SYSROOT`) so 5 inits × 4 distros are validated on one machine, offline.
-- 🛡️ **Mutation safety guard** — any state-changing action hard-refuses (exit 126) when running against a fixture, cleanly separating simulation from real mutation.
-- 🔍 **Honest detection** — reports `unknown_state` rather than faking live daemon queries that filesystem inspection cannot answer.
-- 📉 **Baseline-relative telemetry** — a stable non-zero SMART value (like UDMA_CRC = 5360) is not a failure; alerts only on Δ from `/var/lib/omni-master/baseline.<dev>`.
-- 🧩 **Modular-in-source, monolithic-in-delivery** — clean per-domain modules build into a single portable self-extracting script.
-- 🧬 **Cross-libc correctness** — chroot from musl → glibc target with hardcoded `.interp` (`/lib64/ld-linux-x86-64.so.2`) resolution; per-arch link name (x86_64/aarch64); efivarfs bridging for UEFI NVRAM writes.
+UOM's development is tracked through strict, gate-verified milestones. 
 
----
+### Phase 1–3: Foundation, Healing & Fleet (Completed ✅)
+| # | Milestone | Status | Core Deliverable |
+|---|---|---|---|
+| **M1** | 🔎 Hardware/Software Detection | ✅ Sealed | `omni-detect` (31 tests) |
+| **M2** | ⚙️ Init/Service Abstraction | ✅ Sealed | 5 backends (systemd, OpenRC, runit, s6, dinit) |
+| **M3** | 🥾 Bootloader Abstraction | ✅ Sealed | GRUB & systemd-boot wiring |
+| **M4** | 🎮 GPU Policy Engine | ✅ Sealed | Intel/AMD/NVIDIA hybrid & muxless override |
+| **M5** | 💾 Storage Telemetry | ✅ Sealed | SMART, NVMe, Btrfs scrub, cable-watch policy |
+| **M6** | 🩺 Unified Diagnostics | ✅ Sealed | Structured NDJSON event auditing |
+| **M7** | 🚀 Universal Deploy/Bootstrap | ✅ Sealed | Cross-libc chroot, pacstrap, debootstrap |
+| **M8** | 🤖 Self-Healing Watchdog | ✅ Sealed | `omni-healer` daemon (dmesg poll-diff) |
+| **M9** | 🔌 Healer Init Integration | ✅ Sealed | Per-init service units & enablement |
+| **M10**| 📸 Btrfs Snapshot Lifecycle | ✅ Sealed | Create, prune, periodic hooks |
+| **M11**| ⏪ Atomic Rollback | ✅ Sealed | Staged RW clone + boot-to-snapshot entries |
+| **M12**| 🖥️ Fish TUI Control Plane | ✅ Sealed | `--no-config` isolated interactive dashboard |
+| **M13**| 📦 Monolith & Fleet Transport | ✅ Sealed | POSIX bundler, SSH transport, Plugin API |
+| **M14**| 🛡️ Security Hardening | ✅ Sealed | TPM2-LUKS, UKI validation, SBAT auditing |
+| **M15**| 🌐 Fleet Orchestration | ✅ Sealed | Parallel SSH, Swarm policies, Multi-node TUI |
 
-## 🗺️ Roadmap
+### Phase 4: The Universal Bare-Metal Blueprint (Active 🚧)
+The current frontier transforms UOM into an unattended, unbreakable provisioning engine.
 
-| #   | Milestone                                                    | Status                | Tests |
-| :-: | ------------------------------------------------------------ | :-------------------: | :---: |
-|  1  | 🔎 Hardware/software detection                               | ✅ Complete           |  31   |
-|  2  | ⚙️  Init/service abstraction (systemd · OpenRC · runit · s6 · dinit) | ✅ Complete           |  16   |
-|  3  | 🥾 Bootloader abstraction (GRUB · systemd-boot · Limine · EFI sim) | ✅ Complete           |  14   |
-|  4  | 🎮 GPU policy engine (Intel · AMD · NVIDIA hybrid, muxless override) | ✅ Complete           |  22   |
-|  5  | 💾 Storage telemetry (SMART · NVMe critical_warning · Btrfs · LUKS · cable-watch) | ✅ Complete           |   ✓   |
-|  6  | 🩺 Unified diagnostics + audit (structured JSON events)      | ✅ Complete           |   ✓   |
-|  7  | 🚀 Deploy/bootstrap installer (cross-libc chroot · pacstrap -K · debootstrap · rollback) | ✅ Complete           |  21   |
-|  8  | 🤖 Self-healing watchdog daemon (`omni-healer` — storage · services · GPU) | ✅ Complete           |  13   |
-|  9  | 🔌 Healer service integration (per-init units + enablement)  | ✅ Complete           |  40   |
-| 10  | 📸 Btrfs snapshot lifecycle (`omni-snapshot` create/list/prune/hooks) | ✅ Complete (**v0.10.0**) |  20   |
-| 11  | ⏪ Atomic rollback + bootloader boot-to-snapshot entries      | 🚧 Next               |   —   |
-| 12  | 🖥️ Fish TUI frontend (interactive control plane)              | 📋 Planned            |   —   |
-
-**Scoping note:** M10 dual-track (“lifecycle **or** TUI”) is closed as **M10-A lifecycle only**. Atomic restore is **not** M10-B — it spans M3 bootloaders + M10-A snaps + new restore semantics, so it ships as **M11**. Fish TUI moves to **M12**.
-
-### M11 scope (next)
-
-Atomic rollback with bootloader entry generation for **boot-to-snapshot**:
-
-| Phase | Deliverable | Builds on |
-| ----- | ----------- | --------- |
-| **M11-A** | Boot entry generation for selected snapshots (systemd-boot BLS + GRUB menuentry) | M3 `omni-boot`, M10-A `snap_list_*` |
-| **M11-B** | Live atomic restore (RO snap → RW `@` swap or `btrfs send/receive` path; pre-restore safety snap) | M10-A engine, M7 `rollback.sh` is *install-time only* — do not overload it |
-| **M11-C** | One-shot “boot this snapshot once” (EFI LoaderEntryOneShot / GRUB `saved_entry` + next-boot clear) | M3 EFI helpers, M11-A |
-| **M11-D** | Deploy wiring + fixture gate (`test-m11-rollback.sh`) | M7 deploy, mutation guard |
-
-**Out of M11:** Fish TUI (M12), Limine-first polish (guidance only until requested), non-Btrfs restore (graceful skip, same R5 policy as M10-A).
-
-**CLI surface (planned):** extend `omni-snapshot` with `boot-entry`, `rollback`, `boot-once` — keep `omni-boot` as the low-level backend (entry write/verify), not a second UX.
-
-See detailed work breakdown in the M11 section of the project notes / commit that lands `src/snapshot/boot_entry.sh` + `src/snapshot/restore.sh`.
+| # | Milestone | Vision & Deliverable |
+|---|---|---|
+| **M16** | 🧠 **Heuristic State Machine** | `src/deploy/state.sh` — Pure POSIX key=value state tracking. Enables idempotent step re-entry and mathematical crash-resume for multi-hour deployments. |
+| **M17** | 📱 **Adaptive TUI Engine** | `src/tui/adaptive.sh` — Progressive disclosure and layout reflow. Detects Termux/SSH narrow terminals and switches to 9:16 portrait mode. |
+| **M18** | 🌱 **Omni-Seed One-Liner** | `scripts/omni-seed.sh` — The `curl | sh` bootstrap. Boot *any* Live ISO (SystemRescue), connect to Wi-Fi, run the seed, and UOM chainloads the monolith to install the target OS. |
+| **M19** | 📜 **Declarative Manifests** | `bin/omni-manifest` — Desired-state configuration engine. Idempotent apply with dry-run defaults. |
+| **M20** | 📡 **Live Telemetry Feed** | Real-time deployment progress streaming. Split `tail -f` style output that adapts to the M17 portrait/landscape layout. |
 
 ---
 
-## 🛠️ Tooling
+## 🛠️ The Monolithic CLI Surface
 
-| Command             | Role                                                           |
-| ------------------- | -------------------------------------------------------------- |
-| `omni-detect`       | Hardware/software discovery (M1)                               |
-| `omni-service`      | Init-agnostic service control across 5 backends (M2)           |
-| `omni-boot`         | Bootloader inspect/install/repair (M3)                         |
-| `omni-gpu`          | GPU policy + hybrid switching + muxless dGPU override (M4)     |
-| `omni-storage`      | SMART / NVMe / Btrfs scrub / cable-watch policy engine (M5)    |
-| `omni-audit`        | Unified structured event log (JSON) (M6)                       |
-| `omni-deploy`       | Full-disk install: partition → bootstrap → chroot → boot (M7)  |
-| `omni-healer`       | Parallel self-healing watchdog daemon (M8-M9)                  |
-| `omni-snapshot`     | Btrfs snapshot lifecycle: create/list/prune/sweep/periodic (M10-A) |
+UOM compiles into a single binary-like script (`omni-monolith.sh`) containing 11 distinct entrypoints. Each command is a thin CLI over a swappable backend layer that auto-selects the correct implementation via runtime discovery.
 
-Each command is a thin CLI over a swappable backend layer, auto-selecting the correct implementation from runtime discovery.
+| Command | Domain | Role |
+| :--- | :--- | :--- |
+| `omni-detect` | Discovery | Hardware/software topology & baseline telemetry |
+| `omni-service` | Init | Agnostic service control across 5 backends |
+| `omni-boot` | Bootloader | Inspect, install, and repair GRUB/systemd-boot |
+| `omni-gpu` | Graphics | Hybrid switching & muxless dGPU policy enforcement |
+| `omni-storage` | Storage | SMART/NVMe/Btrfs scrub & cable-watch policy engine |
+| `omni-audit` | Logging | Unified structured NDJSON event log |
+| `omni-deploy` | Installer | Full-disk partition → bootstrap → chroot → boot |
+| `omni-healer` | Watchdog | Parallel self-healing daemon (storage/services/GPU) |
+| `omni-snapshot`| Btrfs | Snapshot lifecycle: create/list/prune/sweep/hooks |
+| `omni-security`| SecOps | TPM2 probing, UKI PE validation, SBAT auditing |
+| `omni-fleet` | Swarm | Parallel SSH execution, telemetry, & policy propagation |
 
----
-
-## 🧬 Validated Against
-
-🏔️  **Alpine** (musl · OpenRC · apk · doas) · 🌀 **Void** (glibc · runit · xbps) · 🏹 **Arch** (systemd · pacman) · 🌀 **Debian** (systemd · apt · debootstrap) · 📦 **BusyBox-minimal** · 🌿 **Chimera** (dinit)
+*Extensible via `omni-plugin` (POSIX-safe directory-based hook system).*
 
 ---
 
-## 🚦 Quick Start
+## 🚀 The "Omni-Seed" Workflow (How it works)
+
+UOM is designed to be launched from a neutral, powerful environment like **SystemRescue**.
+
+1. **Boot** the target machine from the SystemRescue Live USB.
+2. **Connect** to the network and start the SSH daemon (`passwd root && sshd`).
+3. **SSH** from your Android phone (Termux) or Desktop.
+4. **Execute** the seed:
+   ```sh
+   curl -sL https://raw.githubusercontent.com/dharani-sg/universal-omni-master/main/scripts/omni-seed.sh | sh
+   ```
+5. **Adapt & Deploy:** UOM detects your terminal width, initializes the state machine, downloads the monolith, and begins deployment. 
+6. **Survive:** If the SSH session drops or power fails, simply reconnect and re-run the `curl` command. UOM reads the state file and resumes seamlessly.
+
+---
+
+## 🧬 Validated Environments
+
+UOM's fixture-driven testing matrix ensures reliability across the Linux spectrum:
+*   🏔️ **Alpine** (musl · OpenRC · apk · doas)
+*   🌀 **Void** (glibc · runit · xbps)
+*   🏹 **Arch** (glibc · systemd · pacman)
+*   🌀 **Debian** (glibc · systemd · apt · debootstrap)
+*   🌿 **Chimera** (musl · dinit)
+*   🛠️ **SystemRescue** (Arch-based Live ISO · Omni-Seed Host)
+*   📦 **BusyBox-minimal** (Ash syntax validation)
+
+---
+
+## 🚦 Developer Quick Start
 
 ```sh
+# Clone the repository
 git clone https://github.com/dharani-sg/universal-omni-master.git
 cd universal-omni-master
 
-# Detect this system
-./bin/omni-detect
+# Build the portable monolith
+./scripts/build-monolith.sh /tmp/omni.sh
 
-# Deploy a fresh system (dry-run by default — no changes made)
-./bin/omni-deploy install --distro alpine --disk sda --fs btrfs
-
-# Run the full-stack gate (M1–M10-A)
+# Run the full-stack regression gate (M1–M15)
 ./scripts/compat-check.sh
-./scripts/test-deploy.sh
-./scripts/test-healer.sh
-./scripts/test-m9-healer-install.sh
-./scripts/test-m10-snapshot.sh
+./scripts/test-m13-monolith.sh
+./scripts/test-m14-security.sh
+./scripts/test-m15-fleet.sh
+```
+
+---
+
+<p align="center">
+  <i>Forged in the constraints of legacy hardware. Engineered for the fleet of the future.</i><br>
+  <b>Universal Omni-Master</b>
+</p>
+```
