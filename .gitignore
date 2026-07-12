@@ -1,3 +1,9 @@
-sandbox/run/
-*.tmp
-/omni-master-core
+# Build artifacts
+_STAGE
+omni-monolith.sh
+*.tmp.*
+/tmp/
+# Editor/OS noise
+*.swp
+*~
+.DS_Store

@@ -1,41 +1,86 @@
-# Universal Omni-Master — AI Fail-Safe Handoff (v0.12.0+)
+# Universal Omni-Master — Durable AI Handoff
 
-## Current State (July 2026)
-- Latest sealed tag: v0.12.0 (M12 Fish TUI complete)
-- M13-A monolith bundler: v0.13.0-a2 (fixing 3 gate failures from a1)
-- Total green tests: M12=14, M11-audit=7, M10=20, M1-M9=all pass
-- Hardware: HP Pavilion 15-n010tx (Alpine musl/OpenRC, Void glibc/runit)
-- SATA baseline: UDMA_CRC=5360 (stable, NOT a failure)
+## Repository identity
 
-## Immutable Rules
-- POSIX sh only (BusyBox-ash safe, zero bashisms, zero eval)
-- Fish ONLY for TUI, run via fish --no-config
-- Mutation guard: exit 126 when OMNI_SYSROOT is set
-- Non-Btrfs = graceful skip (return 0)
-- Root subvol = @root; snapshots = @snapshots
-- Restore = staged RW clone + boot entry, NEVER btrfs set-default
-- NEVER push if any gate fails
-- NEVER rewrite existing tags
-- NEVER use set -- to parse version strings (clobbers $@)
+- Project: Universal Omni-Master
+- Root: `~/src/universal-omni-master`
+- Core language: POSIX `#!/bin/sh`
+- TUI language: Fish 4.x only
+- Reference host: Alpine Linux, musl, OpenRC
+- Secondary host: Void Linux, glibc, runit
+- Hardware: HP Pavilion 15-n010tx
+- SATA CRC baseline: 5360; stable baseline is not a new failure
+- Muxless AMD dGPU remains available through policy/driver override
 
-## Known Bug History (avoid repeating)
-- set -- clobbers $@ in bin/omni-tui (traced conversation 15+)
-- set -u at monolith top level crashes on library unbound vars
-- BusyBox sed does not interpret \n in replacements
-- BusyBox dmesg has no -w flag (use poll-diff)
-- Heredoc truncation on long terminal pastes (use block-write)
+Do not confuse this project with the older `omni-master` dual-boot
+administration suite.
 
-## Gate Commands
-- sh -n <file> (POSIX), fish --no-config --no-execute <file> (Fish)
-- M12: fish scripts/test-m12-tui.fish
-- M11: ./scripts/audit-m11.sh
-- M13: ./scripts/test-m13-monolith.sh
+## Immutable engineering rules
 
-## Recovery Prompt
-Read docs/AI-HANDOFF.md then run:
-  git status --short
-  git log --oneline --decorate -10
-  ls -1 scripts/test-*.sh
-Report: (1) branch/commit/tag, (2) dirty files, (3) latest milestone,
-(4) failing gates, (5) proposed minimal patch.
-Never push unless all gates pass. Never rewrite tags. Never use eval.
+1. Core code must remain POSIX and BusyBox-ash compatible.
+2. Never use `eval`.
+3. Never use `set --` to parse unrelated strings while CLI arguments are live.
+4. Any mutation under `OMNI_SYSROOT` must return `126`.
+5. Never claim a command ran without terminal output proving it.
+6. Never push when any gate is failing.
+7. Never rewrite or move an existing Git tag.
+8. Restore must use staged RW clone plus boot entry.
+9. Restore must never reboot automatically.
+10. Alpine owns the primary GRUB; never run `grub-install` from Void.
+11. Verify OS and `pwd` before every command block.
+12. Commit messages containing `$`, `${}`, backticks, or `$(...)` must use
+    `git commit -F file`, not `git commit -m "..."`.
+
+## Verified milestone history
+
+| Milestone | Capability |
+|---|---|
+| M1 | Hardware/software detection |
+| M2 | Five-init service abstraction |
+| M3 | Bootloader abstraction |
+| M4 | GPU policy engine |
+| M5 | SMART/NVMe/Btrfs telemetry |
+| M6 | Structured audit and diagnostics |
+| M7 | Universal deploy/bootstrap |
+| M8 | Self-healing daemon |
+| M9 | Healer init integration |
+| M10 | Snapshot lifecycle |
+| M11 | Staged rollback and boot entries |
+| M12 | Deterministic Fish TUI |
+| M13-A | POSIX monolith bundler |
+
+## Tag notes
+
+- `v0.13.0-a1` and `v0.13.0-a3` were alpha attempts with known monolith failures.
+- `v0.13.0` was accidentally created before the final fixed commit due to a
+  failed shell-expanded commit message.
+- Do not rewrite those tags.
+- `v0.13.1` supersedes them as the fixed M13-A release.
+
+## Critical bug history
+
+- BusyBox `dmesg` has no `-w`; use poll-diff mode.
+- BusyBox `sed` does not process replacement newline like GNU sed.
+- `set --` overwrote `omni-tui` arguments and caused every non-TTY route to exit 4.
+- `boot_entry_list` was wrong; the implemented function is `snap_boot_entry_list`.
+- Static shell flattening is dangerous because interface modules execute backend
+  detection and dynamic source selection at source time.
+- Current M13-A solution wraps library loading and validates dispatch through tests.
+- Long terminal heredocs can be interrupted. Always run syntax and gate checks.
+
+## Required gates
+
+```sh
+./scripts/test-m13-monolith.sh
+./scripts/compat-check.sh
+./scripts/test-boot.sh
+./scripts/test-gpu.sh
+./scripts/test-storage.sh
+./scripts/test-audit.sh
+./scripts/test-deploy.sh
+./scripts/test-healer.sh
+./scripts/test-m9-healer-install.sh
+./scripts/test-m10-snapshot.sh
+./scripts/test-m11-rollback.sh
+fish --no-config scripts/test-m12-tui.fish
+```
