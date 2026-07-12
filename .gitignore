@@ -8,5 +8,5 @@ omni-monolith.sh
 *~
 .DS_Store
 # Foreign project / fixture runtime — never track
-omni-master-core/
+omni-master-core
 sandbox/run/

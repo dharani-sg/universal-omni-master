@@ -96,3 +96,13 @@ fish --no-config scripts/test-m12-tui.fish
 - `.gitignore` now blocks `_STAGE` and monolith artifacts permanently.
 - Verification lesson: `git ls-files <path>` exits 0 even with no match;
   tracking checks MUST use `git ls-files --error-unmatch <path>`.
+
+## Tag recovery exception (v0.13.4, 2026-07-12)
+
+- v0.13.4 was accidentally minted and pushed on commit da8ca59 (a docs
+  commit) while src/plugin/engine.sh was missing due to a wrong-directory
+  + truncated heredoc. Deleted locally and remotely within minutes of
+  creation and re-minted on the real M13-C commit. This is the ONLY
+  sanctioned never-rewrite-tags exception: same-session, minutes-old,
+  feature-absent, zero consumers. Anything older is superseded forward.
+- Lesson: verify pwd BEFORE every heredoc; verify tail -3 + wc -l AFTER.
