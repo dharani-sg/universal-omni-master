@@ -85,3 +85,67 @@ rm -rf "$WORK"
 echo "=================================================="
 printf 'RESULT: %d passed, %d failed\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]
+
+# ── M18-B: hardened apply path ────────────────────────────────────────────
+echo "--- M18-B apply guards ---"
+
+WORK2="${TMPDIR:-/tmp}/omni-m18b-$$"
+mkdir -p "$WORK2"
+
+rc=0
+OMNI_SEED_STATE="$WORK2/state.conf" OMNI_SEED_MONOLITH="$WORK2/mono.sh" \
+    "$ROOT/scripts/omni-seed.sh" --apply >/dev/null 2>&1 || rc=$?
+_c "apply without --disk exits 2" 2 "$rc"
+
+rc=0
+OMNI_SEED_STATE="$WORK2/state2.conf" OMNI_SEED_MONOLITH="$WORK2/mono2.sh" \
+    "$ROOT/scripts/omni-seed.sh" --apply --disk loop0 >/dev/null 2>&1 || rc=$?
+_c "apply with unsafe disk name exits 2" 2 "$rc"
+
+rc=0
+printf 'no\n' | OMNI_SEED_STATE="$WORK2/state3.conf" OMNI_SEED_MONOLITH="$WORK2/mono3.sh" \
+    "$ROOT/scripts/omni-seed.sh" --apply --disk sda --distro alpine >/dev/null 2>&1 || rc=$?
+_c "apply aborts on wrong first confirmation" 1 "$rc"
+
+rc=0
+printf 'YES\nno\n' | OMNI_SEED_STATE="$WORK2/state4.conf" OMNI_SEED_MONOLITH="$WORK2/mono4.sh" \
+    "$ROOT/scripts/omni-seed.sh" --apply --disk sda --distro alpine >/dev/null 2>&1 || rc=$?
+_c "apply aborts on wrong second confirmation" 1 "$rc"
+
+rm -rf "$WORK2"
+
+# ── M18-B: durable checkpoint mirror ───────────────────────────────────────
+echo "--- M18-B checkpoint mirror ---"
+
+WORK3="${TMPDIR:-/tmp}/omni-m18b-mirror-$$"
+mkdir -p "$WORK3/target/boot/efi"
+
+. "$ROOT/src/core/logging.sh" 2>/dev/null || true
+. "$ROOT/src/deploy/state.sh"
+
+OMNI_STATE_FILE="$WORK3/state.conf"
+OMNI_STATE_LOCK="$WORK3/state.lock"
+DEPLOY_TARGET="$WORK3/target"
+export OMNI_STATE_FILE OMNI_STATE_LOCK DEPLOY_TARGET
+
+deploy_state_init alpine sda btrfs
+
+rc=0
+deploy_checkpoint_mirror >/dev/null 2>&1 || rc=$?
+_c "mirror to ESP succeeds" 0 "$rc"
+_c "ESP mirror file exists" yes "$([ -f "$WORK3/target/boot/efi/EFI/omni/checkpoint.state" ] && echo yes || echo no)"
+
+rm -rf "$WORK3/target/boot"
+rc=0
+deploy_checkpoint_mirror >/dev/null 2>&1 || rc=$?
+_c "mirror falls back to target root" 0 "$rc"
+_c "target root mirror file exists" yes "$([ -f "$WORK3/target/.omni-checkpoint.state" ] && echo yes || echo no)"
+
+rc=0
+OMNI_SYSROOT=/tmp/fx deploy_checkpoint_mirror >/dev/null 2>&1 || rc=$?
+_c "mirror OMNI_SYSROOT guard 126" 126 "$rc"
+
+rm -rf "$WORK3"
+
+echo "=================================================="
+printf 'M18-B RESULT: %d passed, %d failed\n' "$PASS" "$FAIL"

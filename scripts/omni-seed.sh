@@ -180,8 +180,34 @@ seed_main() {
     seed_log "terminal layout: $(seed_layout_hint)"
 
     if [ "$SEED_APPLY" -eq 1 ]; then
-        seed_log "M18-A is safe mode only; --apply is deferred to M18-B"
-        return 2
+        if [ -z "${SEED_DISK:-}" ]; then
+            seed_log "--apply requires --disk"
+            return 2
+        fi
+        case "$SEED_DISK" in
+            sda|sdb|sdc|nvme0n1|nvme1n1) : ;;
+            *)
+                seed_log "unrecognized/unsafe disk name: $SEED_DISK"
+                return 2
+                ;;
+        esac
+        case "$SEED_DISTRO" in
+            alpine|void|arch|debian|artix|chimera) : ;;
+            *)
+                seed_log "unsupported distro: $SEED_DISTRO"
+                return 2
+                ;;
+        esac
+
+        printf '\n\033[1;33m WARNING:\033[0m This will destroy ALL data on /dev/%s\n' "$SEED_DISK" >&2
+        printf 'Type YES to continue: ' >&2
+        read -r _seed_confirm1 || return 1
+        [ "$_seed_confirm1" = "YES" ] || { seed_log "aborted at first confirmation"; return 1; }
+
+        printf '\n\033[1;31m FINAL CONFIRMATION:\033[0m /dev/%s will be permanently overwritten.\n' "$SEED_DISK" >&2
+        printf 'This cannot be undone. Type DESTROY to proceed: ' >&2
+        read -r _seed_confirm2 || return 1
+        [ "$_seed_confirm2" = "DESTROY" ] || { seed_log "aborted at final confirmation"; return 1; }
     fi
 
     if [ -f "$OMNI_SEED_STATE" ] && [ "$SEED_FRESH" -ne 1 ]; then
@@ -210,11 +236,19 @@ seed_main() {
     fi
 
     seed_state_write step_plan running
-    "$OMNI_SEED_MONOLITH" deploy plan \
-        --distro "$SEED_DISTRO" \
-        --disk "$SEED_DISK" \
-        --fs "$SEED_FS" \
-        --target "$SEED_TARGET"
+    if [ "$SEED_APPLY" -eq 1 ]; then
+        "$OMNI_SEED_MONOLITH" deploy install --apply \
+            --distro "$SEED_DISTRO" \
+            --disk "$SEED_DISK" \
+            --fs "$SEED_FS" \
+            --target "$SEED_TARGET"
+    else
+        "$OMNI_SEED_MONOLITH" deploy plan \
+            --distro "$SEED_DISTRO" \
+            --disk "$SEED_DISK" \
+            --fs "$SEED_FS" \
+            --target "$SEED_TARGET"
+    fi
     _rc=$?
 
     if [ "$_rc" -eq 0 ]; then

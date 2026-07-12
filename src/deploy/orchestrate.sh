@@ -208,11 +208,41 @@ _deploy_phase_verify()
 {
     chroot_unmount "$DEPLOY_TARGET"
     chroot_unfix_elf_interp
-    deploy_verify "$DEPLOY_TARGET"
+    deploy_verify "$DEPLOY_TARGET" || return 1
+
+    # M18-B: durable checkpoint mirror — only after verified success.
+    # A mirror failure aborts the phase: an unmirrorable target indicates
+    # a filesystem too unhealthy to trust for crash-resume guarantees.
+    deploy_checkpoint_mirror || return $?
 }
 
 deploy_install_execute()
 {
+    if [ -n "${OMNI_SYSROOT:-}" ]; then
+        printf 'deploy: REFUSING execute — OMNI_SYSROOT set\n' >&2
+        return 126
+    fi
+
+    case "${DEPLOY_DISK:-}" in
+        sda|sdb|sdc|nvme0n1|nvme1n1) : ;;
+        '')
+            printf 'deploy: DEPLOY_DISK is required\n' >&2
+            return 2
+            ;;
+        *)
+            printf 'deploy: unrecognized/unsafe disk name: %s\n' "$DEPLOY_DISK" >&2
+            return 2
+            ;;
+    esac
+
+    case "${DEPLOY_DISTRO:-}" in
+        alpine|void|arch|debian|artix|chimera) : ;;
+        *)
+            printf 'deploy: unsupported distro: %s\n' "${DEPLOY_DISTRO:-}" >&2
+            return 2
+            ;;
+    esac
+
     preflight_check || return 1
     deploy_state_prepare || return $?
 

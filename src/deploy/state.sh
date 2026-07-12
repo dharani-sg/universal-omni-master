@@ -175,10 +175,14 @@ deploy_state_is_resumable() {
 # A "failed" step is treated as needing retry → resume there.
 # Prints "COMPLETE" and returns 0 if all steps are done/skipped.
 deploy_state_resume() {
-    [ -f "$OMNI_STATE_FILE" ] || {
-        printf 'partition\n'
+    if [ ! -f "$OMNI_STATE_FILE" ]; then
+        for _step in $OMNI_DEPLOY_STEPS; do
+            printf '%s\n' "$_step"
+            return 0
+        done
+        printf 'COMPLETE\n'
         return 0
-    }
+    fi
     for _step in $OMNI_DEPLOY_STEPS; do
         _s=$(deploy_state_get "$_step")
         case "$_s" in
@@ -236,4 +240,44 @@ deploy_state_summary() {
     fi
     _next=$(deploy_state_resume)
     printf '\nresume-at: %s\n' "$_next"
+}
+
+# deploy_checkpoint_mirror — M18-B: durable state persistence across power
+# cycles. /tmp (or $OMNI_STATE_FILE's default location) does not survive
+# reboot; this mirrors the canonical state file to durable storage in a
+# priority chain: target ESP first, then target filesystem root.
+# Uses $DEPLOY_TARGET (default /mnt) — the LIVE ISO's own /boot/efi is
+# NEVER a valid target; only the deployment target's mounted ESP is.
+deploy_checkpoint_mirror() {
+    if [ -n "${OMNI_SYSROOT:-}" ]; then
+        printf 'checkpoint: REFUSING mirror — OMNI_SYSROOT set\n' >&2
+        return 126
+    fi
+
+    [ -f "$OMNI_STATE_FILE" ] || {
+        printf 'checkpoint: no state file to mirror\n' >&2
+        return 1
+    }
+
+    _cp_target="${DEPLOY_TARGET:-/mnt}"
+    _cp_esp="${_cp_target}/boot/efi"
+    _cp_root_mirror="${_cp_target}/.omni-checkpoint.state"
+
+    if [ -d "$_cp_esp" ]; then
+        mkdir -p "$_cp_esp/EFI/omni" 2>/dev/null
+        if cp "$OMNI_STATE_FILE" "$_cp_esp/EFI/omni/checkpoint.state" 2>/dev/null; then
+            printf 'checkpoint: mirrored to ESP (%s)\n' "$_cp_esp/EFI/omni/checkpoint.state" >&2
+            return 0
+        fi
+    fi
+
+    if [ -d "$_cp_target" ]; then
+        if cp "$OMNI_STATE_FILE" "$_cp_root_mirror" 2>/dev/null; then
+            printf 'checkpoint: mirrored to target root (%s)\n' "$_cp_root_mirror" >&2
+            return 0
+        fi
+    fi
+
+    printf 'checkpoint: FAILED — could not mirror to ESP or target root\n' >&2
+    return 1
 }
