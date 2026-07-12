@@ -1,0 +1,62 @@
+#!/bin/sh
+# bin/omni-manager — M21: Central Control & Expansion Manager
+set -u
+
+_OMNI_ROOT="${OMNI_ROOT:-$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)}"
+export OMNI_ROOT="$_OMNI_ROOT"
+
+. "$_OMNI_ROOT/src/core/logging.sh" 2>/dev/null || true
+. "$_OMNI_ROOT/src/manager/control.sh"
+
+_usage() {
+    cat << HELP
+omni-manager — Project Health & Expansion Controller (M21)
+
+Usage: omni-manager <command> [args]
+
+Commands:
+  audit-sync          Verify CLIs and monolith builder are synchronized
+  list-clis           List all known CLI entrypoints in bin/
+  list-tools          List tools currently in the monolith builder
+  list-tests          List all test scripts
+  add-tool <name>     Add a new CLI to the monolith builder (guarded)
+  remove-tool <name>  Remove a CLI from the monolith builder (guarded)
+  snapshot            Save a metadata snapshot for rollback safety
+  help                Show this message
+HELP
+}
+
+COMMAND="${1:-help}"
+[ $# -gt 0 ] && shift || true
+
+case "$COMMAND" in
+    audit-sync)
+        manager_sync_check
+        _rc=$?
+        [ "$_rc" -eq 0 ] && printf 'omni-manager: repository is in sync.\n'
+        exit "$_rc"
+        ;;
+    list-clis)
+        manager_inventory_clis ;;
+    list-tools)
+        manager_monolith_tools ;;
+    list-tests)
+        manager_inventory_tests ;;
+    add-tool)
+        [ $# -ge 1 ] || { printf 'add-tool requires a name\n' >&2; exit 2; }
+        manager_add_tool "$1"
+        ;;
+    remove-tool)
+        [ $# -ge 1 ] || { printf 'remove-tool requires a name\n' >&2; exit 2; }
+        manager_remove_tool "$1"
+        ;;
+    snapshot)
+        manager_snapshot_meta
+        ;;
+    help|--help|-h)
+        _usage; exit 0 ;;
+    *)
+        printf 'omni-manager: unknown command: %s\n' "$COMMAND" >&2
+        _usage >&2; exit 2
+        ;;
+esac
