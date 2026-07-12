@@ -84,3 +84,15 @@ administration suite.
 ./scripts/test-m11-rollback.sh
 fish --no-config scripts/test-m12-tui.fish
 ```
+
+## Known historical artifact (accepted, not eradicated)
+
+- Commit `4889ba2` accidentally committed a 5,136-line generated build
+  artifact named `_STAGE`; removed in `5a39459` (v0.13.2).
+- The blob remains reachable in history. DECISION: retained, because it
+  contains zero secrets (generated from public src/), is size-trivial,
+  and eradication via filter-repo would force-move tags v0.13.2/v0.13.3,
+  violating the never-rewrite-tags rule.
+- `.gitignore` now blocks `_STAGE` and monolith artifacts permanently.
+- Verification lesson: `git ls-files <path>` exits 0 even with no match;
+  tracking checks MUST use `git ls-files --error-unmatch <path>`.

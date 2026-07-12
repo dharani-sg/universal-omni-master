@@ -7,3 +7,6 @@ omni-monolith.sh
 *.swp
 *~
 .DS_Store
+# Foreign project / fixture runtime — never track
+omni-master-core/
+sandbox/run/
