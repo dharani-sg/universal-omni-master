@@ -82,20 +82,49 @@ echo "=================================================="
 printf 'RESULT: %d passed, %d failed\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]
 
-echo; echo "=== M11.1 regressions (G1-G9) ==="
+
+echo; echo "=== M11.1 regressions (G1-G9, corrected) ==="
+
 grep -q '_snap_root_uuid' "$ROOT/src/snapshot/boot_entry.sh" && \
-    check "G3: UUID resolver strips [subvol]" yes yes || check "G3: UUID resolver strips [subvol]" yes no
-grep -q '\.\./@snapshots' "$ROOT/src/snapshot/boot_entry.sh" && \
-    check "G2: no '..' subvol construction" no yes || check "G2: no '..' subvol construction" no no
+    check "G3: UUID resolver strips [subvol]" yes yes || \
+    check "G3: UUID resolver strips [subvol]" yes no
+
+if grep -R -q '\.\./@snapshots' "$ROOT/src/snapshot" 2>/dev/null; then
+    check "G2: no '..' subvol construction" no yes
+else
+    check "G2: no '..' subvol construction" no no
+fi
+
 grep -q '_snap_scrub_cmdline' "$ROOT/src/snapshot/boot_entry.sh" && \
-    check "G1: cmdline scrubber present" yes yes || check "G1: cmdline scrubber present" yes no
+    check "G1: cmdline scrubber present" yes yes || \
+    check "G1: cmdline scrubber present" yes no
+
 grep -q '_restore_confirm' "$ROOT/src/snapshot/restore.sh" && \
-    check "G4: restore confirmation gate" yes yes || check "G4: restore confirmation gate" yes no
-grep -q 'root.restore" \] && {' "$ROOT/src/snapshot/restore.sh" && \
-    check "G5: stale @root.restore refusal" yes yes || check "G5: stale @root.restore refusal" yes no
+    check "G4: restore confirmation gate" yes yes || \
+    check "G4: restore confirmation gate" yes no
+
+if grep -q '@root.restore' "$ROOT/src/snapshot/restore.sh"; then
+    check "G5: no stale @root.restore target" no yes
+else
+    check "G5: no stale @root.restore target" no no
+fi
+
+grep -q '@restore_' "$ROOT/src/snapshot/restore.sh" && \
+    check "G5b: unique @restore_ staged target" yes yes || \
+    check "G5b: unique @restore_ staged target" yes no
+
 grep -q 'snap_boot_once' "$ROOT/src/snapshot/restore.sh" && \
-    check "G7: boot-once implemented" yes yes || check "G7: boot-once implemented" yes no
+    check "G7: boot-once implemented" yes yes || \
+    check "G7: boot-once implemented" yes no
+
 grep -q '_restore_warn_kernel_mismatch' "$ROOT/src/snapshot/restore.sh" && \
-    check "G8: kernel mismatch warning" yes yes || check "G8: kernel mismatch warning" yes no
+    check "G8: kernel mismatch warning" yes yes || \
+    check "G8: kernel mismatch warning" yes no
+
 grep -q 'snap_boot_entry_sync' "$ROOT/src/snapshot/prune.sh" && \
-    check "G9: prune wires boot-entry sync" yes yes || check "G9: prune wires boot-entry sync" yes no
+    check "G9: prune wires boot-entry sync" yes yes || \
+    check "G9: prune wires boot-entry sync" yes no
+
+echo "=================================================="
+printf 'RESULT: %d passed, %d failed\n' "$PASS" "$FAIL"
+[ "$FAIL" -eq 0 ]

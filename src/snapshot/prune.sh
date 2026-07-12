@@ -48,7 +48,7 @@ snap_prune() {
     _prune_category "daily"   "${SNAPSHOT_RETAIN_DAILY:-7}"
     _prune_category "weekly"  "${SNAPSHOT_RETAIN_WEEKLY:-4}"
     _prune_category "manual"  "20"     # generous fixed limit for manual snaps
-    printf 'prune: complete\n'
+    # M11 integration: remove boot entries for snapshots that were pruned.\n    command -v snap_boot_entry_sync >/dev/null 2>&1 && \\\n        snap_boot_entry_sync 2>/dev/null || true\n    printf 'prune: complete\n'
 }
 
 # ── Free-space emergency prune (call when _snap_check_free_space fails) ───────

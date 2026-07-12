@@ -90,7 +90,7 @@ snap_boot_entry_add() {
     _snap_require_btrfs / || return 0
 
     _name="$1"
-    _subvol="${2:-${SNAPSHOT_ROOT_SUBVOL:-@root}/../@snapshots/${_name}}"
+    _subvol="${2:-@snapshots/${_name}}"
     _root_uuid=$(blkid -s UUID -o value "$(findmnt -no SOURCE /)" 2>/dev/null || echo "<UUID>")
 
     _bl=$(_snap_detect_bootloader)
