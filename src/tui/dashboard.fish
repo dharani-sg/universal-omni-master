@@ -2,6 +2,7 @@
 # src/tui/dashboard.fish — read-only status view. Uses $OMNI_ROOT.
 
 function tui_action_dashboard
+    functions -q _tui_reflow; and _tui_reflow
     tui_header "Dashboard"
     echo
 
@@ -23,7 +24,11 @@ function tui_action_dashboard
 
     tui_separator; echo "LAST 5 AUDIT EVENTS"; tui_separator
     if test -r /var/log/omni-audit.json
-        tail -5 /var/log/omni-audit.json
+        set -l _audit_lines 5
+        if set -q TUI_LAYOUT; and test "$TUI_LAYOUT" = portrait
+            set _audit_lines 3
+        end
+        tail -n $_audit_lines /var/log/omni-audit.json
     else
         echo "  /var/log/omni-audit.json not readable"
     end

@@ -149,6 +149,28 @@ ui_log_toggle() {
     printf '%s\n' "$TUI_SHOW_LOGS"
 }
 
+
+# ui_log MESSAGE...
+# Always records the line. When disclosure is enabled it also prints
+# to stderr. File writes remain fixture-guarded.
+ui_log() {
+    if [ -n "${OMNI_SYSROOT:-}" ]; then
+        return 126
+    fi
+
+    _lg_msg="$*"
+    _lg_dir=${TUI_LOG_FILE%/*}
+    [ "$_lg_dir" = "$TUI_LOG_FILE" ] && _lg_dir=.
+
+    mkdir -p "$_lg_dir" 2>/dev/null || return 1
+    printf '%s\n' "$_lg_msg" >> "$TUI_LOG_FILE" || return 1
+
+    if [ "${TUI_SHOW_LOGS:-0}" = "1" ]; then
+        printf '%s\n' "$_lg_msg" >&2
+    fi
+    return 0
+}
+
 ui_confirm() {
     _cf_msg="$1"; _cf_word="$2"
     [ -z "${TUI_LAYOUT:-}" ] && ui_detect_layout >/dev/null

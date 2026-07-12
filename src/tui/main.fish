@@ -6,7 +6,7 @@ if not set -q OMNI_ROOT; or test -z "$OMNI_ROOT"
     set -gx OMNI_ROOT (path resolve "$_tui_dir/../..")
 end
 
-for _m in common dashboard installer snapshots
+for _m in common adaptive dashboard installer snapshots
     set -l _f "$_tui_dir/$_m.fish"
     test -r "$_f"; or begin; echo "missing $_f" >&2; exit 1; end
     source "$_f"

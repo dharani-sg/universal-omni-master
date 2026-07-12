@@ -15,7 +15,6 @@ _OMNI_ROOT="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)"
 
 . "$_OMNI_ROOT/src/deploy/common.sh"
 . "$_OMNI_ROOT/src/deploy/state.sh"
-. "$_OMNI_ROOT/src/deploy/state.sh"
 . "$_OMNI_ROOT/src/deploy/preflight.sh"
 . "$_OMNI_ROOT/src/deploy/chroot.sh"
 . "$_OMNI_ROOT/src/deploy/partition.sh"
@@ -27,6 +26,7 @@ _OMNI_ROOT="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)"
 . "$_OMNI_ROOT/src/deploy/snapshot_install.sh"
 . "$_OMNI_ROOT/src/deploy/remote.sh"
 . "$_OMNI_ROOT/src/deploy/verify.sh"
+. "$_OMNI_ROOT/src/deploy/orchestrate.sh"
 
 # ── Defaults ──────────────────────────────────────────────────────────────────
 DEPLOY_DRYRUN=1
@@ -39,6 +39,8 @@ DEPLOY_ENCRYPT="${DEPLOY_ENCRYPT:-0}"
 DEPLOY_HOSTNAME="${DEPLOY_HOSTNAME:-omni-linux}"
 DEPLOY_USER="${DEPLOY_USER:-}"
 DEPLOY_LOCALE="${DEPLOY_LOCALE:-en_US.UTF-8}"
+DEPLOY_RESUME="${DEPLOY_RESUME:-0}"
+DEPLOY_FRESH="${DEPLOY_FRESH:-0}"
 
 COMMAND="${1:-help}"
 [ $# -gt 0 ] && shift
@@ -46,6 +48,8 @@ COMMAND="${1:-help}"
 while [ $# -gt 0 ]; do
     case "$1" in
         --apply)      DEPLOY_DRYRUN=0 ;;
+        --resume)     DEPLOY_RESUME=1 ;;
+        --fresh)      DEPLOY_FRESH=1 ;;
         --distro)     shift; DEPLOY_DISTRO="$1" ;;
         --fs)         shift; DEPLOY_FS="$1" ;;
         --disk)       shift; DEPLOY_DISK="$1" ;;
@@ -61,6 +65,7 @@ done
 
 export DEPLOY_TARGET DEPLOY_DISK DEPLOY_FS DEPLOY_DISTRO DEPLOY_INIT
 export DEPLOY_ENCRYPT DEPLOY_HOSTNAME DEPLOY_USER DEPLOY_DRYRUN DEPLOY_LOCALE
+export DEPLOY_RESUME DEPLOY_FRESH
 
 # ── Dispatch ──────────────────────────────────────────────────────────────────
 case "$COMMAND" in
@@ -80,6 +85,8 @@ Commands:
 
 Options:
   --apply       Execute changes (default: dry-run, prints only)
+  --resume      Resume a matching interrupted deployment
+  --fresh       Discard interrupted state and start a fresh deployment
   --distro N    $(deploy_list_distros | tr '\n' '|' | sed 's/|$//')
   --fs T        ext4|btrfs|xfs|f2fs (default: btrfs)
   --disk D      target disk, e.g. sda or nvme0n1
@@ -113,7 +120,7 @@ HELP
         ;;
 
     status)
-        deploy_state_get
+        deploy_state_summary
         ;;
 
     rollback)
@@ -153,81 +160,8 @@ HELP
 
         [ "$DEPLOY_DRYRUN" -eq 1 ] && { printf '\n[DRY-RUN] Remove --apply to exit.\n'; exit 0; }
 
-        # Preflight
-        deploy_state_init
-        preflight_check || exit 1
-
-        # Backup partition table BEFORE any modifications (rollback safety)
-        rollback_partition_backup "$DEPLOY_DISK"
-
-        # Format + subvols
-        deploy_state_set "partitioning" "running"
-        partition_format "$DEPLOY_DISK" "$DEPLOY_FS" || { rollback_full; exit 1; }
-        [ "$DEPLOY_FS" = "btrfs" ] && \
-            { partition_btrfs_subvols "$DEPLOY_DISK" || { rollback_full; exit 1; }; }
-
-        # Mount
-        deploy_state_set "mounting" "running"
-        mkdir -p "$DEPLOY_TARGET"
-        mount "/dev/${DEPLOY_DISK}2" "$DEPLOY_TARGET" 2>/dev/null || \
-            mount "/dev/$DEPLOY_DISK" "$DEPLOY_TARGET" || \
-            { log_error "cannot mount target"; rollback_full; exit 1; }
-        partition_generate_fstab "$DEPLOY_DISK" "$DEPLOY_FS"
-
-        # Bootstrap
-        deploy_state_set "bootstrap" "running"
-        bootstrap_install "$DEPLOY_DISTRO" "$DEPLOY_TARGET" || \
-            { rollback_full; exit 1; }
-
-        # Chroot setup
-        deploy_state_set "chroot_setup" "running"
-        chroot_fix_elf_interp "$DEPLOY_TARGET"   # musl→glibc ELF fix
-        chroot_mount "$DEPLOY_TARGET"
-        chroot_copy_resolv "$DEPLOY_TARGET"
-
-        # Configure
-        deploy_state_set "configure" "running"
-        deploy_set_hostname "$DEPLOY_HOSTNAME" "$DEPLOY_TARGET"
-        deploy_set_locale "$DEPLOY_TARGET" "$DEPLOY_INIT"
-        [ -n "$DEPLOY_USER" ] && deploy_create_user "$DEPLOY_TARGET"
-        [ "$DEPLOY_INIT" != "systemd" ] && deploy_setup_dbus "$DEPLOY_TARGET"
-        deploy_install_healer "$DEPLOY_TARGET" "$DEPLOY_INIT"
-        deploy_install_snapshot "$DEPLOY_TARGET" "$DEPLOY_INIT" "$DEPLOY_DISTRO"
-        deploy_snapshot_enable_periodic "$DEPLOY_TARGET" "$DEPLOY_INIT"
-        deploy_enable_services "$DEPLOY_TARGET" "$DEPLOY_INIT" \
-            NetworkManager dbus sshd
-
-        # GPU + no-PM policies (from M4/M5)
-        deploy_state_set "policies" "running"
-        deploy_install_gpu_policy 2>/dev/null || true
-        deploy_install_nopm_policy 2>/dev/null || true
-        deploy_install_dgpu_manager 2>/dev/null || true
-
-        # Initramfs rebuild (critical — without this, kernel panics on boot)
-        deploy_state_set "initramfs" "running"
-        deploy_rebuild_initramfs "$DEPLOY_TARGET" "$DEPLOY_DISTRO"
-
-        # Bootloader
-        deploy_state_set "bootloader" "running"
-        deploy_install_bootloader || { rollback_full; exit 1; }
-
-        # Verify
-        deploy_state_set "verify" "running"
-        chroot_unmount "$DEPLOY_TARGET"
-        chroot_unfix_elf_interp
-        deploy_verify "$DEPLOY_TARGET"
-        _rc=$?
-
-        if [ "$_rc" -eq 0 ]; then
-            deploy_state_set "verify" "done"
-            printf '\n══ DEPLOYMENT COMPLETE ══\n'
-            printf 'Target: %s\n' "$DEPLOY_TARGET"
-            printf 'Reboot and select from your bootloader.\n\n'
-        else
-            deploy_state_fail "verify" "verification failed"
-            log_error "Verification failed — run: omni-deploy rollback"
-            exit 1
-        fi
+        deploy_install_execute
+        exit $?
         ;;
 
     *)
