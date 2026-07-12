@@ -3,7 +3,7 @@ set -eu
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="${1:-$ROOT/omni-monolith.sh}"
 TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-TOOLS="omni-detect omni-service omni-boot omni-gpu omni-storage omni-audit omni-deploy omni-healer omni-snapshot omni-security omni-fleet"
+TOOLS="omni-detect omni-service omni-boot omni-gpu omni-storage omni-audit omni-deploy omni-healer omni-snapshot omni-security omni-fleet omni-manifest"
 
 _strip() {
     awk '

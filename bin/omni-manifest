@@ -1,0 +1,37 @@
+#!/bin/sh
+# bin/omni-manifest — Declarative configuration entrypoint.
+set -u
+
+_OMNI_ROOT=${OMNI_ROOT:-$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)}
+. "$_OMNI_ROOT/src/manifest/parser.sh"
+. "$_OMNI_ROOT/src/manifest/diff.sh"
+
+_usage() {
+    cat << 'HELP'
+omni-manifest — Desired-State Configuration Engine
+
+Usage: omni-manifest <command> <file>
+
+Commands:
+  plan <file>    Show drift and required actions (dry-run)
+  apply <file>   Reconcile drift (requires root, mutation-guarded)
+HELP
+}
+
+COMMAND=${1:-}
+FILE=${2:-}
+
+case "$COMMAND" in
+    plan)
+        [ -z "$FILE" ] || [ ! -f "$FILE" ] && { _usage; exit 1; }
+        manifest_apply "$FILE"
+        ;;
+    apply)
+        [ -z "$FILE" ] || [ ! -f "$FILE" ] && { _usage; exit 1; }
+        manifest_apply "$FILE" "--apply" || exit $?
+        ;;
+    *)
+        _usage
+        exit 1
+        ;;
+esac
