@@ -27,21 +27,21 @@ _c "meta schema_version=1" 1 "$(deploy_state_get_meta schema_version)"
 _c "session_id populated" yes "$([ -n "$(deploy_state_get_meta session_id)" ] && echo yes || echo no)"
 
 # --- Initial resume: first step is partition -------------------------------
-_c "fresh resume = partition" partition "$(deploy_state_resume)"
-_c "get partition = pending" pending "$(deploy_state_get partition)"
+_c "fresh resume = partitioning" partitioning "$(deploy_state_resume)"
+_c "get partitioning = pending" pending "$(deploy_state_get partitioning)"
 
 # --- Set + get roundtrip ---------------------------------------------------
-deploy_state_set partition done
-_c "set/get partition=done" done "$(deploy_state_get partition)"
+deploy_state_set partitioning done
+_c "set/get partitioning=done" done "$(deploy_state_get partitioning)"
 
-deploy_state_set format running
-_c "set/get format=running" running "$(deploy_state_get format)"
+deploy_state_set mounting running
+_c "set/get mounting=running" running "$(deploy_state_get mounting)"
 
 # --- Resume skips done, returns running (interrupted step) -----------------
-_c "resume after partition done = format" format "$(deploy_state_resume)"
+_c "resume after partitioning done = mounting" mounting "$(deploy_state_resume)"
 
 # --- Simulate crash: mark format done, bootstrap running -------------------
-deploy_state_set format done
+deploy_state_set mounting done
 deploy_state_set bootstrap running
 _c "resume mid-flight = bootstrap" bootstrap "$(deploy_state_resume)"
 
@@ -52,7 +52,7 @@ _c "resume after fail = bootstrap (retry)" bootstrap "$(deploy_state_resume)"
 _c "last_error recorded" yes "$([ -n "$(deploy_state_get_meta last_error)" ] && echo yes || echo no)"
 
 # --- Complete every step; resume returns COMPLETE --------------------------
-for _s in partition format bootstrap chroot configure bootloader verify; do
+for _s in partitioning mounting bootstrap chroot_setup configure policies initramfs bootloader verify; do
     deploy_state_set "$_s" done
 done
 _c "all done → resume = COMPLETE" COMPLETE "$(deploy_state_resume)"
@@ -83,7 +83,7 @@ _c "reject invalid status" 2 "$rc"
 rc=0; OMNI_SYSROOT=/tmp/fx deploy_state_init alpine sda btrfs >/dev/null 2>&1 || rc=$?
 _c "init OMNI_SYSROOT guard 126" 126 "$rc"
 
-rc=0; OMNI_SYSROOT=/tmp/fx deploy_state_set partition done >/dev/null 2>&1 || rc=$?
+rc=0; OMNI_SYSROOT=/tmp/fx deploy_state_set partitioning done >/dev/null 2>&1 || rc=$?
 _c "set OMNI_SYSROOT guard 126" 126 "$rc"
 
 rc=0; OMNI_SYSROOT=/tmp/fx deploy_state_fail partition oops >/dev/null 2>&1 || rc=$?
@@ -96,7 +96,7 @@ _c "clear OMNI_SYSROOT guard 126" 126 "$rc"
 # Force a partial state: create a broken tmp file, verify the real state file
 # is untouched. This simulates a mid-write crash.
 deploy_state_init arch sda btrfs
-deploy_state_set partition done
+deploy_state_set partitioning done
 _expected=$(cat "$OMNI_STATE_FILE")
 printf 'garbage_partial_data' > "${OMNI_STATE_FILE}.tmp.99999"
 _actual=$(cat "$OMNI_STATE_FILE")

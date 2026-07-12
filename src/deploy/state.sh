@@ -13,7 +13,7 @@ OMNI_STATE_LOCK_TIMEOUT="${OMNI_STATE_LOCK_TIMEOUT:-10}"
 
 # Fixed ordered list of steps. Callers reference these names.
 # Kept intentionally as a space-separated string, NOT a bash array.
-OMNI_DEPLOY_STEPS="partition format bootstrap chroot configure bootloader verify"
+OMNI_DEPLOY_STEPS="partitioning mounting bootstrap chroot_setup configure policies initramfs bootloader verify"
 
 _state_guard() {
     if [ -n "${OMNI_SYSROOT:-}" ]; then

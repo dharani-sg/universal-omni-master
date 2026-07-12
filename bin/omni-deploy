@@ -14,6 +14,8 @@ _OMNI_ROOT="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)"
 . "$_OMNI_ROOT/src/storage/interface.sh" 2>/dev/null || true
 
 . "$_OMNI_ROOT/src/deploy/common.sh"
+. "$_OMNI_ROOT/src/deploy/state.sh"
+. "$_OMNI_ROOT/src/deploy/state.sh"
 . "$_OMNI_ROOT/src/deploy/preflight.sh"
 . "$_OMNI_ROOT/src/deploy/chroot.sh"
 . "$_OMNI_ROOT/src/deploy/partition.sh"
@@ -159,13 +161,13 @@ HELP
         rollback_partition_backup "$DEPLOY_DISK"
 
         # Format + subvols
-        deploy_state_set "partitioning"
+        deploy_state_set "partitioning" "running"
         partition_format "$DEPLOY_DISK" "$DEPLOY_FS" || { rollback_full; exit 1; }
         [ "$DEPLOY_FS" = "btrfs" ] && \
             { partition_btrfs_subvols "$DEPLOY_DISK" || { rollback_full; exit 1; }; }
 
         # Mount
-        deploy_state_set "mounting"
+        deploy_state_set "mounting" "running"
         mkdir -p "$DEPLOY_TARGET"
         mount "/dev/${DEPLOY_DISK}2" "$DEPLOY_TARGET" 2>/dev/null || \
             mount "/dev/$DEPLOY_DISK" "$DEPLOY_TARGET" || \
@@ -173,18 +175,18 @@ HELP
         partition_generate_fstab "$DEPLOY_DISK" "$DEPLOY_FS"
 
         # Bootstrap
-        deploy_state_set "bootstrap"
+        deploy_state_set "bootstrap" "running"
         bootstrap_install "$DEPLOY_DISTRO" "$DEPLOY_TARGET" || \
             { rollback_full; exit 1; }
 
         # Chroot setup
-        deploy_state_set "chroot_setup"
+        deploy_state_set "chroot_setup" "running"
         chroot_fix_elf_interp "$DEPLOY_TARGET"   # musl→glibc ELF fix
         chroot_mount "$DEPLOY_TARGET"
         chroot_copy_resolv "$DEPLOY_TARGET"
 
         # Configure
-        deploy_state_set "configure"
+        deploy_state_set "configure" "running"
         deploy_set_hostname "$DEPLOY_HOSTNAME" "$DEPLOY_TARGET"
         deploy_set_locale "$DEPLOY_TARGET" "$DEPLOY_INIT"
         [ -n "$DEPLOY_USER" ] && deploy_create_user "$DEPLOY_TARGET"
@@ -196,33 +198,33 @@ HELP
             NetworkManager dbus sshd
 
         # GPU + no-PM policies (from M4/M5)
-        deploy_state_set "policies"
+        deploy_state_set "policies" "running"
         deploy_install_gpu_policy 2>/dev/null || true
         deploy_install_nopm_policy 2>/dev/null || true
         deploy_install_dgpu_manager 2>/dev/null || true
 
         # Initramfs rebuild (critical — without this, kernel panics on boot)
-        deploy_state_set "initramfs"
+        deploy_state_set "initramfs" "running"
         deploy_rebuild_initramfs "$DEPLOY_TARGET" "$DEPLOY_DISTRO"
 
         # Bootloader
-        deploy_state_set "bootloader"
+        deploy_state_set "bootloader" "running"
         deploy_install_bootloader || { rollback_full; exit 1; }
 
         # Verify
-        deploy_state_set "verify"
+        deploy_state_set "verify" "running"
         chroot_unmount "$DEPLOY_TARGET"
         chroot_unfix_elf_interp
         deploy_verify "$DEPLOY_TARGET"
         _rc=$?
 
         if [ "$_rc" -eq 0 ]; then
-            deploy_state_set "complete"
+            deploy_state_set "verify" "done"
             printf '\n══ DEPLOYMENT COMPLETE ══\n'
             printf 'Target: %s\n' "$DEPLOY_TARGET"
             printf 'Reboot and select from your bootloader.\n\n'
         else
-            deploy_state_set "failed"
+            deploy_state_fail "verify" "verification failed"
             log_error "Verification failed — run: omni-deploy rollback"
             exit 1
         fi

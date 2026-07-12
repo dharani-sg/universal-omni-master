@@ -20,23 +20,10 @@ deploy_guard() {
 }
 
 # State tracking — each phase writes its status to a state file
-DEPLOY_STATE_DIR="/var/lib/omni-master/deploy-state"
 DEPLOY_TARGET="${DEPLOY_TARGET:-/mnt}"
 
-deploy_state_init() {
-    mkdir -p "$DEPLOY_STATE_DIR"
-    echo "initialized" > "$DEPLOY_STATE_DIR/phase"
-    echo "$(date +%s)"  > "$DEPLOY_STATE_DIR/timestamp"
-}
 
-deploy_state_set() {
-    echo "$1" > "$DEPLOY_STATE_DIR/phase"
-    log_info "deploy phase: $1"
-}
 
-deploy_state_get() {
-    [ -r "$DEPLOY_STATE_DIR/phase" ] && cat "$DEPLOY_STATE_DIR/phase" || echo "none"
-}
 
 # Confirmation gate — requires explicit user input before destructive actions
 deploy_confirm() {
