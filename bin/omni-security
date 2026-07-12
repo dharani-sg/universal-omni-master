@@ -1,0 +1,54 @@
+#!/bin/sh
+# bin/omni-security — M14: TPM2/UKI/SBAT security hardening CLI.
+set -u
+
+_OMNI_ROOT="${OMNI_ROOT:-$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)}"
+. "$_OMNI_ROOT/src/core/logging.sh" 2>/dev/null || true
+. "$_OMNI_ROOT/src/security/tpm2.sh"
+. "$_OMNI_ROOT/src/security/uki.sh"
+. "$_OMNI_ROOT/src/security/sbat.sh"
+
+_usage() {
+    cat << HELP
+omni-security — TPM2/UKI/SBAT security hardening
+
+Usage: omni-security <command> [args]
+
+Commands:
+  probe                          Detect TPM2 hardware/tooling (read-only)
+  audit tpm2                     Compare current PCRs to stored baseline
+  audit sbat <bin> <comp> <min>  Verify SBAT component_generation >= min
+  enroll tpm2 <luksdev> [pcrs]   Bind LUKS device to TPM2 (mutating, 126-guarded)
+  verify uki <bin> [cert]        Validate UKI/PE signature or structure
+  help                           Show this message
+HELP
+}
+
+COMMAND="${1:-help}"
+[ $# -gt 0 ] && shift || true
+
+case "$COMMAND" in
+    probe)
+        security_tpm2_probe ;;
+    audit)
+        _sub="${1:-tpm2}"; shift 2>/dev/null || true
+        case "$_sub" in
+            tpm2) security_tpm2_audit ;;
+            sbat) security_sbat_audit "${1:?bin required}" "${2:?component required}" "${3:?min generation required}" ;;
+            *) printf 'unknown audit target: %s\n' "$_sub" >&2; exit 2 ;;
+        esac ;;
+    enroll)
+        _sub="${1:-tpm2}"; shift 2>/dev/null || true
+        case "$_sub" in
+            tpm2) security_tpm2_enroll "${1:?luks device required}" "${2:-}" ;;
+            *) printf 'unknown enroll target: %s\n' "$_sub" >&2; exit 2 ;;
+        esac ;;
+    verify)
+        _sub="${1:-uki}"; shift 2>/dev/null || true
+        case "$_sub" in
+            uki) security_uki_verify "${1:?bin required}" "${2:-}" ;;
+            *) printf 'unknown verify target: %s\n' "$_sub" >&2; exit 2 ;;
+        esac ;;
+    help|--help|-h) _usage; exit 0 ;;
+    *) printf 'omni-security: unknown command: %s\n' "$COMMAND" >&2; _usage >&2; exit 2 ;;
+esac
