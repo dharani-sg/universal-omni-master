@@ -194,18 +194,3 @@ cd universal-omni-master
 ## 📄 License
 
 MIT — forged in the constraints of legacy hardware, engineered for the fleet of the future.
-```
-
-***
-
-### 📝 GitHub "About" Sidebar Update
-
-To complete the visual overhaul on your GitHub repository page, go to the **Settings** gear icon ⚙️ in the top right of the "About" section on your repo's main page, and update the fields as follows:
-
-*   **Description:**
-    ```text
-    🛰️ Universal Bare-Metal Provisioning & Self-Healing Engine. POSIX-shell, BusyBox-safe, cross-libc. Features crash-resume, adaptive TUI, declarative manifests, live telemetry & AI-patcher. 250+ tests green.
-    ```
-*   **Topics (Tags):**
-    `posix-shell`, `bare-metal`, `linux-installer`, `busybox`, `alpine-linux`, `void-linux`, `self-healing`, `btrfs-snapshots`, `fleet-management`, `termux`, `declarative-config`
-*   **Website:** *(Leave blank or link to your portfolio/docs if you have one)*
