@@ -106,3 +106,15 @@ fish --no-config scripts/test-m12-tui.fish
   sanctioned never-rewrite-tags exception: same-session, minutes-old,
   feature-absent, zero consumers. Anything older is superseded forward.
 - Lesson: verify pwd BEFORE every heredoc; verify tail -3 + wc -l AFTER.
+
+## M21 Addition (v0.21.0)
+- bin/omni-manager: audit-sync, list-clis, list-tools, add/remove-tool, snapshot
+- src/manager/control.sh: repo health + mutation-guarded registry ops
+- manager_snapshot_meta stdout: path only; info message → stderr (snapshot pollution fix)
+- Used POSIX sed instead of grep -oP (BusyBox has no PCRE)
+- For-glob inventory instead of find+xargs for portability
+
+## Bug History Addition #13
+- mkfifo + & background jobs: named pipes and background processes can leak
+  on Ctrl+C in livefeed.sh. Mitigation: always include a direct-exec fallback.
+  FD3 redirection is the production-grade fix deferred to M22+.
