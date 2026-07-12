@@ -23,6 +23,7 @@ _OMNI_ROOT="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)"
 . "$_OMNI_ROOT/src/deploy/rollback.sh"
 . "$_OMNI_ROOT/src/deploy/healer_install.sh"
 . "$_OMNI_ROOT/src/deploy/snapshot_install.sh"
+. "$_OMNI_ROOT/src/deploy/remote.sh"
 . "$_OMNI_ROOT/src/deploy/verify.sh"
 
 # ── Defaults ──────────────────────────────────────────────────────────────────
