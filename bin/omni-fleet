@@ -1,0 +1,64 @@
+#!/bin/sh
+# bin/omni-fleet — M15: fleet orchestration CLI.
+set -u
+
+_OMNI_ROOT="${OMNI_ROOT:-$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)}"
+. "$_OMNI_ROOT/src/core/logging.sh" 2>/dev/null || true
+. "$_OMNI_ROOT/src/fleet/common.sh"
+. "$_OMNI_ROOT/src/fleet/parallel.sh"
+. "$_OMNI_ROOT/src/fleet/telemetry.sh"
+. "$_OMNI_ROOT/src/fleet/swarm.sh"
+. "$_OMNI_ROOT/src/fleet/security_audit.sh"
+
+_usage() {
+    cat << HELP
+omni-fleet — Fleet orchestration and multi-node coordination
+
+Usage: omni-fleet <command> [args]
+
+Commands:
+  inventory [group]              List fleet nodes (optionally by group)
+  exec <cmd> [group]              Parallel remote command across the fleet
+  status [group]                  Collect + print telemetry grid
+  audit [group]                   Fleet-wide omni-security probe + report
+  swarm apply <manifest> [group]  Apply swarm policy (mutating, 126-guarded)
+  heal trigger <event> <pattern> <group> <cmd>
+                                   Propagate a healer event (mutating, guarded)
+  prune [hours]                   Prune rolling telemetry window (default 24h)
+  help                             Show this message
+HELP
+}
+
+COMMAND="${1:-help}"
+[ $# -gt 0 ] && shift || true
+
+case "$COMMAND" in
+    inventory)
+        fleet_list_nodes "${1:-}" ;;
+    exec)
+        [ $# -ge 1 ] || { printf 'exec requires a command\n' >&2; exit 2; }
+        fleet_parallel_exec "$1" "${2:-}" ;;
+    status)
+        fleet_telemetry_collect "${1:-}"
+        fleet_telemetry_summary 24 ;;
+    audit)
+        fleet_security_audit "${1:-}"
+        fleet_security_report 24 ;;
+    swarm)
+        _sub="${1:-apply}"; shift 2>/dev/null || true
+        case "$_sub" in
+            apply) swarm_apply "${1:?manifest required}" "${2:-}" ;;
+            *) printf 'unknown swarm sub: %s\n' "$_sub" >&2; exit 2 ;;
+        esac ;;
+    heal)
+        _sub="${1:-trigger}"; shift 2>/dev/null || true
+        case "$_sub" in
+            trigger)
+                swarm_propagate_event "${1:?event line required}" "${2:?pattern required}" "${3:?group required}" "${4:?cmd required}" ;;
+            *) printf 'unknown heal sub: %s\n' "$_sub" >&2; exit 2 ;;
+        esac ;;
+    prune)
+        fleet_prune_state "${1:-24}" ;;
+    help|--help|-h) _usage; exit 0 ;;
+    *) printf 'omni-fleet: unknown command: %s\n' "$COMMAND" >&2; _usage >&2; exit 2 ;;
+esac
