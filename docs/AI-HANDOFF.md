@@ -1,42 +1,41 @@
-# Universal Omni-Master — AI Fail-Safe Handoff (v0.12.0)
+# Universal Omni-Master — AI Fail-Safe Handoff (v0.12.0+)
 
 ## Current State (July 2026)
-- Latest tag: v0.12.0 (M12 Fish TUI + M11.1 staged rollback)
-- Total tests: 231/231 green
-- Hardware: HP Pavilion 15-n010tx (Alpine musl/OpenRC primary, Void glibc/runit dual-boot)
-- Known quirks: degraded SATA cable (baseline UDMA_CRC=5360 — NOT a failure), muxless AMD HAINAN dGPU, AC-only power
+- Latest sealed tag: v0.12.0 (M12 Fish TUI complete)
+- M13-A monolith bundler: v0.13.0-a2 (fixing 3 gate failures from a1)
+- Total green tests: M12=14, M11-audit=7, M10=20, M1-M9=all pass
+- Hardware: HP Pavilion 15-n010tx (Alpine musl/OpenRC, Void glibc/runit)
+- SATA baseline: UDMA_CRC=5360 (stable, NOT a failure)
 
-## Immutable Rules (NEVER violate)
-- Core = POSIX `#!/bin/sh`, BusyBox-ash safe, zero bashisms, zero `eval`.
-- Fish ONLY for TUI, always launched with `fish --no-config`.
-- Mutation guard: any state change MUST return 126 when OMNI_SYSROOT is set.
-- Btrfs non-Btrfs = graceful skip (return 0), never hard-fail.
-- Root subvol convention = `@root`; snapshots container = `@snapshots`.
-- Restore MUST use staged RW clone + boot entry, NEVER `btrfs subvolume set-default`.
-- Restore/apply require typed target name + literal `APPLY` or `RESTORE` (double confirmation).
-- NEVER push if any gate fails.
-- NEVER rewrite or move existing tags.
-- NEVER claim a command ran without showing terminal output.
+## Immutable Rules
+- POSIX sh only (BusyBox-ash safe, zero bashisms, zero eval)
+- Fish ONLY for TUI, run via fish --no-config
+- Mutation guard: exit 126 when OMNI_SYSROOT is set
+- Non-Btrfs = graceful skip (return 0)
+- Root subvol = @root; snapshots = @snapshots
+- Restore = staged RW clone + boot entry, NEVER btrfs set-default
+- NEVER push if any gate fails
+- NEVER rewrite existing tags
+- NEVER use set -- to parse version strings (clobbers $@)
 
-## Gate Commands (run exactly)
-- POSIX: `sh -n <file>`
-- Fish: `fish --no-config --no-execute <file>`
-- Full M12: `fish --no-config scripts/test-m12-tui.fish`
-- M11 audit: `./scripts/audit-m11.sh`
-- All regressions: run test-*.sh for m1-m11
+## Known Bug History (avoid repeating)
+- set -- clobbers $@ in bin/omni-tui (traced conversation 15+)
+- set -u at monolith top level crashes on library unbound vars
+- BusyBox sed does not interpret \n in replacements
+- BusyBox dmesg has no -w flag (use poll-diff)
+- Heredoc truncation on long terminal pastes (use block-write)
 
-## Current Blockers (update on every handoff)
-- None — M12 gate v4 clean, v0.12.0 pushed, M11.1 hardened.
+## Gate Commands
+- sh -n <file> (POSIX), fish --no-config --no-execute <file> (Fish)
+- M12: fish scripts/test-m12-tui.fish
+- M11: ./scripts/audit-m11.sh
+- M13: ./scripts/test-m13-monolith.sh
 
-## Recovery Prompt for Any New Agent
+## Recovery Prompt
 Read docs/AI-HANDOFF.md then run:
-git status --short
-git log --oneline --decorate -10
-ls -1 scripts/test-*.sh
-Do NOT modify files yet. First report:
-1. current branch/commit/latest tag
-2. dirty files
-3. latest COMPLETE milestone
-4. which gates fail
-5. proposed minimal patch
-Never push or tag unless every listed gate passes. Never rewrite tags. Never use eval.
+  git status --short
+  git log --oneline --decorate -10
+  ls -1 scripts/test-*.sh
+Report: (1) branch/commit/tag, (2) dirty files, (3) latest milestone,
+(4) failing gates, (5) proposed minimal patch.
+Never push unless all gates pass. Never rewrite tags. Never use eval.
