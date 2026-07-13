@@ -7,13 +7,15 @@ _OMNI_ROOT="${OMNI_ROOT:-$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)}"
 
 _usage() {
     cat << HELP
-omni-saas — SaaS License & Metering
+omni-saas — SaaS License & Metering Gateway
+
+Usage: omni-saas <command> [args]
 
 Commands:
-  validate <key>    Validate license key
-  status            Show tier, expiry, credits, usage
-  meter <event>     Record usage event
-  consume-credit    Manually consume one PPU credit
+  validate <key>    Validate license key and refresh local tier cache
+  status            Show cached tier, expiry, credits, usage_count, usage_window
+  meter <event>     Record usage event and best-effort upload
+  consume-credit    Manually decrement one pay_per_use credit
   help              Show this message
 HELP
 }
@@ -22,10 +24,25 @@ COMMAND="${1:-help}"
 [ $# -gt 0 ] && shift || true
 
 case "$COMMAND" in
-    validate) saas_check_license "${1:?license key required}" ;;
-    status)   saas_status ;;
-    meter)    saas_meter_event "${1:?event required}" ;;
-    consume-credit) saas_consume_credit ;;
-    help|--help|-h) _usage; exit 0 ;;
-    *) printf 'omni-saas: unknown: %s\n' "$COMMAND" >&2; _usage >&2; exit 2 ;;
+    validate)
+        saas_check_license "${1:?license key required}"
+        ;;
+    status)
+        saas_status
+        ;;
+    meter)
+        saas_meter_event "${1:?event required}"
+        ;;
+    consume-credit)
+        saas_consume_credit
+        ;;
+    help|--help|-h)
+        _usage
+        exit 0
+        ;;
+    *)
+        printf 'omni-saas: unknown command: %s\n' "$COMMAND" >&2
+        _usage >&2
+        exit 2
+        ;;
 esac
