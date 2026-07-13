@@ -1,0 +1,47 @@
+#!/bin/sh
+# bin/omni-compliance — M25: Fleet Compliance CLI.
+set -u
+
+_OMNI_ROOT="${OMNI_ROOT:-$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)}"
+. "$_OMNI_ROOT/src/compliance/stig.sh"
+
+_usage() {
+    cat << HELP
+omni-compliance — Fleet STIG/CIS Compliance Engine
+
+Usage: omni-compliance <command> [args]
+
+Commands:
+  audit <profile>             Audit against profile (cis_level_1, stig_high)
+  enforce-sshd <rule> <val>   Idempotently enforce an sshd_config rule
+  help                        Show this message
+HELP
+}
+
+COMMAND="${1:-help}"
+[ $# -gt 0 ] && shift || true
+
+case "$COMMAND" in
+    audit)
+        compliance_audit_profile "${1:?profile required}"
+        _rc=$?
+        if [ "$_rc" -eq 0 ]; then
+            printf 'compliance: fully compliant with %s\n' "$1"
+        else
+            printf 'compliance: DRIFT DETECTED in %s\n' "$1" >&2
+        fi
+        exit "$_rc"
+        ;;
+    enforce-sshd)
+        compliance_enforce_sshd "${1:?rule required}" "${2:?value required}"
+        ;;
+    help|--help|-h)
+        _usage
+        exit 0
+        ;;
+    *)
+        printf 'omni-compliance: unknown command: %s\n' "$COMMAND" >&2
+        _usage >&2
+        exit 2
+        ;;
+esac
