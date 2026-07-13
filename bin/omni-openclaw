@@ -1,0 +1,29 @@
+#!/bin/sh
+# bin/omni-openclaw — M26: OpenClaw Commercial Sync CLI
+set -u
+
+_OMNI_ROOT="${OMNI_ROOT:-$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)}"
+. "$_OMNI_ROOT/src/saas/openclaw.sh"
+
+_usage() {
+    cat << HELP
+omni-openclaw — Commercial Telemetry Bridge
+
+Usage: omni-openclaw <command>
+
+Commands:
+  generate    Print anonymized commercial payload to stdout
+  sync        Push payload to OpenClaw AI Sales Agent
+  help        Show this message
+HELP
+}
+
+COMMAND="${1:-help}"
+[ $# -gt 0 ] && shift || true
+
+case "$COMMAND" in
+    generate) openclaw_generate_payload ;;
+    sync)     openclaw_sync ;;
+    help|--help|-h) _usage; exit 0 ;;
+    *) printf 'omni-openclaw: unknown command: %s\n' "$COMMAND" >&2; _usage >&2; exit 2 ;;
+esac
