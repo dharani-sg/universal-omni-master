@@ -1,0 +1,38 @@
+#!/bin/sh
+# bin/omni-patcher — M24: AI Auto-Remediation CLI
+set -u
+
+_OMNI_ROOT="${OMNI_ROOT:-$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)}"
+. "$_OMNI_ROOT/src/ai/patcher.sh"
+. "$_OMNI_ROOT/src/saas/meter.sh" 2>/dev/null || true
+
+_usage() {
+    cat << HELP
+omni-patcher — AI Auto-Remediation Engine
+
+Usage: omni-patcher <command> [args]
+
+Commands:
+  analyze <script> <exit_code> <log_file>   Capture context and query LLM
+  apply <target> <patch_file>               Validate (sh -n) and apply patch
+  help                                      Show this message
+HELP
+}
+
+COMMAND="${1:-help}"
+[ $# -gt 0 ] && shift || true
+
+case "$COMMAND" in
+    analyze)
+        _ctx="${TMPDIR:-/tmp}/omni-ctx-$$.txt"
+        _out="${TMPDIR:-/tmp}/omni-patch-$$.sh"
+        patcher_capture_context "$1" "$2" "$3" "$_ctx"
+        patcher_query_llm "$_ctx" "$_out"
+        printf 'Patch generated at: %s\n' "$_out"
+        ;;
+    apply)
+        patcher_apply_safe "$1" "$2"
+        ;;
+    help|--help|-h) _usage; exit 0 ;;
+    *) printf 'omni-patcher: unknown command: %s\n' "$COMMAND" >&2; _usage >&2; exit 2 ;;
+esac

@@ -40,7 +40,7 @@ Today, UOM is a **Class-1 Bare-Metal Provisioning Engine** capable of:
 | 📱 **Adaptive TUI** | Detects `$COLUMNS`. Portrait (<60 cols) uses vertical numbered menus; landscape uses wide grids. Progressive disclosure for logs. |
 | 🛡️ **Mutation Safety** | Any state-changing operation returns **126** when `OMNI_SYSROOT` is set, cleanly separating fixture testing from live mutation. |
 | 📉 **Baseline Telemetry** | Stable UDMA_CRC = 5360 is not a failure. Alerts only on negative deltas from a stored baseline. |
-| 🧩 **Monolithic Delivery** | 12 CLIs + 40+ libraries compile into one `scp`-able script. No Python, no Git, no external dependencies required. |
+| 🧩 **Monolithic Delivery** | 14 CLIs + 40+ libraries compile into one `scp`-able script. No Python, no Git, no external dependencies required. |
 | 🧬 **Cross-Libc Correctness** | musl → glibc chroot with ELF interpreter bridging and efivarfs UEFI NVRAM writes. |
 | 🧪 **Gate-Verified** | No milestone is tagged until its test suite AND every prior regression suite pass 100%. 250+ automated assertions. |
 
@@ -89,7 +89,7 @@ Today, UOM is a **Class-1 Bare-Metal Provisioning Engine** capable of:
 
 ## 🛠️ The 12-Tool CLI Surface
 
-UOM compiles into a single self-extracting script (`omni-monolith.sh`) containing 12 distinct POSIX CLI entrypoints:
+UOM compiles into a single self-extracting script (`omni-monolith.sh`) containing 14 distinct POSIX CLI entrypoints:
 
 | Command | Domain | Purpose |
 |---|---|---|
@@ -171,7 +171,7 @@ cd universal-omni-master
 # Detect this system
 ./bin/omni-detect
 
-# Build the portable monolith (12 CLIs in one file)
+# Build the portable monolith (14 CLIs in one file)
 ./scripts/build-monolith.sh /tmp/omni.sh
 
 # Deploy (dry-run by default)
