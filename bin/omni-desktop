@@ -1,0 +1,122 @@
+#!/bin/sh
+# bin/omni-desktop — M27 desktop/WM profile engine.
+set -u
+
+_OMNI_ROOT="${OMNI_ROOT:-$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)}"
+
+. "$_OMNI_ROOT/src/core/logging.sh" 2>/dev/null || true
+. "$_OMNI_ROOT/src/deploy/chroot.sh"
+. "$_OMNI_ROOT/src/deploy/configure.sh"
+
+for _profile_file in "$_OMNI_ROOT"/src/desktop/profiles/*.sh; do
+    [ -f "$_profile_file" ] || continue
+    . "$_profile_file"
+done
+
+. "$_OMNI_ROOT/src/desktop/common.sh"
+
+_usage() {
+    cat << HELP
+omni-desktop — universal desktop and WM profile engine
+
+Usage:
+  omni-desktop list
+  omni-desktop plan <profile> [options]
+  omni-desktop install <profile> [options] [--apply]
+  omni-desktop telemetry <profile> [package]
+  omni-desktop verify <profile> [--root DIR]
+
+Options:
+  --root DIR               target root (default: /)
+  --distro NAME            override distro detection
+  --init NAME              override init detection
+  --user NAME              target desktop user
+  --login-manager NAME     auto|none|greetd|sddm|lightdm
+  --allow-experimental     allow experimental packaged profile
+  --apply                  perform package/service mutations
+
+Profiles:
+  niri sway hyprland xfce plasma awesome fluxbox dwm
+  mango       experimental
+  quickshell  add-on toolkit
+  hyde        external preset; manual review only
+HELP
+}
+
+COMMAND="${1:-help}"
+[ $# -gt 0 ] && shift || true
+PROFILE="${1:-}"
+[ $# -gt 0 ] && shift || true
+
+ROOT_PATH="/"
+DISTRO=""
+INIT=""
+USER_NAME="${DESKTOP_USER:-}"
+LOGIN_MANAGER="auto"
+ALLOW_EXPERIMENTAL=0
+APPLY=0
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --root) shift; ROOT_PATH="${1:-/}" ;;
+        --distro) shift; DISTRO="${1:-}" ;;
+        --init) shift; INIT="${1:-}" ;;
+        --user) shift; USER_NAME="${1:-}" ;;
+        --login-manager) shift; LOGIN_MANAGER="${1:-auto}" ;;
+        --allow-experimental) ALLOW_EXPERIMENTAL=1 ;;
+        --apply) APPLY=1 ;;
+        --help|-h) _usage; exit 0 ;;
+        *) printf 'omni-desktop: unknown option %s\n' "$1" >&2; exit 2 ;;
+    esac
+    shift
+done
+
+[ -n "$DISTRO" ] || DISTRO=$(desktop_detect_distro "$ROOT_PATH")
+[ -n "$INIT" ] || INIT=$(desktop_detect_init "$ROOT_PATH")
+
+case "$COMMAND" in
+    list)
+        desktop_list_profiles
+        ;;
+    plan)
+        [ -n "$PROFILE" ] || { _usage; exit 2; }
+        desktop_plan_profile "$PROFILE" "$ROOT_PATH" "$DISTRO" \
+            "$ALLOW_EXPERIMENTAL"
+        ;;
+    install)
+        [ -n "$PROFILE" ] || { _usage; exit 2; }
+        if [ "$APPLY" -ne 1 ]; then
+            desktop_plan_profile "$PROFILE" "$ROOT_PATH" "$DISTRO" \
+                "$ALLOW_EXPERIMENTAL"
+            printf 'desktop: dry-run only; add --apply to install\n' >&2
+            exit 0
+        fi
+        [ -n "$USER_NAME" ] || {
+            printf 'desktop: --user is required for install\n' >&2
+            exit 2
+        }
+        desktop_install_profile "$PROFILE" "$ROOT_PATH" "$DISTRO" "$INIT" \
+            "$USER_NAME" "$LOGIN_MANAGER" "$ALLOW_EXPERIMENTAL"
+        ;;
+    telemetry)
+        [ -n "$PROFILE" ] || { _usage; exit 2; }
+        if [ -n "${1:-}" ]; then
+            desktop_telemetry_percent "$DISTRO" "$PROFILE" "$1"
+        else
+            desktop_success_percent "$DISTRO" "$PROFILE"
+        fi
+        ;;
+    verify)
+        [ -n "$PROFILE" ] || { _usage; exit 2; }
+        desktop_verify_static "$PROFILE" "$ROOT_PATH"
+        ;;
+    help|--help|-h)
+        _usage
+        exit 0
+        ;;
+    *)
+        printf 'omni-desktop: unknown command %s\n' "$COMMAND" >&2
+        _usage >&2
+        exit 2
+        ;;
+esac
