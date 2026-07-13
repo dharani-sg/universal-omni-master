@@ -10,3 +10,6 @@ omni-monolith.sh
 # Foreign project / fixture runtime — never track
 omni-master-core
 sandbox/run/
+
+# Stray files from accidental shell commands
+-X
