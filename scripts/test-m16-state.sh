@@ -52,7 +52,7 @@ _c "resume after fail = bootstrap (retry)" bootstrap "$(deploy_state_resume)"
 _c "last_error recorded" yes "$([ -n "$(deploy_state_get_meta last_error)" ] && echo yes || echo no)"
 
 # --- Complete every step; resume returns COMPLETE --------------------------
-for _s in partitioning mounting bootstrap chroot_setup configure policies initramfs bootloader verify; do
+for _s in partitioning mounting bootstrap chroot_setup configure desktop policies initramfs bootloader verify; do
     deploy_state_set "$_s" done
 done
 _c "all done → resume = COMPLETE" COMPLETE "$(deploy_state_resume)"

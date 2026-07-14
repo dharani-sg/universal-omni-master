@@ -39,6 +39,10 @@ DEPLOY_ENCRYPT="${DEPLOY_ENCRYPT:-0}"
 DEPLOY_HOSTNAME="${DEPLOY_HOSTNAME:-omni-linux}"
 DEPLOY_USER="${DEPLOY_USER:-}"
 DEPLOY_LOCALE="${DEPLOY_LOCALE:-en_US.UTF-8}"
+DEPLOY_DESKTOP="${DEPLOY_DESKTOP:-}"
+DEPLOY_DESKTOP_USER="${DEPLOY_DESKTOP_USER:-}"
+DEPLOY_LOGIN_MANAGER="${DEPLOY_LOGIN_MANAGER:-auto}"
+DEPLOY_ALLOW_EXPERIMENTAL_DESKTOP="${DEPLOY_ALLOW_EXPERIMENTAL_DESKTOP:-0}" 
 DEPLOY_RESUME="${DEPLOY_RESUME:-0}"
 DEPLOY_FRESH="${DEPLOY_FRESH:-0}"
 
@@ -50,6 +54,10 @@ while [ $# -gt 0 ]; do
         --apply)      DEPLOY_DRYRUN=0 ;;
         --resume)     DEPLOY_RESUME=1 ;;
         --fresh)      DEPLOY_FRESH=1 ;;
+        --desktop) shift; DEPLOY_DESKTOP="${1:-}" ;;
+        --desktop-user) shift; DEPLOY_DESKTOP_USER="${1:-}" ;;
+        --login-manager) shift; DEPLOY_LOGIN_MANAGER="${1:-auto}" ;;
+        --allow-experimental-desktop) DEPLOY_ALLOW_EXPERIMENTAL_DESKTOP=1 ;;
         --distro)     shift; DEPLOY_DISTRO="$1" ;;
         --fs)         shift; DEPLOY_FS="$1" ;;
         --disk)       shift; DEPLOY_DISK="$1" ;;
@@ -66,6 +74,7 @@ done
 export DEPLOY_TARGET DEPLOY_DISK DEPLOY_FS DEPLOY_DISTRO DEPLOY_INIT
 export DEPLOY_ENCRYPT DEPLOY_HOSTNAME DEPLOY_USER DEPLOY_DRYRUN DEPLOY_LOCALE
 export DEPLOY_RESUME DEPLOY_FRESH
+export DEPLOY_DESKTOP DEPLOY_DESKTOP_USER DEPLOY_LOGIN_MANAGER DEPLOY_ALLOW_EXPERIMENTAL_DESKTOP
 
 # ── Dispatch ──────────────────────────────────────────────────────────────────
 case "$COMMAND" in

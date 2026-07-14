@@ -48,7 +48,7 @@ _check "orchestrate.sh sourced exactly once" 1 "$_orch_sources"
 
 _steps=$(sed -n 's/^OMNI_DEPLOY_STEPS="\(.*\)"/\1/p' "$ROOT/src/deploy/state.sh")
 _check "phase vocabulary aligned" \
-    "partitioning mounting bootstrap chroot_setup configure policies initramfs bootloader verify" \
+    "partitioning mounting bootstrap chroot_setup configure desktop policies initramfs bootloader verify" \
     "$_steps"
 
 grep -q 'deploy_state_summary' "$ROOT/bin/omni-deploy"

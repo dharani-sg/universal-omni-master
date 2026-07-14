@@ -216,6 +216,50 @@ _deploy_phase_verify()
     deploy_checkpoint_mirror || return $?
 }
 
+
+_deploy_phase_desktop() {
+    # M27-B: integrate omni-desktop. Opt-in via DEPLOY_DESKTOP.
+    if [ -z "${DEPLOY_DESKTOP:-}" ]; then
+        return 0
+    fi
+
+    if [ -z "${DEPLOY_DESKTOP_USER:-}" ]; then
+        printf 'omni-deploy: --desktop requires --desktop-user\n' >&2
+        return 2
+    fi
+
+    # Rule 4: never mutate under OMNI_SYSROOT.
+    if [ -n "${OMNI_SYSROOT:-}" ]; then
+        case "${DEPLOY_TARGET:-}" in
+            "${OMNI_SYSROOT}"|"${OMNI_SYSROOT}"/*)
+                printf 'omni-deploy: refusing to mutate under OMNI_SYSROOT\n' >&2
+                return 126
+                ;;
+        esac
+    fi
+
+    _dt="${OMNI_ROOT:-.}/bin/omni-desktop"
+
+    if [ "${DEPLOY_ALLOW_EXPERIMENTAL_DESKTOP:-0}" = "1" ]; then
+        "$_dt" install "$DEPLOY_DESKTOP" \
+            --root "${DEPLOY_TARGET:-/mnt}" \
+            --distro "${DEPLOY_DISTRO:-}" \
+            --init "${DEPLOY_INIT:-}" \
+            --user "$DEPLOY_DESKTOP_USER" \
+            --login-manager "${DEPLOY_LOGIN_MANAGER:-auto}" \
+            --allow-experimental \
+            --apply
+    else
+        "$_dt" install "$DEPLOY_DESKTOP" \
+            --root "${DEPLOY_TARGET:-/mnt}" \
+            --distro "${DEPLOY_DISTRO:-}" \
+            --init "${DEPLOY_INIT:-}" \
+            --user "$DEPLOY_DESKTOP_USER" \
+            --login-manager "${DEPLOY_LOGIN_MANAGER:-auto}" \
+            --apply
+    fi
+}
+
 deploy_install_execute()
 {
     if [ -n "${OMNI_SYSROOT:-}" ]; then
@@ -253,6 +297,7 @@ deploy_install_execute()
             bootstrap)    _dp_handler=_deploy_phase_bootstrap ;;
             chroot_setup) _dp_handler=_deploy_phase_chroot_setup ;;
             configure)    _dp_handler=_deploy_phase_configure ;;
+            desktop)      _dp_handler=_deploy_phase_desktop ;;
             policies)     _dp_handler=_deploy_phase_policies ;;
             initramfs)    _dp_handler=_deploy_phase_initramfs ;;
             bootloader)   _dp_handler=_deploy_phase_bootloader ;;
