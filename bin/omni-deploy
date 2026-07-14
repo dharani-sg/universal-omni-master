@@ -27,6 +27,7 @@ _OMNI_ROOT="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)"
 . "$_OMNI_ROOT/src/deploy/remote.sh"
 . "$_OMNI_ROOT/src/deploy/verify.sh"
 . "$_OMNI_ROOT/src/deploy/orchestrate.sh"
+. "$_OMNI_ROOT/src/deploy/postboot.sh"
 
 # ── Defaults ──────────────────────────────────────────────────────────────────
 DEPLOY_DRYRUN=1
@@ -54,6 +55,9 @@ while [ $# -gt 0 ]; do
         --apply)      DEPLOY_DRYRUN=0 ;;
         --resume)     DEPLOY_RESUME=1 ;;
         --fresh)      DEPLOY_FRESH=1 ;;
+        --postboot-verify)
+            DEPLOY_POSTBOOT_VERIFY=1
+            ;;
         --desktop) shift; DEPLOY_DESKTOP="${1:-}" ;;
         --desktop-user) shift; DEPLOY_DESKTOP_USER="${1:-}" ;;
         --login-manager) shift; DEPLOY_LOGIN_MANAGER="${1:-auto}" ;;
