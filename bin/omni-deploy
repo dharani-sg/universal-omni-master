@@ -26,8 +26,8 @@ _OMNI_ROOT="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)"
 . "$_OMNI_ROOT/src/deploy/snapshot_install.sh"
 . "$_OMNI_ROOT/src/deploy/remote.sh"
 . "$_OMNI_ROOT/src/deploy/verify.sh"
-. "$_OMNI_ROOT/src/deploy/orchestrate.sh"
 . "$_OMNI_ROOT/src/deploy/postboot.sh"
+. "$_OMNI_ROOT/src/deploy/orchestrate.sh"
 
 # ── Defaults ──────────────────────────────────────────────────────────────────
 DEPLOY_DRYRUN=1
@@ -43,34 +43,90 @@ DEPLOY_LOCALE="${DEPLOY_LOCALE:-en_US.UTF-8}"
 DEPLOY_DESKTOP="${DEPLOY_DESKTOP:-}"
 DEPLOY_DESKTOP_USER="${DEPLOY_DESKTOP_USER:-}"
 DEPLOY_LOGIN_MANAGER="${DEPLOY_LOGIN_MANAGER:-auto}"
-DEPLOY_ALLOW_EXPERIMENTAL_DESKTOP="${DEPLOY_ALLOW_EXPERIMENTAL_DESKTOP:-0}" 
+DEPLOY_ALLOW_EXPERIMENTAL_DESKTOP="${DEPLOY_ALLOW_EXPERIMENTAL_DESKTOP:-0}"
+DEPLOY_POSTBOOT_VERIFY="${DEPLOY_POSTBOOT_VERIFY:-0}"
+DEPLOY_POSTBOOT_HOST="${DEPLOY_POSTBOOT_HOST:-}"
+DEPLOY_POSTBOOT_TIMEOUT="${DEPLOY_POSTBOOT_TIMEOUT:-120}"
 DEPLOY_RESUME="${DEPLOY_RESUME:-0}"
 DEPLOY_FRESH="${DEPLOY_FRESH:-0}"
 
 COMMAND="${1:-help}"
-[ $# -gt 0 ] && shift
+[ "$#" -gt 0 ] && shift
 
-while [ $# -gt 0 ]; do
+while [ "$#" -gt 0 ]; do
     case "$1" in
-        --apply)      DEPLOY_DRYRUN=0 ;;
-        --resume)     DEPLOY_RESUME=1 ;;
-        --fresh)      DEPLOY_FRESH=1 ;;
+        --apply)
+            DEPLOY_DRYRUN=0
+            ;;
+        --resume)
+            DEPLOY_RESUME=1
+            ;;
+        --fresh)
+            DEPLOY_FRESH=1
+            ;;
         --postboot-verify)
             DEPLOY_POSTBOOT_VERIFY=1
             ;;
-        --desktop) shift; DEPLOY_DESKTOP="${1:-}" ;;
-        --desktop-user) shift; DEPLOY_DESKTOP_USER="${1:-}" ;;
-        --login-manager) shift; DEPLOY_LOGIN_MANAGER="${1:-auto}" ;;
-        --allow-experimental-desktop) DEPLOY_ALLOW_EXPERIMENTAL_DESKTOP=1 ;;
-        --distro)     shift; DEPLOY_DISTRO="$1" ;;
-        --fs)         shift; DEPLOY_FS="$1" ;;
-        --disk)       shift; DEPLOY_DISK="$1" ;;
-        --target)     shift; DEPLOY_TARGET="$1" ;;
-        --init)       shift; DEPLOY_INIT="$1" ;;
-        --hostname)   shift; DEPLOY_HOSTNAME="$1" ;;
-        --user)       shift; DEPLOY_USER="$1" ;;
-        --encrypt)    DEPLOY_ENCRYPT=1 ;;
-        *) log_error "Unknown: $1"; exit 2 ;;
+        --desktop)
+            [ "$#" -ge 2 ] || { log_error 'Missing value for --desktop'; exit 2; }
+            shift
+            DEPLOY_DESKTOP=$1
+            ;;
+        --desktop-user)
+            [ "$#" -ge 2 ] || { log_error 'Missing value for --desktop-user'; exit 2; }
+            shift
+            DEPLOY_DESKTOP_USER=$1
+            ;;
+        --login-manager)
+            [ "$#" -ge 2 ] || { log_error 'Missing value for --login-manager'; exit 2; }
+            shift
+            DEPLOY_LOGIN_MANAGER=$1
+            ;;
+        --allow-experimental-desktop)
+            DEPLOY_ALLOW_EXPERIMENTAL_DESKTOP=1
+            ;;
+        --distro)
+            [ "$#" -ge 2 ] || { log_error 'Missing value for --distro'; exit 2; }
+            shift
+            DEPLOY_DISTRO=$1
+            ;;
+        --fs)
+            [ "$#" -ge 2 ] || { log_error 'Missing value for --fs'; exit 2; }
+            shift
+            DEPLOY_FS=$1
+            ;;
+        --disk)
+            [ "$#" -ge 2 ] || { log_error 'Missing value for --disk'; exit 2; }
+            shift
+            DEPLOY_DISK=$1
+            ;;
+        --target)
+            [ "$#" -ge 2 ] || { log_error 'Missing value for --target'; exit 2; }
+            shift
+            DEPLOY_TARGET=$1
+            ;;
+        --init)
+            [ "$#" -ge 2 ] || { log_error 'Missing value for --init'; exit 2; }
+            shift
+            DEPLOY_INIT=$1
+            ;;
+        --hostname)
+            [ "$#" -ge 2 ] || { log_error 'Missing value for --hostname'; exit 2; }
+            shift
+            DEPLOY_HOSTNAME=$1
+            ;;
+        --user)
+            [ "$#" -ge 2 ] || { log_error 'Missing value for --user'; exit 2; }
+            shift
+            DEPLOY_USER=$1
+            ;;
+        --encrypt)
+            DEPLOY_ENCRYPT=1
+            ;;
+        *)
+            log_error "Unknown: $1"
+            exit 2
+            ;;
     esac
     shift
 done
@@ -78,7 +134,9 @@ done
 export DEPLOY_TARGET DEPLOY_DISK DEPLOY_FS DEPLOY_DISTRO DEPLOY_INIT
 export DEPLOY_ENCRYPT DEPLOY_HOSTNAME DEPLOY_USER DEPLOY_DRYRUN DEPLOY_LOCALE
 export DEPLOY_RESUME DEPLOY_FRESH
-export DEPLOY_DESKTOP DEPLOY_DESKTOP_USER DEPLOY_LOGIN_MANAGER DEPLOY_ALLOW_EXPERIMENTAL_DESKTOP
+export DEPLOY_DESKTOP DEPLOY_DESKTOP_USER DEPLOY_LOGIN_MANAGER
+export DEPLOY_ALLOW_EXPERIMENTAL_DESKTOP
+export DEPLOY_POSTBOOT_VERIFY DEPLOY_POSTBOOT_HOST DEPLOY_POSTBOOT_TIMEOUT
 
 # ── Dispatch ──────────────────────────────────────────────────────────────────
 case "$COMMAND" in
@@ -93,7 +151,7 @@ Commands:
   preflight   Run hardware compatibility checks only
   install     Full install (all phases)
   rollback    Undo a failed installation
-  status      Show current phase state
+  status      Show state; optionally run postboot verification
   help        Show this help
 
 Options:
@@ -104,10 +162,19 @@ Options:
   --fs T        ext4|btrfs|xfs|f2fs (default: btrfs)
   --disk D      target disk, e.g. sda or nvme0n1
   --init I      $(deploy_list_inits | tr '\n' '|' | sed 's/|$//')
-  --hostname N  hostname (default: omni-linux)
+  --hostname N  hostname or postboot SSH host (default: omni-linux)
   --user N      create non-root user
   --encrypt     enable LUKS2 full-disk encryption
   --target DIR  mount point (default: /mnt)
+  --desktop P   install desktop or window-manager profile P
+  --desktop-user USER
+                configure the desktop for USER
+  --login-manager M
+                select the login manager
+  --allow-experimental-desktop
+                allow experimental desktop profiles
+  --postboot-verify
+                in status mode, run SSH and DISPLAY_OK verification
 HELP
         exit 0
         ;;
@@ -121,6 +188,7 @@ HELP
         printf '  encrypt:    %s\n' "$DEPLOY_ENCRYPT"
         printf '  hostname:   %s\n' "$DEPLOY_HOSTNAME"
         printf '  target:     %s\n' "$DEPLOY_TARGET"
+        printf '  desktop:    %s\n' "${DEPLOY_DESKTOP:-<none>}"
         printf '  mode:       %s\n' "$([ "$DEPLOY_DRYRUN" -eq 1 ] && echo DRY-RUN || echo APPLY)"
         printf '  root fs:    %s\n' "$(fs_root_type 2>/dev/null || echo unknown)"
         printf '  GPU hybrid: %s\n' "$(detect_gpu_hybrid 2>/dev/null || echo unknown)"
@@ -134,6 +202,15 @@ HELP
 
     status)
         deploy_state_summary
+        _status_rc=$?
+
+        if [ "$DEPLOY_POSTBOOT_VERIFY" = "1" ]; then
+            _pb_host="${DEPLOY_POSTBOOT_HOST:-$DEPLOY_HOSTNAME}"
+            postboot_verify "$_pb_host" "${DEPLOY_DESKTOP:-none}" "$DEPLOY_POSTBOOT_TIMEOUT"
+            exit $?
+        fi
+
+        exit "$_status_rc"
         ;;
 
     rollback)
@@ -145,36 +222,55 @@ HELP
         printf '  Universal Omni-Master — Installation\n'
         printf '══════════════════════════════════════\n'
 
-        [ "$DEPLOY_DRYRUN" -eq 1 ] && \
+        if [ "$DEPLOY_DRYRUN" -eq 1 ]; then
             printf '\n[DRY-RUN] No changes will be made. Use --apply.\n\n'
-
-        # Interactive selection
-        if [ -z "$DEPLOY_DISTRO" ]; then
-            printf '\nSelect distribution:\n'; deploy_list_distros
-            printf 'Choice: '; read -r DEPLOY_DISTRO
         fi
+
+        if [ -z "$DEPLOY_DISTRO" ]; then
+            printf '\nSelect distribution:\n'
+            deploy_list_distros
+            printf 'Choice: '
+            read -r DEPLOY_DISTRO
+        fi
+
         if [ -z "$DEPLOY_DISK" ]; then
             printf '\nAvailable disks:\n'
             storage_enumerate 2>/dev/null || lsblk -d -o NAME,SIZE 2>/dev/null
-            printf 'Target disk (e.g. sda): '; read -r DEPLOY_DISK
+            printf 'Target disk (e.g. sda): '
+            read -r DEPLOY_DISK
         fi
+
         if [ -z "$DEPLOY_INIT" ]; then
             DEPLOY_INIT=$(deploy_auto_detect_init "$DEPLOY_DISTRO")
             log_info "Auto-detected init: $DEPLOY_INIT"
         fi
 
-        # Plan display
         printf '\n══ PLAN ══\n'
         printf '  Distro:     %s (init: %s)\n' "$DEPLOY_DISTRO" "$DEPLOY_INIT"
         printf '  Filesystem: %s\n' "$DEPLOY_FS"
         printf '  Disk:       /dev/%s\n' "$DEPLOY_DISK"
         printf '  Encrypt:    %s\n' "$DEPLOY_ENCRYPT"
         printf '  Hostname:   %s\n' "$DEPLOY_HOSTNAME"
+        printf '  Desktop:    %s\n' "${DEPLOY_DESKTOP:-<none>}"
 
-        [ "$DEPLOY_DRYRUN" -eq 1 ] && { printf '\n[DRY-RUN] Remove --apply to exit.\n'; exit 0; }
+        if [ "$DEPLOY_DRYRUN" -eq 1 ]; then
+            printf '\n[DRY-RUN] Use --apply to execute the installation.\n'
+            exit 0
+        fi
 
         deploy_install_execute
-        exit $?
+        _install_rc=$?
+
+        if [ "$_install_rc" -eq 0 ] && [ "$DEPLOY_POSTBOOT_VERIFY" = "1" ]; then
+            _pb_host="${DEPLOY_POSTBOOT_HOST:-$DEPLOY_HOSTNAME}"
+            _pb_profile="${DEPLOY_DESKTOP:-none}"
+
+            printf '\nPostboot verification — after reboot, reconnect and run:\n'
+            printf '  DEPLOY_POSTBOOT_HOST=%s DEPLOY_DESKTOP=%s omni-deploy status --postboot-verify\n' \
+                "$_pb_host" "$_pb_profile"
+        fi
+
+        exit "$_install_rc"
         ;;
 
     *)
