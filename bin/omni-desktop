@@ -1,12 +1,13 @@
 #!/bin/sh
-# bin/omni-desktop — M27 desktop/WM profile engine.
+# bin/omni-desktop — M27.1 desktop/WM profile and telemetry engine.
 set -u
 
 _OMNI_ROOT="${OMNI_ROOT:-$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)}"
+export _OMNI_ROOT
 
 . "$_OMNI_ROOT/src/core/logging.sh" 2>/dev/null || true
-. "$_OMNI_ROOT/src/deploy/chroot.sh"
-. "$_OMNI_ROOT/src/deploy/configure.sh"
+. "$_OMNI_ROOT/src/deploy/chroot.sh" 2>/dev/null || true
+. "$_OMNI_ROOT/src/deploy/configure.sh" 2>/dev/null || true
 
 for _profile_file in "$_OMNI_ROOT"/src/desktop/profiles/*.sh; do
     [ -f "$_profile_file" ] || continue
@@ -14,40 +15,39 @@ for _profile_file in "$_OMNI_ROOT"/src/desktop/profiles/*.sh; do
 done
 
 . "$_OMNI_ROOT/src/desktop/common.sh"
+. "$_OMNI_ROOT/src/desktop/telemetry.sh"
 
 _usage() {
     cat << HELP
-omni-desktop — universal desktop and WM profile engine
+omni-desktop — universal desktop, WM, and telemetry engine
 
 Usage:
   omni-desktop list
   omni-desktop plan <profile> [options]
   omni-desktop install <profile> [options] [--apply]
-  omni-desktop telemetry <profile> [package]
-  omni-desktop verify <profile> [--root DIR]
+  omni-desktop telemetry <profile> [package] [options]
+  omni-desktop telemetry --dashboard [distro] [options]
+  omni-desktop verify <profile> [options]
 
 Options:
-  --root DIR               target root (default: /)
-  --distro NAME            override distro detection
-  --init NAME              override init detection
-  --user NAME              target desktop user
-  --login-manager NAME     auto|none|greetd|sddm|lightdm
-  --allow-experimental     allow experimental packaged profile
-  --apply                  perform package/service mutations
-
-Profiles:
-  niri sway hyprland xfce plasma awesome fluxbox dwm
-  mango       experimental
-  quickshell  add-on toolkit
-  hyde        external preset; manual review only
+  --root DIR
+  --distro NAME
+  --init NAME
+  --user NAME
+  --login-manager NAME
+  --allow-experimental
+  --apply
+  --format table|ndjson
+  --log FILE
+  --help
 HELP
 }
 
 COMMAND="${1:-help}"
 [ $# -gt 0 ] && shift || true
-PROFILE="${1:-}"
-[ $# -gt 0 ] && shift || true
 
+PROFILE=""
+TELEMETRY_PACKAGE=""
 ROOT_PATH="/"
 DISTRO=""
 INIT=""
@@ -55,21 +55,90 @@ USER_NAME="${DESKTOP_USER:-}"
 LOGIN_MANAGER="auto"
 ALLOW_EXPERIMENTAL=0
 APPLY=0
+FORMAT="table"
+AUDIT_LOG=""
 
 while [ $# -gt 0 ]; do
     case "$1" in
-        --root) shift; ROOT_PATH="${1:-/}" ;;
-        --distro) shift; DISTRO="${1:-}" ;;
-        --init) shift; INIT="${1:-}" ;;
-        --user) shift; USER_NAME="${1:-}" ;;
-        --login-manager) shift; LOGIN_MANAGER="${1:-auto}" ;;
-        --allow-experimental) ALLOW_EXPERIMENTAL=1 ;;
-        --apply) APPLY=1 ;;
-        --help|-h) _usage; exit 0 ;;
-        *) printf 'omni-desktop: unknown option %s\n' "$1" >&2; exit 2 ;;
+        --root)
+            [ $# -ge 2 ] || { printf 'omni-desktop: --root requires a value\n' >&2; exit 2; }
+            shift
+            ROOT_PATH="$1"
+            ;;
+        --distro)
+            [ $# -ge 2 ] || { printf 'omni-desktop: --distro requires a value\n' >&2; exit 2; }
+            shift
+            DISTRO="$1"
+            ;;
+        --init)
+            [ $# -ge 2 ] || { printf 'omni-desktop: --init requires a value\n' >&2; exit 2; }
+            shift
+            INIT="$1"
+            ;;
+        --user)
+            [ $# -ge 2 ] || { printf 'omni-desktop: --user requires a value\n' >&2; exit 2; }
+            shift
+            USER_NAME="$1"
+            ;;
+        --login-manager)
+            [ $# -ge 2 ] || { printf 'omni-desktop: --login-manager requires a value\n' >&2; exit 2; }
+            shift
+            LOGIN_MANAGER="$1"
+            ;;
+        --allow-experimental)
+            ALLOW_EXPERIMENTAL=1
+            ;;
+        --apply)
+            APPLY=1
+            ;;
+        --format)
+            [ $# -ge 2 ] || { printf 'omni-desktop: --format requires a value\n' >&2; exit 2; }
+            shift
+            FORMAT="$1"
+            ;;
+        --log)
+            [ $# -ge 2 ] || { printf 'omni-desktop: --log requires a value\n' >&2; exit 2; }
+            shift
+            AUDIT_LOG="$1"
+            ;;
+        --dashboard)
+            [ "$COMMAND" = "telemetry" ] || {
+                printf 'omni-desktop: --dashboard is valid only for telemetry\n' >&2
+                exit 2
+            }
+            PROFILE="--dashboard"
+            ;;
+        --help|-h)
+            _usage
+            exit 0
+            ;;
+        --*)
+            printf 'omni-desktop: unknown option %s\n' "$1" >&2
+            exit 2
+            ;;
+        *)
+            if [ -z "$PROFILE" ]; then
+                PROFILE="$1"
+            elif [ "$COMMAND" = "telemetry" ] &&
+                 [ -z "$TELEMETRY_PACKAGE" ]; then
+                TELEMETRY_PACKAGE="$1"
+            else
+                printf 'omni-desktop: unexpected positional argument %s\n' "$1" >&2
+                exit 2
+            fi
+            ;;
     esac
+
     shift
 done
+
+if [ "$COMMAND" = "telemetry" ] &&
+   [ "$PROFILE" = "--dashboard" ] &&
+   [ -n "$TELEMETRY_PACKAGE" ] &&
+   [ -z "$DISTRO" ]; then
+    DISTRO="$TELEMETRY_PACKAGE"
+    TELEMETRY_PACKAGE=""
+fi
 
 [ -n "$DISTRO" ] || DISTRO=$(desktop_detect_distro "$ROOT_PATH")
 [ -n "$INIT" ] || INIT=$(desktop_detect_init "$ROOT_PATH")
@@ -85,25 +154,44 @@ case "$COMMAND" in
         ;;
     install)
         [ -n "$PROFILE" ] || { _usage; exit 2; }
+
         if [ "$APPLY" -ne 1 ]; then
             desktop_plan_profile "$PROFILE" "$ROOT_PATH" "$DISTRO" \
                 "$ALLOW_EXPERIMENTAL"
             printf 'desktop: dry-run only; add --apply to install\n' >&2
             exit 0
         fi
+
         [ -n "$USER_NAME" ] || {
             printf 'desktop: --user is required for install\n' >&2
             exit 2
         }
-        desktop_install_profile "$PROFILE" "$ROOT_PATH" "$DISTRO" "$INIT" \
-            "$USER_NAME" "$LOGIN_MANAGER" "$ALLOW_EXPERIMENTAL"
+
+        desktop_install_profile \
+            "$PROFILE" \
+            "$ROOT_PATH" \
+            "$DISTRO" \
+            "$INIT" \
+            "$USER_NAME" \
+            "$LOGIN_MANAGER" \
+            "$ALLOW_EXPERIMENTAL"
         ;;
     telemetry)
-        [ -n "$PROFILE" ] || { _usage; exit 2; }
-        if [ -n "${1:-}" ]; then
-            desktop_telemetry_percent "$DISTRO" "$PROFILE" "$1"
+        _audit_log="${AUDIT_LOG:-${ROOT_PATH%/}/var/log/omni-audit.json}"
+
+        if [ "$PROFILE" = "--dashboard" ]; then
+            desktop_telemetry_dashboard "$DISTRO" "$_audit_log" "$FORMAT"
+        elif [ -n "$PROFILE" ]; then
+            if [ -n "$TELEMETRY_PACKAGE" ]; then
+                desktop_telemetry_package_stats \
+                    "$DISTRO" "$PROFILE" "$TELEMETRY_PACKAGE" "$_audit_log"
+            else
+                desktop_telemetry_profile_stats \
+                    "$DISTRO" "$PROFILE" "$_audit_log"
+            fi
         else
-            desktop_success_percent "$DISTRO" "$PROFILE"
+            _usage
+            exit 2
         fi
         ;;
     verify)

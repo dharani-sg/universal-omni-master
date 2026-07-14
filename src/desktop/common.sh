@@ -50,24 +50,35 @@ desktop_detect_init() {
 desktop_profile_query() {
     _profile="$1"
     _field="$2"
+
     case "$_profile" in
-        niri)       desktop_profile_niri "$_field" ;;
-        sway)       desktop_profile_sway "$_field" ;;
-        hyprland)   desktop_profile_hyprland "$_field" ;;
-        xfce)       desktop_profile_xfce "$_field" ;;
-        plasma)     desktop_profile_plasma "$_field" ;;
-        awesome)    desktop_profile_awesome "$_field" ;;
-        fluxbox)    desktop_profile_fluxbox "$_field" ;;
-        dwm)        desktop_profile_dwm "$_field" ;;
-        mango)      desktop_profile_mango "$_field" ;;
-        quickshell) desktop_profile_quickshell "$_field" ;;
-        hyde)       desktop_profile_hyde "$_field" ;;
-        *) return 2 ;;
+        ''|*[!A-Za-z0-9_]*) return 2 ;;
     esac
+
+    _profile_function="desktop_profile_${_profile}"
+    command -v "$_profile_function" >/dev/null 2>&1 || return 2
+    "$_profile_function" "$_field"
+}
+
+desktop_profile_names() {
+    _profile_dir="${DESKTOP_PROFILE_DIR:-${_OMNI_ROOT:-.}/src/desktop/profiles}"
+
+    for _file in "$_profile_dir"/*.sh; do
+        [ -f "$_file" ] || continue
+        _name=${_file##*/}
+        _name=${_name%.sh}
+
+        case "$_name" in
+            ''|*[!A-Za-z0-9_]*) continue ;;
+        esac
+
+        printf '%s\n' "$_name"
+    done | LC_ALL=C sort
 }
 
 desktop_list_profiles() {
-    for _profile in niri sway hyprland xfce plasma awesome fluxbox dwm mango quickshell hyde; do
+    desktop_profile_names | while IFS= read -r _profile; do
+        [ -n "$_profile" ] || continue
         printf '%-12s kind=%-8s support=%s\n' \
             "$_profile" \
             "$(desktop_profile_query "$_profile" kind)" \
@@ -164,7 +175,13 @@ desktop_plan_profile() {
 
     _required=$(desktop_profile_query "$_profile" required)
     _recommended=$(desktop_profile_query "$_profile" recommended)
-    _base=$(desktop_base_packages "$_distro")
+
+    if [ "$_kind" = "addon" ]; then
+        _base=""
+    else
+        _base=$(desktop_base_packages "$_distro")
+    fi
+
     _missing=0
 
     printf 'profile=%s distro=%s kind=%s support=%s\n' \
@@ -227,26 +244,29 @@ desktop_enable_core_services() {
 
     case "$_init" in
         systemd)
-            deploy_enable_services "$_root" "$_init" \
-                dbus NetworkManager bluetooth "$_login_manager"
+            _services="dbus NetworkManager bluetooth"
             ;;
         openrc)
-            deploy_enable_services "$_root" "$_init" \
-                dbus networkmanager bluetooth seatd "$_login_manager"
+            _services="dbus networkmanager bluetooth seatd"
             ;;
         runit)
-            deploy_enable_services "$_root" "$_init" \
-                dbus NetworkManager bluetoothd seatd "$_login_manager"
+            _services="dbus NetworkManager bluetoothd seatd"
             ;;
         dinit|s6)
-            deploy_enable_services "$_root" "$_init" \
-                dbus NetworkManager bluetooth seatd "$_login_manager"
+            _services="dbus NetworkManager bluetooth seatd"
             ;;
         *)
             printf 'desktop: unknown init; service enablement skipped\n' >&2
             return 1
             ;;
     esac
+
+    if [ -n "$_login_manager" ] &&
+       [ "$_login_manager" != "none" ]; then
+        _services="$_services $_login_manager"
+    fi
+
+    deploy_enable_services "$_root" "$_init" $_services
 }
 
 desktop_telemetry_percent() {
@@ -348,6 +368,7 @@ desktop_mark_firstboot_pending() {
 }
 
 desktop_emit_event() {
+    desktop_guard_mutation || return $?
     _root="$1"
     _distro="$2"
     _profile="$3"
@@ -384,10 +405,16 @@ desktop_install_profile() {
     desktop_plan_profile "$_profile" "$_root" "$_distro" \
         "$_allow_experimental" >/dev/null || return $?
 
+    if [ "$_kind" = "addon" ]; then
+        _install_base=""
+    else
+        _install_base=$(desktop_base_packages "$_distro")
+    fi
+
     _packages=""
     for _pkg in \
         $(desktop_profile_query "$_profile" required) \
-        $(desktop_base_packages "$_distro") \
+        $_install_base \
         $(desktop_profile_query "$_profile" recommended)
     do
         if desktop_pkg_available "$_root" "$_distro" "$_pkg"; then
@@ -408,15 +435,16 @@ desktop_install_profile() {
         _login_manager=$(desktop_profile_query "$_profile" login_manager)
     fi
 
-    if [ "$_login_manager" != "none" ]; then
-        if desktop_pkg_available "$_root" "$_distro" "$_login_manager"; then
-            desktop_install_packages "$_root" "$_distro" "$_login_manager" ||
-                return 1
-            desktop_enable_core_services "$_root" "$_init" "$_login_manager" ||
-                return 1
-        fi
-    else
-        desktop_enable_core_services "$_root" "$_init" none || true
+    desktop_enable_core_services "$_root" "$_init" none || return 1
+
+    if [ -n "$_login_manager" ] &&
+       [ "$_login_manager" != "none" ] &&
+       desktop_pkg_available "$_root" "$_distro" "$_login_manager"
+    then
+        desktop_install_packages "$_root" "$_distro" "$_login_manager" ||
+            return 1
+        deploy_enable_services "$_root" "$_init" "$_login_manager" ||
+            return 1
     fi
 
     if ! desktop_verify_static "$_profile" "$_root"; then
