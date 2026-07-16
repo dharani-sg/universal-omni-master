@@ -18,10 +18,7 @@ healer_load_conf() {
     :
 }
 
-# Minimal JSON escaping: backslash, double-quote, control chars stripped.
-_json_escape() {
-    printf '%s' "$1" | tr -d '\000-\037' | sed 's/\\/\\\\/g; s/"/\\"/g'
-}
+# _json_escape inherited from core/utils.sh
 
 # Unified structured audit event (M6 integration point)
 healer_emit() {
@@ -47,36 +44,17 @@ healer_backoff() {
     printf '%s' "$_iv"
 }
 
-# Init-agnostic service status (M2 pattern)
+# Delegates to init module's svc_status (from core/utils.sh → init/interface.sh)
 healer_svc_active() {
-    _svc="$1"
-    if [ -d /run/systemd/system ]; then
-        systemctl is-active "$_svc" >/dev/null 2>&1
-    elif [ -d /run/openrc ]; then
-        rc-service "$_svc" status >/dev/null 2>&1
-    elif [ -d /var/service ] || [ -d /run/runit ]; then
-        sv status "$_svc" 2>/dev/null | grep -q '^run:'
-    elif command -v dinitctl >/dev/null 2>&1; then
-        dinitctl status "$_svc" 2>/dev/null | grep -qi started
-    else
-        return 0  # unknown init: assume healthy, never thrash
-    fi
+    command -v svc_status >/dev/null 2>&1 || return 0
+    _st=$(svc_status "$1" 2>/dev/null)
+    [ "$_st" = "running" ]
 }
 
-# Init-agnostic service restart (M2 pattern)
+# Delegates to init module's svc_restart (from core/utils.sh → init/interface.sh)
 healer_svc_restart() {
-    _svc="$1"
-    if [ -d /run/systemd/system ]; then
-        systemctl restart "$_svc" 2>/dev/null
-    elif [ -d /run/openrc ]; then
-        rc-service "$_svc" restart 2>/dev/null
-    elif [ -d /var/service ] || [ -d /run/runit ]; then
-        sv restart "$_svc" 2>/dev/null
-    elif command -v dinitctl >/dev/null 2>&1; then
-        dinitctl restart "$_svc" 2>/dev/null
-    else
-        return 1
-    fi
+    command -v svc_restart >/dev/null 2>&1 || return 1
+    svc_restart "$1" 2>/dev/null
 }
 
 # Ensure runtime directories exist. Called from bin/omni-healer at startup.

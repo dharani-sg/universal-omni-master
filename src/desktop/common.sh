@@ -13,10 +13,7 @@ desktop_guard_mutation() {
     return 0
 }
 
-_desktop_json_escape() {
-    printf '%s' "$1" | tr -d '\000-\037' |
-        sed 's/\\/\\\\/g; s/"/\\"/g'
-}
+# _json_escape inherited from core/utils.sh
 
 desktop_detect_distro() {
     _root="${1:-$DESKTOP_ROOT}"
@@ -377,10 +374,10 @@ desktop_emit_event() {
     _log="$_root/var/log/omni-audit.json"
     mkdir -p "${_log%/*}" 2>/dev/null || true
     printf '{"event":"desktop_install_result","distro":"%s","profile":"%s","status":"%s","packages":"%s"}\n' \
-        "$(_desktop_json_escape "$_distro")" \
-        "$(_desktop_json_escape "$_profile")" \
-        "$(_desktop_json_escape "$_status")" \
-        "$(_desktop_json_escape "$_packages")" >> "$_log"
+        "$(_json_escape "$_distro")" \
+        "$(_json_escape "$_profile")" \
+        "$(_json_escape "$_status")" \
+        "$(_json_escape "$_packages")" >> "$_log"
 }
 
 desktop_install_profile() {

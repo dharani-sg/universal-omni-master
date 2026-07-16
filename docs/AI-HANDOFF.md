@@ -25,11 +25,11 @@
 | M21 | v0.21.0 | manager |
 | M22 | v0.22.0 | (KVM testbed - library only) |
 | M23-M23.1 | v0.23.0-v0.23.1 | saas |
-| M24 | v0.24.1 | patcher |
+| M24 | v0.24.1 | patcher (includes sentinel from M41) |
 | M25 | v0.25.0 | compliance |
 | M26 | v0.26.0 | openclaw |
 
-Total: 16 CLI tools, 260+ automated assertions.
+Total: 17 CLI tools, 300+ automated assertions.
 
 ## Bug History (DO NOT REPEAT)
 1. set -- clobbers $@ (M12)
@@ -53,6 +53,12 @@ Total: 16 CLI tools, 260+ automated assertions.
 ## Next Phase
 M27: Termux Native Polish (haptic feedback, push notifications, portrait optimization)
 M28+: Zero-trust networking, predictive healing, fleet AI orchestration
+
+## Consolidation Log (2026-07-16)
+- M41 (OpenCode Sentinel) merged into M24 (AI-Patcher) — sentinel is now a feature, not standalone
+- JSON escapers: 4 duplicates → 2 (canonical in core/utils.sh + postboot variant)
+- Service-status: 3 duplicates → 1 (canonical via init modules, healer delegates)
+- All files pass sh -n syntax check
 
 ## Recovery Prompt
 Read this file, then run:

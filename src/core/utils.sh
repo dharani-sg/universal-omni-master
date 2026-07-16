@@ -37,8 +37,8 @@ _osrel_field() {
     grep -E "^$2=" "$1" 2>/dev/null | head -n 1 | cut -d= -f2- | sed 's/^"//; s/"$//'
 }
 
-# JSON string escaper (minimal: backslash and double-quote).
-_json_escape() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
+# JSON string escaper — strips control chars, escapes backslash and double-quote.
+_json_escape() { printf '%s' "$1" | tr -d '\000-\037' | sed 's/\\/\\\\/g; s/"/\\"/g'; }
 
 # Emit one JSON key:value pair (string). usage: json_kv key value [trailing_comma]
 json_kv() {

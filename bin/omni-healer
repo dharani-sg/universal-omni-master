@@ -4,6 +4,8 @@ set -u
 
 _OMNI_ROOT="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)"
 . "$_OMNI_ROOT/src/core/logging.sh"
+. "$_OMNI_ROOT/src/core/utils.sh"
+. "$_OMNI_ROOT/src/init/interface.sh"
 . "$_OMNI_ROOT/src/healer/common.sh"
 . "$_OMNI_ROOT/src/healer/storage.sh"
 . "$_OMNI_ROOT/src/healer/services.sh"

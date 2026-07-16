@@ -6,6 +6,7 @@ _OMNI_ROOT="${OMNI_ROOT:-$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)}"
 export _OMNI_ROOT
 
 . "$_OMNI_ROOT/src/core/logging.sh" 2>/dev/null || true
+. "$_OMNI_ROOT/src/core/utils.sh" 2>/dev/null || true
 . "$_OMNI_ROOT/src/deploy/chroot.sh" 2>/dev/null || true
 . "$_OMNI_ROOT/src/deploy/configure.sh" 2>/dev/null || true
 
