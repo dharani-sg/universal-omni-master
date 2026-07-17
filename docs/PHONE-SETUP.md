@@ -1,4 +1,4 @@
-# UOM Phone Setup Guide (v0.29.0)
+# UOM Phone Setup Guide (v0.29.1)
 
 ## Quick Bootstrap (Phone)
 
@@ -9,10 +9,10 @@ curl -fsSL https://raw.githubusercontent.com/dharani-sg/universal-omni-master/ma
 The bootstrap auto-detects Termux/Android and:
 1. Installs packages: tmux, openssh, git, golang, curl, jq, autossh, mosh
 2. Builds opencode from Go source (npm is rejected on ARM64)
-3. Clones the UOM repo
+3. Clones the UOM repo (handles dirty state via `git stash`)
 4. Generates ed25519 SSH key
-5. Configures SSH config with laptop aliases
-6. Sets up tmux with UOM layout
+5. Configures SSH config with laptop aliases (tunnel/LAN/mDNS)
+6. Sets up tmux with UOM dual-pane layout
 7. Installs reverse tunnel script
 8. Starts reverse tunnel (best-effort — laptop may be offline)
 
@@ -55,7 +55,7 @@ bash ~/bin/uom-reverse-ssh.sh
 
 Verify from laptop:
 ```sh
-ssh -o ConnectTimeout=5 127.0.0.1 -p 18022 echo "TUNNEL OK"
+ssh -o ConnectTimeout=5 127.0.0.1 -p 31415 echo "TUNNEL OK"
 ```
 
 ### 5. Start tmux Session
@@ -74,5 +74,18 @@ cd ~/src/universal-omni-master
 
 ## Watchdog
 
-The watchdog runs every 60s, checking laptop reachability. After 3 consecutive failures (~15 min), it triggers solo mode.
-<!-- last-sync: 2026-07-17T07:35:34Z -->
+The watchdog runs every 60s, checking laptop reachability via `discover_laptop_ip()`. After 3 consecutive failures (~15 min), it triggers solo orchestrator. When laptop recovers, sets `dual-pending` — requires explicit confirmation to resume dual mode.
+
+## Current State (v0.29.1)
+
+- Dual-agent: alive (laptop heartbeat 13:27, phone heartbeat 13:26 IST)
+- Task M02-state-sync: failed on phone (opencode PATH issue)
+- Takeover count: 1 (phone solo mode triggered during laptop idle)
+
+## Next Steps
+
+1. Fix M02-state-sync: ensure `opencode` is in PATH on phone
+2. Verify reverse tunnel: `ssh -p 31415 127.0.0.1 echo OK`
+3. Resume dual-agent loop: laptop primary, phone as verification
+
+<!-- last-sync: 2026-07-17T08:00:00Z -->

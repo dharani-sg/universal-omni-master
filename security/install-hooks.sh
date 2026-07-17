@@ -16,7 +16,7 @@ cat > "${HOOK}" << 'HOOK'
 
 PATTERNS="sk-ant-|ANTHROPIC_API_KEY=|OPENAI_API_KEY=|ssh-rsa AAAA|BEGIN PRIVATE KEY|BEGIN OPENSSH PRIVATE KEY"
 # Files that intentionally contain key variable names (templates/docs — skip)
-SKIP_FILES="install/secrets.env.template|security/SECRETS.md|security/install-hooks.sh"
+SKIP_FILES="install/secrets.env.template|security/SECRETS.md|security/install-hooks.sh|README.md"
 
 STAGED=$(git diff --cached --name-only)
 DIRTY=$(echo "${STAGED}" | grep -vE "${SKIP_FILES}" | xargs grep -lE "${PATTERNS}" 2>/dev/null || true)

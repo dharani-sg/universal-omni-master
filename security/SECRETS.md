@@ -47,4 +47,17 @@ sh security/install-hooks.sh
 
 If it's a secret, it goes in `~/.config/uom/secrets.env`, not in any tracked file.
 
-<!-- last-sync: 2026-07-17T07:35:34Z -->
+## Example (Fake — For Documentation Only)
+
+```sh
+# ~/.config/uom/secrets.env (mode 600)
+ANTHROPIC_API_KEY="sk-ant-thisIsAFakeExampleKeyForDocumentationOnly"
+OPENAI_API_KEY="sk-thisIsAlsoFakeDoNotUseInProduction"
+GITHUB_TOKEN="ghp_thisTokenIsExampleOnlyReplaceWithRealOne"
+UOM_LAPTOP_USER="alpine"
+UOM_REV_PORT="31415"
+```
+
+> **Warning:** These are FAKE examples. Never commit real API keys. The pre-commit hook blocks `sk-ant-`, `ANTHROPIC_API_KEY=`, and `BEGIN PRIVATE KEY` patterns.
+
+<!-- last-sync: 2026-07-17T08:00:00Z -->

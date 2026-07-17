@@ -1,4 +1,4 @@
-# Universal Omni-Master — Durable AI Handoff (v0.29.0)
+# Universal Omni-Master — Durable AI Handoff (v0.29.1)
 
 ## Repository Identity
 - Project root: ~/src/universal-omni-master
@@ -8,6 +8,10 @@
 - Secondary host: Void Linux (glibc, runit)
 - Hardware: HP Pavilion 15-n010tx (degraded SATA cable, UDMA_CRC baseline 5360)
 - Phone: Xiaomi Mi 8 / CrDroid Android 15 / Termux ARM64
+- Active agent: laptop (latest heartbeat 13:27 IST)
+- Phone heartbeat: 13:26 IST — dual-agent alive
+- Current task: M02-state-sync (failed — retry pending)
+- Takeover count: 1 (phone took over during laptop idle)
 
 ## Immutable Rules
 1. POSIX sh only. Zero bashisms. Zero eval. Zero set --.
@@ -55,8 +59,14 @@ Total: 17 CLI tools, 300+ automated assertions.
 
 ## Next Phase
 M28: Dual-Agent Orchestration (laptop+phone) ✓
-M29: Bootstrap Installer + Phone-Solo Mode + Security Hardening ← CURRENT
-M30+: Full dual-agent loop, network stress tests, power-failure recovery
+M29: Bootstrap Installer + Phone-Solo Mode + Security Hardening ✓
+M30: Full Dual-Agent Loop Active — laptop primary, phone verification agent ← NEXT
+M31: Network Switching Stress Test — hotspot ↔ LAN ↔ mDNS transitions
+M32: Power-Failure Recovery Test — kill laptop, watch phone takeover, restore dual
+M33–M42: Horizon tech (Post-Quantum, Predictive AI, eBPF, Edge, TEE, MCP, Federation)
+M43–M50: Commercialization (Enterprise licensing, Omni-Cloud, AI Marketplace, FinOps)
+
+**Immediate: Fix M02-state-sync — root cause unknown, likely path/opencode issue on phone**
 
 ---
 
@@ -218,6 +228,22 @@ M30+: Full dual-agent loop, network stress tests, power-failure recovery
 | vimix | 14 | background.jpg | 76 | terminus-12.pf2 | ✓ |
 | whitesur | 23 | background.jpg | 76 | terminus-12.pf2 | ✓ |
 
+### 2026-07-17 13:45 — v0.29.1: README Overhaul + M43-M50 Commercialization
+**Commits:** (v0.29.1 — README rewrite)
+- **READMe.md** complete overhaul: $2.6T AI market context (Gartner), Agentic Economy positioning, Hyperautomation 2.0, AI FinOps, Zero-Trust Bootstrap
+- **Added M43-M50** commercialization phases: Enterprise Bundle, Omni-Cloud Managed, AI Agent Marketplace, Compliance Suite, FinOps Dashboard, MCP Gateway, Edge Federation, Omni-Genesis white-label
+- **Randomized IPs/secrets** in docs (10.88.12.50/215, port 31415, fake API key examples)
+- **Dual-agent arch diagram** updated with randomized IPs
+- All doc sync timestamps updated to 2026-07-17T08:00:00Z
+- Void sync: sda3 mounted, rsync completed
+
+**Current state:**
+- HEAD: ~v0.29.1 (README overhaul committed)
+- Active agent: laptop (heartbeat 13:27), phone heartbeat 13:26
+- Task M02-state-sync: failed — root cause unknown, likely phone-side opencode PATH issue
+- Takeover count: 1 (phone solo mode triggered during laptop idle)
+- All MD files synced, Void distro synced, git pushed
+
 ### 2026-07-17 13:00 — v0.29.0: Bootstrap + Solo Mode + Security Hardening
 
 **Commits:** (v0.29.0 — see git log)
@@ -252,7 +278,16 @@ Read this file, then run:
   git status --short
   git log --oneline --decorate -10
   git tag --sort=-version:refname | head -20
-Report: branch, commit, tags, dirty files, latest milestone, failing gates.
+  cat .uom-agent/state.json
+  cat .uom-agent/queue.json
+Report: branch, commit, tags, dirty files, latest milestone, active agent, current task, failing gates.
 Never push unless all gates pass.
 
-<!-- last-sync: 2026-07-17T07:35:34Z -->
+## Next Session Instructions
+1. Fix M02-state-sync (phone-side opencode PATH or permissions)
+2. Verify reverse tunnel (31415) from both devices
+3. Run `git pull --rebase` to catch up remote heartbeats
+4. Continue M30: full dual-agent loop active (laptop primary, phone verify)
+5. See docs/ROADMAP.md for full phase list
+
+<!-- last-sync: 2026-07-17T08:00:00Z -->

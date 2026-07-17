@@ -1,15 +1,18 @@
-# UOM Roadmap (v0.29.0 — 2026-07-17)
+# UOM Roadmap (v0.29.1 — 2026-07-17)
 
 ## Current Status
 
-- **HEAD:** 5f658dc / 75a051d (v0.28.0+ — dual-agent phase)
+- **HEAD:** ~v0.29.1 (README overhaul + M43-M50 commercialization)
+- **Active agent:** laptop (heartbeat 13:27 IST)
+- **Phone heartbeat:** 13:26 IST — dual-agent alive
+- **Current task:** M02-state-sync (failed — retry pending)
+- **Takeover count:** 1 (phone solo mode triggered during laptop idle)
 - **Kernel:** 7.2.0-rc3_1
 - **Boot:** GRUB NORD theme, EFI stubs, initramfs all intact
 - **Dynamic IP discovery:** Working (6-method cascade)
-- **Dual-agent state machine:** Wired (schema v1), currently idle
-- **Reverse tunnel (18022):** DOWN — needs phone-side start
-- **Disk:** sda4=85%, sda3 (Void) unmounted
-- **SATA CRC:** 5361 (degraded cable — avoid large writes to sda4)
+- **Reverse tunnel (31415):** DOWN — needs phone-side `bash bin/uom-reverse-ssh.sh`
+- **Disk:** sda4=85%, sda3 (Void) mounted and synced
+- **SATA CRC:** 5361 (degraded cable — avoid large writes to primary disk)
 
 ---
 
@@ -27,31 +30,37 @@
 - Dual orchestrators (laptop primary, phone secondary)
 - Termux:Boot auto-start
 
-### 🔄 Phase 3: Bootstrap Installer + Phone-Solo Mode (CURRENT)
+### ✅ Phase 3: Bootstrap Installer + Phone-Solo Mode
 - `install/bootstrap.sh` — universal curl installer
 - `install/bootstrap-termux.sh` — full Termux/ARM64 setup
 - `install/bootstrap-laptop.sh` — Alpine Linux setup
 - `orchestrators/uom-solo-orchestrator.sh` — phone-only fallback
 - `orchestrators/uom-watchdog.sh` — laptop reachability monitor
 
-### 🚧 Phase 4: Security Hardening (CURRENT)
+### ✅ Phase 4: Security Hardening
 - `security/uom-harden-ssh.sh` — ed25519-only, key modes
-- `security/uom-firewall.sh` — nftables (22, 18022, established)
+- `security/uom-firewall.sh` — nftables (22, 31415, established)
 - `security/install-hooks.sh` — pre-commit secret scanner
 - `security/SECRETS.md` — secrets storage pattern
 - `.gitignore` — secrets patterns
 
-### 📋 Phase 5: opencode on Phone via Go Build
-Termux ARM64: npm rejected, `go install` confirmed working.
+### 📋 Phase 5: Full Dual-Agent Loop Active ← NEXT
+- Laptop primary, phone as verification agent
+- Fix M02-state-sync (phone-side opencode PATH issue)
+- Verify reverse tunnel from both devices
+- Enable continuous heartbeats + task processing
 
-### 📋 Phase 6: Full Dual-Agent Loop Active
-Laptop primary, phone as verification agent.
+### 📋 Phase 6: Network Switching Stress Test
+- Hotspot ↔ LAN ↔ mDNS transitions
+- Verify tunnel survives IP changes
 
-### 📋 Phase 7: Network Switching Stress Test
-Hotspot ↔ LAN ↔ mDNS transitions.
+### 📋 Phase 7: Power-Failure Recovery Test
+- Kill laptop, watch phone takeover, restore dual mode
 
-### 📋 Phase 8: Power-Failure Recovery Test
-Kill laptop, watch phone takeover, restore dual mode.
+### 📋 Phase 8: Commercialization (M43-M50)
+- Enterprise bundle, Omni-Cloud managed, AI Marketplace
+- Compliance Suite, FinOps Dashboard, MCP Gateway
+- Edge Federation, white-label OEM
 
 ---
 
@@ -65,7 +74,8 @@ Kill laptop, watch phone takeover, restore dual mode.
 | M16-M20 | v0.16.0-v0.20.0 | ✅ Sealed |
 | M21-M26 | v0.21.0-v0.26.0 | ✅ Sealed |
 | M27 | v0.27.0-v0.27.4 | ✅ Sealed |
-| M28 (Dual-Agent) | v0.28.0 | ✅ Phase 1-2 done |
-| **M29 (Bootstrap+Solo+Security)** | **v0.29.0** | **🚧 In progress** |
+| M28 (Dual-Agent Phase 1) | v0.28.0 | ✅ Sealed |
+| **M29 (Bootstrap+Solo+Security)** | **v0.29.0** | **✅ Sealed** |
+| **M30 (Full Dual-Agent Loop)** | **v0.30.0** | **⏳ Next** |
 
-<!-- last-sync: 2026-07-17T07:35:34Z -->
+<!-- last-sync: 2026-07-17T08:00:00Z -->
