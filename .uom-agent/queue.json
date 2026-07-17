@@ -11,7 +11,7 @@
     "desc": "Verify dual-agent state sync between laptop and phone",
     "context_file": ".uom-agent/context/M02-state-sync.md",
     "priority": 2,
-    "status": "in_progress"
+    "status": "failed"
   },
   {
     "id": "M30-termux-native",
