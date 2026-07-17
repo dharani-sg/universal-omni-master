@@ -30,6 +30,10 @@
   <a href="#-quick-start">Quick Start</a> •
   <a href="#-validated-environments">Environments</a> •
   <a href="#-the-uom-manifesto">Manifesto</a> •
+  <a href="docs/SCRIPT-CATALOG.md">Catalog</a> •
+  <a href="docs/CONCURRENCY.md">Concurrency</a> •
+  <a href="docs/NETWORK-DRIFT.md">Network</a> •
+  <a href="docs/ZEN-LOOP.md">Zen Loop</a> •
   <a href="#-commercial-licensing">License</a>
 </p>
 
@@ -149,6 +153,12 @@ The **Zen Loop** is a cloud-only code generation pipeline that replaces local LL
 | `scripts/uom-generator.sh` | Cloud code generator via opencode stdin with retry + fallback |
 | `scripts/uom-verifier.sh` | Syntax/policy verifier (no LLM calls) |
 | `scripts/uom-proot-setup.sh` | Cloud env verifier (curl/jq/internet) |
+
+**Reference documentation:**
+- `docs/ZEN-LOOP.md` — Full Zen Loop architecture, singleton protection, verifier rejection
+- `docs/SCRIPT-CATALOG.md` — Complete script inventory with caller/callee map
+- `docs/CONCURRENCY.md` — Conflict matrix, canonical service ownership, singleton patterns
+- `docs/NETWORK-DRIFT.md` — Network drift problem, guardian behavior, discovery methods
 
 **Usage:**
 ```sh
@@ -780,6 +790,9 @@ The orchestrator handles abrupt termination through:
 - **doas TTY requirement:** Never invoke root commands from opencode subprocess — always run manually from terminal
 - **Pre-commit hook:** Installed via `sh security/install-hooks.sh` — blocks accidental secret commits
 - **Cloud-only architecture:** Zero local LLM. All generation uses `opencode --model opencode/deepseek-v4-flash-free` (free tier). Requires internet at generation time. No fallback to local if cloud unreachable (generator uses stub output on 3rd failure).
+- **Port 18022 retired:** All active references replaced with port 31415 (commit d908a8c). The verifier (`scripts/uom-verifier.sh`) and dry-run suite (`scripts/uom-dryrun.sh`) now reject any remaining 18022 references in production code.
+- **M30.5 completed:** Void Linux runit service files deferred post-M30.5. See `docs/VOID-SYNC.md` and `docs/CONCURRENCY.md` for current status.
+- **Script catalog:** Full inventory at `docs/SCRIPT-CATALOG.md` — includes caller/callee map, duplicate detection, and service ownership documentation.
 
 ---
 
