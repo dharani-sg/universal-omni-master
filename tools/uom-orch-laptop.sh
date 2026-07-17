@@ -99,9 +99,33 @@ Implement the task. Output complete file paths and full file contents."
     return $?
 }
 
+# ── Clean stale SSH port forward on laptop side ──────────────────────────
+# When phone reboots and re-establishes tunnel, laptop-side sshd still holds
+# the old forwarding session. Kill it before the new tunnel can claim port 18022.
+_clean_laptop_tunnel_port() {
+    _laptop_user="${UOM_LAPTOP_USER:-alpine}"
+    # Try reverse tunnel first, then direct LAN
+    for _target in "-p 18022 u0_a608@127.0.0.1" "alpine@192.168.40.90"; do
+        ssh -o ConnectTimeout=3 -o BatchMode=yes $_target \
+            "pgrep -f 'sshd:.*@notty' | while read pid; do
+                 port=\$(ss -tlnp 2>/dev/null | grep 18022 | grep -o 'pid=\$pid' || true)
+                 [ -n \"\$port\" ] && kill \$pid 2>/dev/null && echo 'killed stale sshd \$pid'
+             done
+             # Also reset port by restarting sshd (graceful)
+             if ss -tlnp 2>/dev/null | grep -q 18022; then
+                 echo 'port 18022 still held — force kill sshd children holding it'
+                 fuser -k 18022/tcp 2>/dev/null || true
+             fi
+             echo 'tunnel port cleaned'" 2>/dev/null && return 0
+    done
+    return 1
+}
+
 main() {
     _log "UOM Laptop Orchestrator starting. OMNI_ROOT=$OMNI_ROOT"
     state_init
+    state_git_pull
+    state_recover_in_progress && _log "Recovered stuck task from previous crash"
 
     while true; do
         if ! net_ok; then
@@ -121,6 +145,9 @@ main() {
             state_git_sync "heartbeat: laptop alive, deferring $(date -Iseconds)"
             sleep "$LOOP_SLEEP"; continue
         fi
+
+        # Recover stuck in_progress tasks (e.g., from laptop crash mid-task)
+        state_recover_in_progress && _log "Recovered stuck task during loop"
 
         _task_id=$(state_next_task)
         if [ -z "$_task_id" ]; then

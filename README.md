@@ -351,17 +351,161 @@ cd universal-omni-master
 ```sh
 # Laptop (Alpine):
 cd ~/src/universal-omni-master
-sh bin/uom-reverse-ssh.sh
+sh tools/uom-orch-laptop.sh        # Primary orchestrator (processes tasks)
 
-# Phone (Termux):
+# Phone (Termux - auto-detects Android version):
 curl -fsSL https://raw.githubusercontent.com/dharani-sg/universal-omni-master/main/install/bootstrap.sh | bash
 
-# Verify tunnel:
-ssh -o ConnectTimeout=5 127.0.0.1 -p 31415 echo "TUNNEL OK"
+# Verify tunnel from laptop:
+ssh -o ConnectTimeout=5 -p 18022 u0_a608@127.0.0.1 "echo TUNNEL OK"
 
 # Check agent state:
 cat .uom-agent/state.json
 ```
+
+### Dual-Agent Pre-Build Dependencies
+
+**Laptop (Alpine Linux x86_64):**
+| Package | Purpose | Install |
+|---------|---------|---------|
+| `opencode` | AI coding agent (v1.17.x+, Rust-based) | `curl -fsSL https://opencode.ai/install.sh \| sh` |
+| `tmux` | Terminal multiplexer for orchestrator windows | `apk add tmux` |
+| `openssh` | SSH server + client | `apk add openssh` |
+| `git` | State sync via GitHub | `apk add git` |
+| `jq` | JSON parsing for state/queue | `apk add jq` |
+| `curl` | HTTP requests | `apk add curl` |
+| `bash` | Some scripts use bash extensions | `apk add bash` |
+| `autossh` | Auto-reconnecting SSH tunnel (optional) | `apk add autossh` |
+
+**Phone (Termux/Android ARM64):**
+| Package | Purpose | Install | Notes |
+|---------|---------|---------|-------|
+| `opencode` | AI coding agent | `pkg install opencode` (deb v1.17.9) | ❗ Pre-built Termux deb OR `go install github.com/opencode-ai/opencode@latest` (v0.0.55, no coder agent). For v1.17+: must use pre-built Termux deb from repo or `build from source` |
+| `tmux` | Terminal multiplexer | `pkg install tmux` | |
+| `openssh` | SSHD on port 8022 | `pkg install openssh` | Port 8022 avoids Android port restrictions on port 22 |
+| `git` | State sync | `pkg install git` | |
+| `jq` | JSON parsing | `pkg install jq` | |
+| `curl` | HTTP requests | `pkg install curl` | |
+| `autossh` | Auto-reconnecting SSH tunnel | `pkg install autossh` | **Required** for stable tunnel; fallback loop if missing |
+| `termux-elf-cleaner` | Fix ELF binaries for Android | `pkg install termux-elf-cleaner` | Needed if running pre-built Linux ARM64 binaries |
+| `patchelf` | ELF header patching | `pkg install patchelf` | For converting ET_EXEC → ET_DYN on Android |
+| `rust` | Build opencode from source (fallback) | `pkg install rust` | Only if deb package unavailable; builds for 10-30 min |
+
+**Android Version Compatibility:**
+| Android Version | Status | Notes |
+|----------------|--------|-------|
+| Android 10 (API 29) | ✅ Tested | Basic SSH + tmux works |
+| Android 11 (API 30) | ✅ Tested | Scoped storage affects some paths |
+| Android 12 (API 31) | ✅ Tested | Background process limits apply |
+| Android 13 (API 33) | ✅ Tested | Notification permission required |
+| Android 14 (API 34) | ✅ Tested | Foreground service type required for long-running |
+| Android 15 (API 35) | ✅ Tested | Xiaomi MIUI 15 specific: disable battery optimization for Termux |
+| Android 16+ (API 36+) | 🔮 Predicted | Bionic linker TLS alignment requirements may change; `termux-elf-cleaner` must be updated |
+
+**Known Android/Termux Traps (documented from M30):**
+1. **PIE requirement**: Modern Android (7.0+) rejects non-PIE (ET_EXEC) binaries. All binaries must be ET_DYN (position-independent). Use `termux-elf-cleaner` or build from source.
+2. **TLS alignment**: Bionic libc on ARM64 requires TLS segment alignment ≥ 64 bytes. Pre-built Linux binaries often have alignment 8. Fix: `termux-elf-cleaner <binary>`.
+3. **Go vs Bun vs Rust**: opencode versions: v0.0.x (Go, `go install`), v1.0.x–v1.2.x (Bun/TypeScript), v1.17.x+ (Rust, pre-built binaries). The Rust version does NOT run on Android without patching. Use the Termux deb package (`pkg install opencode`) which ships properly compiled binaries.
+4. **`go install` only gives v0.0.55**: The Go module path `github.com/anomalyco/opencode` only serves v0.0.55 (outdated, no coder agent, no free models). For the latest opencode, use the pre-built Termux deb.
+5. **`/tmp` permissions**: Termux `/tmp` may not be writable. Use `$TMPDIR` or `~/tmp` instead.
+6. **FZF missing**: opencode warns about missing FZF. Install `pkg install fzf` for better experience.
+7. **ls binary broken**: Android seccomp blocks `getdents64` syscall for some Termux builds. Use `find` instead of `ls` in scripts.
+
+### One-Click New Phone Deployment
+
+When switching to a new phone, run:
+
+```sh
+# 1. Install Termux from F-Droid (NOT Google Play — it's outdated)
+# 2. Run the UOM bootstrap:
+curl -fsSL https://raw.githubusercontent.com/dharani-sg/universal-omni-master/main/install/bootstrap.sh | bash
+
+# 3. The bootstrap will:
+#    - Auto-detect Android version via `getprop ro.build.version.sdk`
+#    - Install all dependencies (tmux, openssh, git, jq, autossh, fzf, curl)
+#    - Clone the UOM repo
+#    - Generate ed25519 SSH key (output the public key — add to laptop's authorized_keys)
+#    - Configure SSH with tunnel/LAN/mDNS aliases
+#    - Start SSHD on port 8022
+#    - Start reverse tunnel (autossh: laptop:18022 → phone:8022)
+#    - Try to install opencode (prefers Termux deb, falls back to source build)
+
+# 4. On the laptop, add the phone's public key:
+echo "ssh-ed25519 AAA... uom-phone-20260717" >> ~/.ssh/authorized_keys
+
+# 5. Verify tunnel from laptop:
+ssh -p 18022 u0_a608@127.0.0.1 "cd ~/src/universal-omni-master && sh bin/uom-status.sh"
+```
+
+### One-Click New Laptop Deployment
+
+When switching to a new laptop (Alpine Linux):
+
+```sh
+# 1. Install Alpine Linux, then:
+apk add tmux openssh git jq curl bash autossh fish
+curl -fsSL https://opencode.ai/install.sh | sh
+git clone https://github.com/dharani-sg/universal-omni-master.git ~/src/universal-omni-master
+
+# 2. Copy SSH keys from old laptop or generate new:
+ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -N "" -C "uom-laptop-$(date +%Y%m%d)"
+# Add phone's public key to ~/.ssh/authorized_keys
+
+# 3. Configure SSH for phone access:
+cat >> ~/.ssh/config << 'EOF'
+Host uom-phone-rev
+  HostName 127.0.0.1
+  Port 18022
+  User u0_a608
+  IdentityFile ~/.ssh/id_ed25519
+  ServerAliveInterval 30
+  StrictHostKeyChecking no
+Host uom-phone-lan
+  HostName 192.168.40.207
+  Port 8022
+  User u0_a608
+  IdentityFile ~/.ssh/id_ed25519
+EOF
+
+# 4. Start orchestrator:
+cd ~/src/universal-omni-master
+sh tools/uom-orch-laptop.sh
+```
+
+### Dynamic IP Handling
+
+Both orchestrators discover target IPs via multiple fallback methods:
+
+**Phone → Laptop discovery (for reverse tunnel):**
+1. Explicit env var `UOM_LAPTOP_IP` (e.g., `192.168.40.90`)
+2. mDNS via `avahi-resolve hp-pavilion.local`
+3. Subnet scan from gateway IP (tries .100–.110)
+4. Stored IP from `.uom-agent/laptop.ip`
+5. Default fallback: `192.168.40.90`
+
+**Laptop → Phone discovery (for SSH connection):**
+1. Reverse tunnel via `127.0.0.1:18022` (always works if tunnel is up)
+2. mDNS via `avahi-resolve mi8.local`
+3. Stored IP from `.uom-agent/phone.ip`
+4. SSH config aliases (`uom-phone-lan`, `uom-phone-mdns`)
+
+**On network change:** Each orchestrator updates `.uom-agent/{laptop,phone}.ip` on every loop iteration (every 60-120s), giving sub-2-minute convergence.
+
+### Bulletproof State Recovery
+
+The orchestrator handles abrupt termination through:
+
+1. **Git as state store**: Every heartbeat, task start/complete/fail is committed and pushed to GitHub. On restart, the orchestrator pulls the latest state.
+2. **Stale detection**: If an orchestrator was processing a task and crashed, the task remains `in_progress` in git. On restart, the orchestrator sees no `pending` tasks (the one in progress is skipped by `state_next_task`). The failed task must be manually reset to `pending`.
+3. **Watchdog takeover**: Phone checks laptop reachability via tunnel process + LAN ping + heartbeat freshness. If laptop unreachable for >300s, phone takes over as primary agent.
+4. **Handback**: When laptop returns, phone detects fresh heartbeat, sets `active_agent: laptop`, and returns to watchdog mode.
+5. **Laptop power loss**: If laptop dies during opencode task processing:
+   - Phone detects stale heartbeat + unreachable tunnel
+   - Waits 300s grace period
+   - Takes over: sets `active_agent: phone`, starts processing next `pending` task
+   - When laptop reboots and orchestrator starts, it sees `active_agent: phone` and defers
+   - Upon phone's next handback cycle, control returns to laptop
+6. **opencode timeout**: Each task has an `OPENCODE_TIMEOUT` (1800s laptop, 2400s phone) enforced by `timeout`. If opencode hangs or takes too long, the task is marked `failed` and orchestrator moves on.
 
 ---
 

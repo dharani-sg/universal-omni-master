@@ -106,9 +106,22 @@ Implement the task. Output complete file paths and contents."
     printf '%s\n' "$_prompt" | timeout "$OPENCODE_TIMEOUT" opencode 2>&1
 }
 
+# ── Clean stale tunnel port on laptop via direct SSH ─────────────────────
+# When phone reconnects after laptop power loss, the old tunnel port forward
+# may still be held by a zombie sshd child on the laptop. SSH in and kill it.
+_clean_laptop_tunnel_port() {
+    _lip="${UOM_LAPTOP_IP:-192.168.40.90}"
+    ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new \
+        "${UOM_LAPTOP_USER:-alpine}@${_lip}" \
+        "fuser -k 18022/tcp 2>/dev/null || pkill -f 'sshd:.*@notty' 2>/dev/null || true; echo 'done'" \
+        2>/dev/null
+}
+
 main() {
     _log "Phone Watchdog starting. OMNI_ROOT=$OMNI_ROOT"
     state_init
+    state_git_pull
+    state_recover_in_progress && _log "Recovered stuck task from previous crash"
     _mode="watchdog"
 
     while true; do

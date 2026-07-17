@@ -107,3 +107,31 @@ state_git_pull() {
     cd "${OMNI_ROOT:-.}" || return 1
     git pull --rebase origin main 2>/dev/null || true
 }
+
+# ── Recover in_progress tasks abandoned by crash ────────────────────────
+# If an agent was processing a task and crashed (laptop power loss, etc.),
+# the task is stuck in "in_progress". This checks if the heartbeat of the
+# agent that claimed it is stale, and resets the task to "pending".
+state_recover_in_progress() {
+    _stuck=$(jq -r '[.[] | select(.status=="in_progress")] | first | .id // empty' "$_QUEUE_FILE" 2>/dev/null)
+    [ -z "$_stuck" ] && return 0
+
+    _claimed_by=$(state_get "active_agent")
+    _hb=$(state_get "${_claimed_by}_heartbeat")
+    if [ -z "$_hb" ]; then
+        _log "No heartbeat for $_claimed_by — resetting $_stuck to pending"
+        state_mark_task "$_stuck" "pending"
+        return 0
+    fi
+    _epoch_now=$(date -u +%s 2>/dev/null)
+    _epoch_hb=$(date -u -d "$_hb" +%s 2>/dev/null) || \
+        _epoch_hb=$(python3 -c "import datetime; print(int(datetime.datetime.fromisoformat('$_hb').timestamp()))" 2>/dev/null) || \
+        _epoch_hb=0
+    _diff=$(( _epoch_now - _epoch_hb ))
+    if [ "$_diff" -gt "$_HEARTBEAT_STALE_SECS" ]; then
+        _log "Agent $_claimed_by stale (${_diff}s) — recovering stuck task $_stuck"
+        state_mark_task "$_stuck" "pending"
+        return 0
+    fi
+    return 1
+}

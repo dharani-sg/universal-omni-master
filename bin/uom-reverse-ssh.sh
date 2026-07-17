@@ -53,17 +53,36 @@ printf '%s\n' "$(id -un)" > "${TUNNEL_DIR}/termux-user"
 if command -v autossh >/dev/null 2>&1; then
     _log "using autossh (auto-reconnect enabled)"
     echo "$$" > "${TUNNEL_PID}"
+    # Kill any stale SSH processes locally
+    pkill -f "ssh.*-R.*${REV_PORT}" 2>/dev/null || true
+    # Kill stale port forward on laptop side via direct LAN SSH
+    _log "cleaning stale tunnel port on laptop side..."
+    ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new \
+        "${LAPTOP_USER}@${LAPTOP_IP}" \
+        "fuser -k ${REV_PORT}/tcp 2>/dev/null || pkill -f 'sshd:.*@notty' 2>/dev/null || true; echo 'cleaned'" \
+        2>/dev/null || true
+    sleep 2
+    export AUTOSSH_LOGFILE="${TUNNEL_LOG}"
+    export AUTOSSH_LOGLEVEL=7
+    export AUTOSSH_POLL=10
+    export AUTOSSH_GATETIME=0
     exec autossh -M 0 \
         ${SSH_OPTS} \
         -R "${REV_PORT}:127.0.0.1:${PHONE_SSHD_PORT}" \
         "${LAPTOP_USER}@${LAPTOP_IP}"
+    _log "autossh exited (unexpected). Restarting in 10s."
 else
     _log "autossh not found, using ssh with retry loop"
     while true; do
         echo "$$" > "${TUNNEL_PID}"
         LAPTOP_IP=$(_discover_laptop)
-        # Kill any stale SSH connections to laptop that might hold port
+        # Kill any stale SSH connections locally
         pkill -f "ssh.*-R.*${REV_PORT}.*${LAPTOP_IP}" 2>/dev/null || true
+        # Clean stale port forward on laptop side
+        ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new \
+            "${LAPTOP_USER}@${LAPTOP_IP}" \
+            "fuser -k ${REV_PORT}/tcp 2>/dev/null || true; echo 'cleaned'" \
+            2>/dev/null || true
         sleep 2
         ssh ${SSH_OPTS} \
             -R "${REV_PORT}:127.0.0.1:${PHONE_SSHD_PORT}" \
