@@ -78,4 +78,4 @@
 | **M29 (Bootstrap+Solo+Security)** | **v0.29.0** | **✅ Sealed** |
 | **M30 (Full Dual-Agent Loop)** | **v0.30.0** | **⏳ Next** |
 
-<!-- last-sync: 2026-07-17T08:00:00Z -->
+<!-- last-sync: 2026-07-17T08:15:00Z -->

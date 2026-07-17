@@ -88,4 +88,4 @@ The watchdog runs every 60s, checking laptop reachability via `discover_laptop_i
 2. Verify reverse tunnel: `ssh -p 31415 127.0.0.1 echo OK`
 3. Resume dual-agent loop: laptop primary, phone as verification
 
-<!-- last-sync: 2026-07-17T08:00:00Z -->
+<!-- last-sync: 2026-07-17T08:15:00Z -->

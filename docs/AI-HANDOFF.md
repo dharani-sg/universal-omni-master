@@ -244,6 +244,29 @@ M43–M50: Commercialization (Enterprise licensing, Omni-Cloud, AI Marketplace, 
 - Takeover count: 1 (phone solo mode triggered during laptop idle)
 - All MD files synced, Void distro synced, git pushed
 
+### 2026-07-17 13:40 — v0.29.2: Hybrid Orchestrator + Resume Command
+
+**Commits:** (v0.29.2)
+- **bin/uom-hybrid.sh** — Hybrid orchestrator: auto-starts reverse tunnel, detects laptop reachability, switches dual↔solo seamlessly. Runs in tmux session.
+- **bin/uom-resume.sh** — Resume command: detects current state, checks tunnel, reports reachability, suggests next action. Run `sh bin/uom-resume.sh` on return.
+- **Hybrid orchestrator running** on laptop in `uom` tmux session (PID active)
+- **Reverse tunnel** started on laptop (listening for phone)
+- **AI-HANDOFF.md** — v0.29.2 session entry with resume instructions
+
+**Hybrid orchestrator behavior:**
+```
+sh bin/uom-hybrid.sh          # Interactive run
+sh bin/uom-hybrid.sh --daemon # Detached tmux session
+sh bin/uom-resume.sh          # Resume check on return
+```
+
+**Resume flow:**
+1. Return to laptop
+2. Run `sh bin/uom-resume.sh` — detects tunnel state + laptop/phone reachability
+3. If tunnel UP + laptop reachable → attach: `tmux attach -t uom`
+4. If tunnel DOWN → start: `sh bin/uom-reverse-ssh.sh`
+5. If phone was solo → auto-sets `dual-pending`, confirms handback
+
 ### 2026-07-17 13:00 — v0.29.0: Bootstrap + Solo Mode + Security Hardening
 
 **Commits:** (v0.29.0 — see git log)
@@ -284,10 +307,26 @@ Report: branch, commit, tags, dirty files, latest milestone, active agent, curre
 Never push unless all gates pass.
 
 ## Next Session Instructions
-1. Fix M02-state-sync (phone-side opencode PATH or permissions)
-2. Verify reverse tunnel (31415) from both devices
-3. Run `git pull --rebase` to catch up remote heartbeats
-4. Continue M30: full dual-agent loop active (laptop primary, phone verify)
-5. See docs/ROADMAP.md for full phase list
+1. If returning from outside: `sh bin/uom-resume.sh` — detects state, suggests next action
+2. Attach to running orchestrator: `tmux attach -t uom` (if session exists)
+3. If tunnel down: `sh bin/uom-reverse-ssh.sh` on phone, verify `ssh -p 18022 127.0.0.1 echo OK`
+4. Fix M02-state-sync (phone-side opencode PATH issue)
+5. Verify phone hybrid orchestrator is running: phone should have `sh bin/uom-hybrid.sh` running
+6. State should auto-transition: phone-solo → dual-pending → dual (on confirm)
+7. See docs/ROADMAP.md for full phase list
 
-<!-- last-sync: 2026-07-17T08:00:00Z -->
+## Resume Quick Reference
+```sh
+# On return to laptop:
+sh bin/uom-resume.sh           # Check state
+tmux attach -t uom             # Attach to running orchestrator
+cat .uom-agent/state.json      # Check current agent mode
+git log --oneline -5           # Check latest work
+
+# If phone was solo:
+jq '.active_agent="laptop"' .uom-agent/state.json > /tmp/s.json && mv /tmp/s.json .uom-agent/state.json
+git add -A && git commit -m "handback: laptop resumed control" && git push
+tmux kill-session -t uom && sh bin/uom-hybrid.sh --daemon
+```
+
+<!-- last-sync: 2026-07-17T08:15:00Z -->

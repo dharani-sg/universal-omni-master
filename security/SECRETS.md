@@ -60,4 +60,4 @@ UOM_REV_PORT="31415"
 
 > **Warning:** These are FAKE examples. Never commit real API keys. The pre-commit hook blocks `sk-ant-`, `ANTHROPIC_API_KEY=`, and `BEGIN PRIVATE KEY` patterns.
 
-<!-- last-sync: 2026-07-17T08:00:00Z -->
+<!-- last-sync: 2026-07-17T08:15:00Z -->
