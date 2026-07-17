@@ -1,7 +1,6 @@
 #!/bin/sh
 # uom-status.sh — UOM status checker with tunnel management
-cd $(dirname "$0") || exit
-UOM_DIR="$(pwd)"
+UOM_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 HYB_DIR="${HOME}/.uom-termux-user"
 STATE_FILE="${UOM_DIR}/.uom-agent/state.json"
 LOG_FILE="${HYB_DIR}/omni-orchestrator.log"
