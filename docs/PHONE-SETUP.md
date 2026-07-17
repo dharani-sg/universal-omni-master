@@ -1,4 +1,4 @@
-# UOM Phone Setup Guide (v0.29.1)
+# UOM Phone Setup Guide (v0.30.0)
 
 ## Quick Bootstrap (Phone)
 
@@ -12,9 +12,11 @@ The bootstrap auto-detects Termux/Android and:
 3. Clones the UOM repo (handles dirty state via `git stash`)
 4. Generates ed25519 SSH key
 5. Configures SSH config with laptop aliases (tunnel/LAN/mDNS)
-6. Sets up tmux with UOM dual-pane layout
-7. Installs reverse tunnel script
+6. Sets up tmux with UOM 5-window layout (orchestrator, opencode, monitor, laptop, status)
+7. Installs reverse tunnel script + tmux watchdog + omni-project-start menu
 8. Starts reverse tunnel (best-effort — laptop may be offline)
+9. Starts tmux watchdog: `bash ~/bin/uom-tmux-watchdog.sh --daemon`
+10. Installs 14 UOM aliases into `~/.bashrc`
 
 ## Manual Setup (if bootstrap fails)
 
@@ -39,9 +41,11 @@ Create `~/.termux/boot/uom-boot.sh`:
 ```sh
 #!/data/data/com.termux.boot/files/usr/bin/bash
 sleep 5
-sshd                            # start SSH server (port 8022)
+sshd                              # start SSH server (port 8022)
 sleep 2
-bash ~/bin/uom-reverse-ssh.sh   # open reverse tunnel to laptop
+bash ~/bin/uom-reverse-ssh.sh     # open reverse tunnel to laptop
+bash ~/bin/uom-tmux-watchdog.sh --daemon  # start tmux watchdog
+bash ~/bin/uom-orch-phone.sh --daemon      # start phone orchestrator
 ```
 ```sh
 chmod +x ~/.termux/boot/uom-boot.sh
@@ -55,7 +59,7 @@ bash ~/bin/uom-reverse-ssh.sh
 
 Verify from laptop:
 ```sh
-ssh -o ConnectTimeout=5 127.0.0.1 -p 31415 echo "TUNNEL OK"
+ssh -o ConnectTimeout=5 127.0.0.1 -p 18022 echo "TUNNEL OK"
 ```
 
 ### 5. Start tmux Session
@@ -76,16 +80,19 @@ cd ~/src/universal-omni-master
 
 The watchdog runs every 60s, checking laptop reachability via `discover_laptop_ip()`. After 3 consecutive failures (~15 min), it triggers solo orchestrator. When laptop recovers, sets `dual-pending` — requires explicit confirmation to resume dual mode.
 
-## Current State (v0.29.1)
+## Current State (v0.30.0)
 
-- Dual-agent: alive (laptop heartbeat 13:27, phone heartbeat 13:26 IST)
-- Task M02-state-sync: failed on phone (opencode PATH issue)
-- Takeover count: 1 (phone solo mode triggered during laptop idle)
+- Dual-agent: alive (tunnel UP, tmux watchdog running on phone)
+- Scripts deployed: omni-project-start.sh, uom-tmux-watchdog.sh, uom-reverse-ssh.sh, uom-status.sh
+- Aliases: 14 UOM aliases installed in `~/.bashrc`
+- Boot: Termux:Boot starts SSH + tunnel + watchdog + orchestrator
+- Tunnel port: 18022 (laptop) ↔ 8022 (phone)
 
 ## Next Steps
 
-1. Fix M02-state-sync: ensure `opencode` is in PATH on phone
-2. Verify reverse tunnel: `ssh -p 31415 127.0.0.1 echo OK`
-3. Resume dual-agent loop: laptop primary, phone as verification
+1. Start: `bash ~/bin/omni-project-start.sh` — interactive menu
+2. Or direct: `bash ~/bin/uom-tmux-watchdog.sh --daemon`
+3. Verify tunnel: `ssh -p 18022 127.0.0.1 echo OK`
+4. Next phase: M31 — Network Switching Stress Test
 
-<!-- last-sync: 2026-07-17T08:15:00Z -->
+<!-- last-sync: 2026-07-17T18:00:00Z -->

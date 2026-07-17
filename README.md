@@ -1,7 +1,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Shell-POSIX%20%2F%20BusyBox%20ash-000000?logo=gnubash&logoColor=white" alt="POSIX sh">
   <img src="https://img.shields.io/badge/Tests-300%2B%20Assertions-brightgreen?logo=githubactions" alt="Tests">
-  <img src="https://img.shields.io/badge/Release-v0.29.0-blueviolet?logo=github" alt="Release">
+  <img src="https://img.shields.io/badge/Release-v0.30.0-blueviolet?logo=github" alt="Release">
   <img src="https://img.shields.io/badge/License-MIT-green?logo=opensourceinitiative" alt="License">
   <img src="https://img.shields.io/badge/Cross--Libc-musl%20%E2%86%94%20glibc-orange?logo=linux" alt="Cross-Libc">
   <img src="https://img.shields.io/badge/AI%20Economy-Ready-ff6b6b?logo=openai" alt="AI Economy">
@@ -269,7 +269,7 @@ Auto-detect OpenSSH 9.9+ ML-KEM-768 hybrid KEX. Fleet-wide crypto inventory. TPM
 
 ## 🗺️ Milestone Roadmap + Commercialization
 
-### ✅ Sealed: Foundation & Intelligence (M1–M29)
+### ✅ Sealed: Foundation & Intelligence (M1–M30)
 
 <table>
 <tr>
@@ -285,30 +285,31 @@ Auto-detect OpenSSH 9.9+ ML-KEM-768 hybrid KEX. Fleet-wide crypto inventory. TPM
 <tr><td><b>💼 Commercial</b></td><td>M21–M26</td><td>Manager, KVM, SaaS, AI-Patcher, Compliance, OpenClaw</td><td><code>v0.21.0</code>–<code>v0.26.0</code></td></tr>
 <tr><td><b>🖥️ Desktop</b></td><td>M27</td><td>11 WM/DE Profiles, Telemetry, Postboot Verify</td><td><code>v0.27.0</code>–<code>v0.27.4</code></td></tr>
 <tr><td><b>🤖 Dual-Agent</b></td><td>M28–M29</td><td>IP Discovery, State Machine, Bootstrap, Solo Mode, Security</td><td><code>v0.28.0</code>–<code>v0.29.0</code></td></tr>
+<tr><td><b>📱 Mobile</b></td><td>M30</td><td>omni-project-start menu, tmux watchdog, setup-aliases, deploy-phone, tunnel fix</td><td><code>v0.30.0</code></td></tr>
 </table>
 
-### 🔮 Horizon: Mobile, Quantum & Autonomous (M30–M42)
+### 🔮 Horizon: Mobile, Quantum & Autonomous (M31–M42)
 
 <table>
 <tr>
 <th>M</th><th>Phase</th><th>Vision</th>
 </tr>
-<tr><td><b>M30</b></td><td>📱 Mobile</td><td><b>Termux Native Polish</b> — Haptic feedback, push notifications, portrait-optimized TUI, Termux:Boot auto-launch, <b>omni-project-start menu</b>, <b>tmux watchdog</b>, auto-healing reverse tunnel</td></tr>
-<tr><td><b>M31</b></td><td>🔐 Post-Quantum</td><td><b>PQC Fleet Auth</b> — ML-KEM-768 hybrid KEX, crypto inventory, ML-DSA host keys, phased classical removal</td></tr>
-<tr><td><b>M32</b></td><td>🤖 Predictive AI</td><td><b>Predictive Healing</b> — CRC linear regression, thermal telemetry, 60-min failure lookahead, digital twin simulation</td></tr>
-<tr><td><b>M33</b></td><td>📊 Observability</td><td><b>eBPF Kernel Telemetry</b> — bpftrace one-liners, Tetragon TracingPolicy, CO-RE portable syscall observer</td></tr>
-<tr><td><b>M34</b></td><td>🏗️ Edge/IoT</td><td><b>Golden Image Builder</b> — Nix-based minimal images, A/B OTA updates, dm-verity + Secure Boot, batch 50+ nodes</td></tr>
-<tr><td><b>M35</b></td><td>🛡️ Confidential</td><td><b>TEE-Aware Provisioning</b> — AMD SEV-SNP / Intel TDX / ARM CCA detection, Trust Domain provisioning, remote attestation</td></tr>
-<tr><td><b>M36</b></td><td>🔌 Protocol</td><td><b>MCP Server Integration</b> — Model Context Protocol for AI assistants to query provisioning state via natural language</td></tr>
-<tr><td><b>M37</b></td><td>🥾 Bootloader</td><td><b>Modern Boot Chain</b> — systemd-boot default, BLS entries, Limine multi-arch, UKI as first-class artifact</td></tr>
-<tr><td><b>M38</b></td><td>🌍 Federation</td><td><b>Fleet Federation</b> — Hub + daemon + dashboard, Prometheus export, mDNS auto-discovery, multi-site</td></tr>
-<tr><td><b>M39</b></td><td>⚡ Power</td><td><b>Smart Power Management</b> — TLP integration, CPU governor auto-tune, RAPL profiling, battery health dashboard</td></tr>
-<tr><td><b>M40</b></td><td>🔄 OverlayFS</td><td><b>OS Layering Engine</b> — OverlayFS distro switching, SquashFS + writable overlay, shared /home</td></tr>
-<tr><td><b>M41</b></td><td>📝 Trust</td><td><b>Immutable Audit Trail</b> — Merkle-rooted healing log, PQ-signed entries, TPM-backed device identity, dual-signature</td></tr>
-<tr><td><b>M42</b></td><td>🌐 Platform</td><td><b>Omni-Cloud SaaS GA</b> — Fleet management dashboard, multi-tenant, Stripe billing, SOC 2, webhook alerting</td></tr>
+<tr><td><b>M31</b></td><td>📡 Network Stress</td><td><b>Network Switching Stress Test</b> — Hotspot ↔ LAN ↔ mDNS transitions, verify tunnel survives IP changes</td></tr>
+<tr><td><b>M32</b></td><td>🔐 Post-Quantum</td><td><b>PQC Fleet Auth</b> — ML-KEM-768 hybrid KEX, crypto inventory, ML-DSA host keys, phased classical removal</td></tr>
+<tr><td><b>M33</b></td><td>🤖 Predictive AI</td><td><b>Predictive Healing</b> — CRC linear regression, thermal telemetry, 60-min failure lookahead, digital twin simulation</td></tr>
+<tr><td><b>M34</b></td><td>📊 Observability</td><td><b>eBPF Kernel Telemetry</b> — bpftrace one-liners, Tetragon TracingPolicy, CO-RE portable syscall observer</td></tr>
+<tr><td><b>M35</b></td><td>🏗️ Edge/IoT</td><td><b>Golden Image Builder</b> — Nix-based minimal images, A/B OTA updates, dm-verity + Secure Boot, batch 50+ nodes</td></tr>
+<tr><td><b>M36</b></td><td>🛡️ Confidential</td><td><b>TEE-Aware Provisioning</b> — AMD SEV-SNP / Intel TDX / ARM CCA detection, Trust Domain provisioning, remote attestation</td></tr>
+<tr><td><b>M37</b></td><td>🔌 Protocol</td><td><b>MCP Server Integration</b> — Model Context Protocol for AI assistants to query provisioning state via natural language</td></tr>
+<tr><td><b>M38</b></td><td>🥾 Bootloader</td><td><b>Modern Boot Chain</b> — systemd-boot default, BLS entries, Limine multi-arch, UKI as first-class artifact</td></tr>
+<tr><td><b>M39</b></td><td>🌍 Federation</td><td><b>Fleet Federation</b> — Hub + daemon + dashboard, Prometheus export, mDNS auto-discovery, multi-site</td></tr>
+<tr><td><b>M40</b></td><td>⚡ Power</td><td><b>Smart Power Management</b> — TLP integration, CPU governor auto-tune, RAPL profiling, battery health dashboard</td></tr>
+<tr><td><b>M41</b></td><td>🔄 OverlayFS</td><td><b>OS Layering Engine</b> — OverlayFS distro switching, SquashFS + writable overlay, shared /home</td></tr>
+<tr><td><b>M42</b></td><td>📝 Trust</td><td><b>Immutable Audit Trail</b> — Merkle-rooted healing log, PQ-signed entries, TPM-backed device identity, dual-signature</td></tr>
+<tr><td><b>M43</b></td><td>🌐 Platform</td><td><b>Omni-Cloud SaaS GA</b> — Fleet management dashboard, multi-tenant, Stripe billing, SOC 2, webhook alerting</td></tr>
 </table>
 
-### 💰 Commercialization: Monetization & Enterprise (M43–M50)
+### 💰 Commercialization: Monetization & Enterprise (M44–M51)
 
 These phases transform UOM into a revenue-generating platform targeting the $2.6T AI infrastructure market:
 
@@ -316,14 +317,14 @@ These phases transform UOM into a revenue-generating platform targeting the $2.6
 <tr>
 <th>M</th><th>Phase</th><th>Revenue Model</th><th>Target Market</th>
 </tr>
-<tr><td><b>M43</b></td><td>📦 Enterprise Bundle</td><td><b>$5K–$50K/node license</b> — Managed deployment, SLA-backed self-healing, priority support, compliance reporting. On-prem or air-gapped.</td><td>Enterprise IT, defense, finance, healthcare</td></tr>
-<tr><td><b>M44</b></td><td>☁️ Omni-Cloud Managed</td><td><b>Usage-based ($0.10/node/hr)</b> — Fully managed bare-metal provisioning as a service. Auto-scaling fleet orchestration. No upfront commit.</td><td>Startups, AI labs, edge deployments</td></tr>
-<tr><td><b>M45</b></td><td>🤖 AI Agent Marketplace</td><td><b>30% platform fee</b> — Third-party AI agents for infrastructure tasks (monitoring, remediation, optimization). Revenue share with agent developers.</td><td>DevOps teams, MSPs, AI consultants</td></tr>
-<tr><td><b>M46</b></td><td>🔐 Compliance Suite</td><td><b>$15K/year add-on</b> — SOC 2 Type II, HIPAA, FedRAMP, PCI-DSS compliance automation. Pre-built audit packages. Continuous compliance monitoring.</td><td>Regulated industries, government</td></tr>
-<tr><td><b>M47</b></td><td>📊 AI FinOps Dashboard</td><td><b>$500/month (per 100 nodes)</b> — Real-time infrastructure cost analytics, AI workload cost allocation, budget forecasting, anomaly detection. Chargeback/showback for AI teams.</td><td>Cloud FinOps teams, AI platform engineers</td></tr>
-<tr><td><b>M48</b></td><td>🔌 MCP Enterprise Gateway</td><td><b>$2K/month</b> — Model Context Protocol gateway for enterprise AI assistants. RBAC, audit logging, rate limiting, multi-LLM routing. Plugin SDK for custom tools.</td><td>Enterprise AI platforms, internal developer portals</td></tr>
-<tr><td><b>M49</b></td><td>🌍 Edge AI Federation</td><td><b>$100/node/month (100-node min)</b> — Fully managed edge fleet: golden image → OTA updates → predictive healing → telemetry aggregation. 99.95% SLA.</td><td>Retail, manufacturing, logistics, energy</td></tr>
-<tr><td><b>M50</b></td><td>🧬 Omni-Genesis</td><td><b>Strategic partnerships / white-label</b> — UOM as embedded infrastructure layer for hardware vendors, telcos, and cloud providers. Custom branding, custom init, custom everything.</td><td>OEMs, telcos, cloud providers, data center operators</td></tr>
+<tr><td><b>M44</b></td><td>📦 Enterprise Bundle</td><td><b>$5K–$50K/node license</b> — Managed deployment, SLA-backed self-healing, priority support, compliance reporting. On-prem or air-gapped.</td><td>Enterprise IT, defense, finance, healthcare</td></tr>
+<tr><td><b>M45</b></td><td>☁️ Omni-Cloud Managed</td><td><b>Usage-based ($0.10/node/hr)</b> — Fully managed bare-metal provisioning as a service. Auto-scaling fleet orchestration. No upfront commit.</td><td>Startups, AI labs, edge deployments</td></tr>
+<tr><td><b>M46</b></td><td>🤖 AI Agent Marketplace</td><td><b>30% platform fee</b> — Third-party AI agents for infrastructure tasks (monitoring, remediation, optimization). Revenue share with agent developers.</td><td>DevOps teams, MSPs, AI consultants</td></tr>
+<tr><td><b>M47</b></td><td>🔐 Compliance Suite</td><td><b>$15K/year add-on</b> — SOC 2 Type II, HIPAA, FedRAMP, PCI-DSS compliance automation. Pre-built audit packages. Continuous compliance monitoring.</td><td>Regulated industries, government</td></tr>
+<tr><td><b>M48</b></td><td>📊 AI FinOps Dashboard</td><td><b>$500/month (per 100 nodes)</b> — Real-time infrastructure cost analytics, AI workload cost allocation, budget forecasting, anomaly detection. Chargeback/showback for AI teams.</td><td>Cloud FinOps teams, AI platform engineers</td></tr>
+<tr><td><b>M49</b></td><td>🔌 MCP Enterprise Gateway</td><td><b>$2K/month</b> — Model Context Protocol gateway for enterprise AI assistants. RBAC, audit logging, rate limiting, multi-LLM routing. Plugin SDK for custom tools.</td><td>Enterprise AI platforms, internal developer portals</td></tr>
+<tr><td><b>M50</b></td><td>🌍 Edge AI Federation</td><td><b>$100/node/month (100-node min)</b> — Fully managed edge fleet: golden image → OTA updates → predictive healing → telemetry aggregation. 99.95% SLA.</td><td>Retail, manufacturing, logistics, energy</td></tr>
+<tr><td><b>M51</b></td><td>🧬 Omni-Genesis</td><td><b>Strategic partnerships / white-label</b> — UOM as embedded infrastructure layer for hardware vendors, telcos, and cloud providers. Custom branding, custom init, custom everything.</td><td>OEMs, telcos, cloud providers, data center operators</td></tr>
 </table>
 
 **Total Addressable Market:** $2.6T global AI spending (Gartner 2026). UOM captures the **infrastructure layer** — estimated $150B serviceable market across bare-metal provisioning, edge orchestration, and AI FinOps.
@@ -624,7 +625,7 @@ The orchestrator handles abrupt termination through:
 
 ## 📄 License
 
-**MIT** — Forged in the constraints of legacy hardware, engineered for the AI-augmented fleet of the future. Commercial licenses and enterprise support available under M43–M50 framework.
+**MIT** — Forged in the constraints of legacy hardware, engineered for the AI-augmented fleet of the future. Commercial licenses and enterprise support available under M44–M51 framework.
 
 ---
 

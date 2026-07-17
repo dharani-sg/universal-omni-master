@@ -1,17 +1,17 @@
-# Universal Omni-Master — Durable AI Handoff (v0.29.1)
+# Universal Omni-Master — Durable AI Handoff (v0.30.0)
 
 ## Repository Identity
 - Project root: ~/src/universal-omni-master
 - Core language: POSIX #!/bin/sh (BusyBox ash-safe)
 - TUI language: Fish 4.x only (--no-config)
-- Reference host: Alpine Linux 3.24 (musl, OpenRC)
-- Secondary host: Void Linux (glibc, runit)
+- Reference host: Alpine Linux 3.24 (musl, OpenRC) on sda4
+- Secondary host: Void Linux (glibc, runit, Btrfs) on sda3
 - Hardware: HP Pavilion 15-n010tx (degraded SATA cable, UDMA_CRC baseline 5360)
-- Phone: Xiaomi Mi 8 / CrDroid Android 15 / Termux ARM64
-- Active agent: laptop (latest heartbeat 13:27 IST)
-- Phone heartbeat: 13:26 IST — dual-agent alive
-- Current task: M02-state-sync (failed — retry pending)
-- Takeover count: 1 (phone took over during laptop idle)
+- Phone: Xiaomi Mi 8 / CrDroid Android 15 / Termux ARM64 (192.168.40.207:8022)
+- Active agent: laptop (current session)
+- Phone heartbeat: watchdog running, tunnel UP — dual-agent alive
+- Current task: M30-termux-native — omni-project-start menu completed
+- Takeover count: 1 (phone took over during laptop idle, previously resolved)
 
 ## Immutable Rules
 1. POSIX sh only. Zero bashisms. Zero eval. Zero set --.
@@ -60,13 +60,13 @@ Total: 17 CLI tools, 300+ automated assertions.
 ## Next Phase
 M28: Dual-Agent Orchestration (laptop+phone) ✓
 M29: Bootstrap Installer + Phone-Solo Mode + Security Hardening ✓
-M30: Full Dual-Agent Loop Active — laptop primary, phone verification agent ← NEXT
-M31: Network Switching Stress Test — hotspot ↔ LAN ↔ mDNS transitions
+M30: Termux-Native Tools — omni-project-start menu + tmux watchdog + reverse tunnel fix ✓
+M31: Network Switching Stress Test — hotspot ↔ LAN ↔ mDNS transitions ← NEXT
 M32: Power-Failure Recovery Test — kill laptop, watch phone takeover, restore dual
 M33–M42: Horizon tech (Post-Quantum, Predictive AI, eBPF, Edge, TEE, MCP, Federation)
-M43–M50: Commercialization (Enterprise licensing, Omni-Cloud, AI Marketplace, FinOps)
+M44–M51: Commercialization (Enterprise licensing, Omni-Cloud, AI Marketplace, FinOps)
 
-**Immediate: Fix M02-state-sync — root cause unknown, likely path/opencode issue on phone**
+**Immediate: M31 — Network switching stress test. Before that: update all .md docs for session resume context, sync to Void.**
 
 ---
 
@@ -231,7 +231,7 @@ M43–M50: Commercialization (Enterprise licensing, Omni-Cloud, AI Marketplace, 
 ### 2026-07-17 13:45 — v0.29.1: README Overhaul + M43-M50 Commercialization
 **Commits:** (v0.29.1 — README rewrite)
 - **READMe.md** complete overhaul: $2.6T AI market context (Gartner), Agentic Economy positioning, Hyperautomation 2.0, AI FinOps, Zero-Trust Bootstrap
-- **Added M43-M50** commercialization phases: Enterprise Bundle, Omni-Cloud Managed, AI Agent Marketplace, Compliance Suite, FinOps Dashboard, MCP Gateway, Edge Federation, Omni-Genesis white-label
+- **Added M44-M51** commercialization phases: Enterprise Bundle, Omni-Cloud Managed, AI Agent Marketplace, Compliance Suite, FinOps Dashboard, MCP Gateway, Edge Federation, Omni-Genesis white-label
 - **Randomized IPs/secrets** in docs (10.88.12.50/215, port 31415, fake API key examples)
 - **Dual-agent arch diagram** updated with randomized IPs
 - All doc sync timestamps updated to 2026-07-17T08:00:00Z
@@ -249,23 +249,36 @@ M43–M50: Commercialization (Enterprise licensing, Omni-Cloud, AI Marketplace, 
 **Commits:** (v0.29.2)
 - **bin/uom-hybrid.sh** — Hybrid orchestrator: auto-starts reverse tunnel, detects laptop reachability, switches dual↔solo seamlessly. Runs in tmux session.
 - **bin/uom-resume.sh** — Resume command: detects current state, checks tunnel, reports reachability, suggests next action. Run `sh bin/uom-resume.sh` on return.
-- **Hybrid orchestrator running** on laptop in `uom` tmux session (PID active)
-- **Reverse tunnel** started on laptop (listening for phone)
 - **AI-HANDOFF.md** — v0.29.2 session entry with resume instructions
 
-**Hybrid orchestrator behavior:**
-```
-sh bin/uom-hybrid.sh          # Interactive run
-sh bin/uom-hybrid.sh --daemon # Detached tmux session
-sh bin/uom-resume.sh          # Resume check on return
-```
+### 2026-07-17 17:00-18:30 — v0.30.0: omni-project-start Menu + tmux Watchdog + Tunnel Fix
 
-**Resume flow:**
-1. Return to laptop
-2. Run `sh bin/uom-resume.sh` — detects tunnel state + laptop/phone reachability
-3. If tunnel UP + laptop reachable → attach: `tmux attach -t uom`
-4. If tunnel DOWN → start: `sh bin/uom-reverse-ssh.sh`
-5. If phone was solo → auto-sets `dual-pending`, confirms handback
+**Commit:** `5d72c0e` (feat: omni-project-start menu + tmux watchdog + tunnel fix)
+**Tags:** v0.30.0
+
+**New scripts:**
+- **`bin/omni-project-start.sh`** (712 lines) — Interactive TUI dashboard with box-drawing menu. 9 sub-commands: detach, phone, laptop, hybrid, aware, tmux, opencode, test, recover. Shows real-time status dashboard (uptime, RAM, load, tunnel, tmux sessions, orchestrator PID, git status). Works on Alpine Linux AND Termux (auto-detects platform). Fish TUI for UI rendering, POSIX shell for business logic.
+- **`bin/uom-tmux-watchdog.sh`** (303 lines) — Monitors `uom` and `uom-orch` tmux sessions. Auto-recreates crashed sessions. Restarts dead orchestrator/tunnel processes. Runs every 30s in `--daemon` mode, 60s in non-daemon. Clean PID management.
+- **`install/setup-aliases.sh`** — Installs 14 UOM aliases into shell profile. Supports Alpine (`.profile`) and Termux (`.bashrc`). Idempotent (skips existing aliases).
+
+**Tunnel fix (critical):**
+- **Root cause:** OpenSSH 10.x on Alpine reports false positive "remote port forwarding failed" for `-R 18022:127.0.0.1:8022` when `GatewayPorts=no` on server. The forward actually WORKS despite the warning message, but `ExitOnForwardFailure=yes` was killing `autossh` on the false error.
+- **Fix 1:** Removed `ExitOnForwardFailure=yes` from `bin/uom-reverse-ssh.sh` — autossh `GATETIME=0` now retries naturally until laptop frees the stale port (≤90s via ServerAliveInterval/CountMax).
+- **Fix 2:** Removed `fuser -k 18022/tcp` from laptop-side tunnel cleanup — the fuser was killing the tunnel's own `sshd-session`, breaking the connection.
+- **Result:** Tunnel is now stable. Port 18022 stays listening. `ssh uom-phone-rev "echo TUNNEL_OK"` passes consistently.
+
+**Phone deployment:**
+- **`bin/uom-deploy-phone.sh`** — Deploys all scripts to phone via SCP (SSH over LAN) + tunnel SCP (for when phone initiates). Smart kill patterns that don't kill own SSH session.
+- Deployed scripts: `omni-project-start.sh`, `uom-tmux-watchdog.sh`, `uom-reverse-ssh.sh`, `uom-status.sh` (all sizes confirmed).
+- Termux:Boot updated: starts SSH daemon, reverse tunnel, tmux watchdog, phone orchestrator on boot.
+- Phone `.bashrc` aliases installed: all 14 UOM aliases.
+
+**Current state (end of session):**
+- HEAD: `4be3aec` (start: M30-termux-native [laptop])
+- Tunnel: UP and stable
+- Phone: watchdog running (PID confirmed), `uom` tmux session has 5 windows (orchestrator, opencode, monitor, laptop, status)
+- Laptop: code pushed to GitHub (`5d72c0e`)
+- Void: synced via `git reset --hard origin/main` from Alpine side — now at `4be3aec` (matching Alpine)
 
 ### 2026-07-17 13:00 — v0.29.0: Bootstrap + Solo Mode + Security Hardening
 
@@ -308,25 +321,32 @@ Never push unless all gates pass.
 
 ## Next Session Instructions
 1. If returning from outside: `sh bin/uom-resume.sh` — detects state, suggests next action
-2. Attach to running orchestrator: `tmux attach -t uom` (if session exists)
-3. If tunnel down: `sh bin/uom-reverse-ssh.sh` on phone, verify `ssh -p 18022 127.0.0.1 echo OK`
-4. Fix M02-state-sync (phone-side opencode PATH issue)
-5. Verify phone hybrid orchestrator is running: phone should have `sh bin/uom-hybrid.sh` running
-6. State should auto-transition: phone-solo → dual-pending → dual (on confirm)
-7. See docs/ROADMAP.md for full phase list
+2. OR use the new menu: `sh bin/omni-project-start.sh` — interactive dashboard with all commands
+3. Attach to running orchestrator: `tmux attach -t uom` (if session exists)
+4. If tunnel down: check `bin/uom-phone-boot.sh` on phone (Termux:Boot restarts on reboot)
+5. Start M31: Network Switching Stress Test — hotspot ↔ LAN ↔ mDNS transitions
+6. See docs/ROADMAP.md for full phase list
 
 ## Resume Quick Reference
 ```sh
-# On return to laptop:
-sh bin/uom-resume.sh           # Check state
-tmux attach -t uom             # Attach to running orchestrator
-cat .uom-agent/state.json      # Check current agent mode
-git log --oneline -5           # Check latest work
+# Quick start (preferred):
+sh bin/omni-project-start.sh    # Interactive menu with all options
+
+# Or manual:
+sh bin/uom-resume.sh            # Check state
+tmux attach -t uom              # Attach to running orchestrator
+cat .uom-agent/state.json       # Check current agent mode
+git log --oneline -5            # Check latest work
+
+# Start tmux watchdog:
+sh bin/uom-tmux-watchdog.sh --daemon  # Auto-recover sessions
+
+# Deploy to phone:
+sh bin/uom-deploy-phone.sh            # SCP scripts + aliases + boot config
 
 # If phone was solo:
 jq '.active_agent="laptop"' .uom-agent/state.json > /tmp/s.json && mv /tmp/s.json .uom-agent/state.json
 git add -A && git commit -m "handback: laptop resumed control" && git push
-tmux kill-session -t uom && sh bin/uom-hybrid.sh --daemon
 ```
 
-<!-- last-sync: 2026-07-17T08:15:00Z -->
+<!-- last-sync: 2026-07-17T18:00:00Z -->

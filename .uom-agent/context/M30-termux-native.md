@@ -1,17 +1,13 @@
-## Context: M30 — Termux Native Polish
+## Context: M30 — Termux Native Tools ✅ DONE
 
-Implement Termux-native features for the UOM dual-agent phone orchestrator.
+**Status:** Complete. Tag v0.30.0.
 
-Required:
-1. Haptic feedback via `termux-vibrate` on task start/fail
-2. Push notifications via `termux-notification` for deployment status
-3. Portrait-optimized (9:16) TUI reflow for phone SSH sessions
-4. Termux:Boot auto-launch of orchestrator + reverse tunnel
-5. Graceful degradation when not in Termux environment
+Delivered:
+1. `bin/omni-project-start.sh` — Interactive TUI dashboard with 9 sub-commands. Works on Alpine + Termux. Fish TUI, POSIX shell logic.
+2. `bin/uom-tmux-watchdog.sh` — Monitors `uom` and `uom-orch` tmux sessions, auto-recreates on crash, restarts orchestrator/tunnel. 30s daemon loop.
+3. `install/setup-aliases.sh` — 14 UOM aliases (omni, omni-start, omni-menu, omni-status, omni-detach, omni-aware, omni-test, omni-recover, uom-tmux-watchdog, uom-tunnel, uom-tmux, uom-shell) for both Alpine `.profile` and Termux `.bashrc`.
+4. `bin/uom-deploy-phone.sh` — SCP-based deployment of scripts + aliases + boot config to phone.
+5. Tunnel fix: removed `ExitOnForwardFailure=yes` and `fuser -k 18022/tcp` (false positives killed tunnel).
+6. Termux:Boot updated: starts SSH, tunnel, tmux watchdog, phone orchestrator.
 
-Files to modify:
-- `tools/uom-orch-phone.sh` — add notification hooks
-- `bin/uom-reverse-ssh.sh` — verify Termux:Boot integration
-- `orchestrators/uom-solo-orchestrator.sh` — add haptic/notification
-
-Reference: `UOM-DUAL-AGENT/UOM-DUAL-AGENT-ORCHESTRATOR.md` Phase 1.10
+Next: M31 — Network Switching Stress Test
