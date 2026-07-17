@@ -4,7 +4,7 @@
   "laptop_heartbeat": "2026-07-17T16:38:16+05:30",
   "phone_heartbeat": "2026-07-17T15:57:44+05:30",
   "current_task_id": "M01-reverse-tunnel",
-  "task_status": "in_progress",
+  "task_status": "failed",
   "last_commit": "",
   "session_id": "",
   "takeover_count": "0",
