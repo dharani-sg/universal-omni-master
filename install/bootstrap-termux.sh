@@ -25,7 +25,9 @@ fi
 mkdir -p "$HOME/src"
 if [ -d "$UOM_DIR/.git" ]; then
   echo "[*] Repo exists — pulling latest..."
+  git -C "$UOM_DIR" stash --include-untracked 2>/dev/null || true
   git -C "$UOM_DIR" pull --ff-only
+  git -C "$UOM_DIR" stash pop 2>/dev/null || true
 else
   echo "[*] Cloning UOM repo..."
   git clone "$UOM_REPO" "$UOM_DIR"

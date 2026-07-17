@@ -16,7 +16,9 @@ command -v opencode >/dev/null 2>&1 || go install github.com/opencode-ai/opencod
 
 mkdir -p "$HOME/src"
 if [ -d "$HOME/src/universal-omni-master/.git" ]; then
+  git -C "$HOME/src/universal-omni-master" stash --include-untracked 2>/dev/null || true
   git -C "$HOME/src/universal-omni-master" pull --ff-only
+  git -C "$HOME/src/universal-omni-master" stash pop 2>/dev/null || true
 else
   git clone "$UOM_REPO" "$HOME/src/universal-omni-master"
 fi
