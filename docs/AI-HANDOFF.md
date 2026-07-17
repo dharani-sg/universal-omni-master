@@ -1,4 +1,4 @@
-# Universal Omni-Master — Durable AI Handoff (v0.26.0)
+# Universal Omni-Master — Durable AI Handoff (v0.27.5-pre)
 
 ## Repository Identity
 - Project root: ~/src/universal-omni-master
@@ -59,6 +59,39 @@ M28+: Zero-trust networking, predictive healing, fleet AI orchestration
 - JSON escapers: 4 duplicates → 2 (canonical in core/utils.sh + postboot variant)
 - Service-status: 3 duplicates → 1 (canonical via init modules, healer delegates)
 - All files pass sh -n syntax check
+
+## Session Log: Dual-Boot GRUB + SSH Fix (2026-07-17)
+### GRUB Dual-Boot Detection
+- **Root cause:** `GRUB_DISABLE_OS_PROBER=true` in /etc/default/grub prevented Void Linux detection
+- **Fix:** Set `GRUB_DISABLE_OS_PROBER=false`, ran `grub-mkconfig -o /boot/grub/grub.cfg`
+- **Result:** Void Linux 7.2.0-rc3_1 now appears in GRUB menu (id: void-top)
+- **Main grub.cfg entries:** 8 total (3 Alpine, 3 Void, submenu, UEFI Firmware)
+- **Fallback grub.cfg:** 5 entries (Alpine only, pre-os-prober — needs root to regenerate)
+- **EFI stubs:** Alpine, Void, Artix, GRUB2NORD, alpine-fallback all present in /boot/efi/EFI/
+
+### omni-boot grub.sh Hardening
+- **Issue:** grub.cfg mode 600 (root-only) caused `[error] grub.cfg not found` in omni-boot
+- **Fix:** Added `_grub_cfg_readable()` and `_grub_cfg_cat()` — detects doas/sudo, reads via privilege helper
+- **Pattern:** Same as grub-theme.fish (Fish) — direct read first, doas fallback for mode 600
+- **Tests:** 47/47 pass (31 detect + 16 service-layer)
+
+### SSH Service
+- **Status:** sshd enabled on OpenRC default runlevel, service started
+- **Host keys:** RSA, ECDSA, ED25519 all present in /etc/ssh/
+
+### GRUB Theme Config
+- **Fixed:** omni_conf.fish GRUB_THEME_DIR corrected from whitesur → tela (matching active theme)
+- **Fallback grub.cfg:** Theme=tela (consistent with main)
+- **Available themes:** catppuccin-mocha, nord, stylish, tela, vimix, whitesur
+
+### Dual-Distro Dry Run Results
+- **Alpine (native):** distro=alpine, init=openrc, libc=musl, pkg=apk, priv=doas, boot=grub, UEFI=yes, SB=disabled
+- **Void (sysroot):** distro=void, init=runit, libc=glibc, pkg=xbps, priv=doas, boot=grub, seat=seatd+elogind
+- **Hardware:** Intel i3-3217U, AMD+Intel hybrid GPU, CT240BX500 SSD, AC power
+
+### Pending (requires root)
+- Regenerate fallback grub.cfg to include Void Linux entries: `doas grub-mkconfig -o /boot/grub/grub.cfg`
+- Verify fallback sync: `grub-theme verify` (Fish alias)
 
 ## Recovery Prompt
 Read this file, then run:
