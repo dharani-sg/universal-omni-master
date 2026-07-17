@@ -255,4 +255,4 @@ Read this file, then run:
 Report: branch, commit, tags, dirty files, latest milestone, failing gates.
 Never push unless all gates pass.
 
-<!-- last-sync: 2026-07-17T13:00:00Z -->
+<!-- last-sync: 2026-07-17T07:35:34Z -->

@@ -75,4 +75,4 @@ cd ~/src/universal-omni-master
 ## Watchdog
 
 The watchdog runs every 60s, checking laptop reachability. After 3 consecutive failures (~15 min), it triggers solo mode.
-<!-- last-sync: 2026-07-17T13:00:00Z -->
+<!-- last-sync: 2026-07-17T07:35:34Z -->

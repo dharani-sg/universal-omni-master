@@ -68,4 +68,4 @@ Kill laptop, watch phone takeover, restore dual mode.
 | M28 (Dual-Agent) | v0.28.0 | ✅ Phase 1-2 done |
 | **M29 (Bootstrap+Solo+Security)** | **v0.29.0** | **🚧 In progress** |
 
-<!-- last-sync: 2026-07-17T13:00:00Z -->
+<!-- last-sync: 2026-07-17T07:35:34Z -->

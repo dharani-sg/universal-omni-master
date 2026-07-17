@@ -701,7 +701,7 @@ UOM is built on **immutable engineering rules**. Before contributing:
 - **doas TTY requirement:** Never invoke root commands from opencode subprocess — always run manually from terminal
 - **Pre-commit hook:** Installed via `sh security/install-hooks.sh` — blocks accidental secret commits
 
-<!-- last-sync: 2026-07-17T13:00:00Z -->
+<!-- last-sync: 2026-07-17T07:35:34Z -->
 
 ---
 

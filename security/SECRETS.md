@@ -47,4 +47,4 @@ sh security/install-hooks.sh
 
 If it's a secret, it goes in `~/.config/uom/secrets.env`, not in any tracked file.
 
-<!-- last-sync: 2026-07-17T13:00:00Z -->
+<!-- last-sync: 2026-07-17T07:35:34Z -->
