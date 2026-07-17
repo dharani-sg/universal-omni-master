@@ -1,12 +1,13 @@
 {
   "schema": 1,
   "active_agent": "laptop",
-  "laptop_heartbeat": "2026-07-17T14:18:07+05:30",
+  "laptop_heartbeat": "2026-07-17T13:42:54+05:30",
   "phone_heartbeat": "2026-07-17T13:26:41+05:30",
   "current_task_id": "M02-state-sync",
   "current_task_desc": "",
-  "task_status": "failed",
+  "task_status": "done",
   "last_commit": "",
   "session_id": "",
-  "takeover_count": "1"
+  "takeover_count": "1",
+  "hybrid_mode": "dual"
 }

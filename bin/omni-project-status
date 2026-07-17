@@ -1,0 +1,4 @@
+#!/bin/sh
+# bin/omni-project-status — Unified UOM status shell alias target
+# Usage: omni-project-status [status|full|tunnel|current]
+exec "$(dirname "$0")/uom-status.sh" "$@"

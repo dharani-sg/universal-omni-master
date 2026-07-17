@@ -29,15 +29,24 @@ _is_tunnel_up() {
 }
 
 _start_tunnel() {
-    _log "Starting reverse tunnel..."
-    if [ -f "${TUNNEL_PID}" ] && kill -0 "$(cat "${TUNNEL_PID}")" 2>/dev/null; then
-        _log "Tunnel already running (PID $(cat "${TUNNEL_PID}"))"
+    _log "Checking reverse tunnel status..."
+    if ssh -o ConnectTimeout=3 -o BatchMode=yes -p 18022 127.0.0.1 true 2>/dev/null; then
+        _log "Reverse tunnel UP (phone reachable at 127.0.0.1:18022)"
         return 0
     fi
-    nohup sh "${UOM_DIR}/bin/uom-reverse-ssh.sh" >/dev/null 2>&1 &
-    echo $! > "${TUNNEL_PID}"
-    _log "Tunnel started (PID $!)"
-    sleep 3
+    _log "Reverse tunnel DOWN — phone must run uom-reverse-ssh.sh"
+    _log "Waiting for phone to establish tunnel..."
+    _wait=0
+    while [ "$_wait" -lt 60 ]; do
+        sleep 5
+        _wait=$(( _wait + 5 ))
+        if ssh -o ConnectTimeout=3 -o BatchMode=yes -p 18022 127.0.0.1 true 2>/dev/null; then
+            _log "Reverse tunnel established after ${_wait}s"
+            return 0
+        fi
+    done
+    _log "Tunnel not available — proceeding without phone connectivity"
+    return 0
 }
 
 _stop_tunnel() {
@@ -51,28 +60,6 @@ _stop_tunnel() {
 
 _laptop_reachable() {
     discover_laptop_ip >/dev/null 2>&1 || _is_tunnel_up
-}
-
-_run_dual() {
-    _log "MODE: Dual-agent (laptop reachable)"
-    jq '.active_agent="laptop"' "${STATE_FILE}" > /tmp/state_tmp.json 2>/dev/null && mv /tmp/state_tmp.json "${STATE_FILE}"
-    if [ -f "${UOM_DIR}/tools/uom-orch-laptop.sh" ]; then
-        sh "${UOM_DIR}/tools/uom-orch-laptop.sh" &
-        _orch_pid=$!
-        _log "Laptop orchestrator started (PID ${_orch_pid})"
-        wait "${_orch_pid}" 2>/dev/null
-    fi
-}
-
-_run_solo() {
-    _log "MODE: Phone-solo (laptop unreachable)"
-    jq '.active_agent="phone-solo"' "${STATE_FILE}" > /tmp/state_tmp.json 2>/dev/null && mv /tmp/state_tmp.json "${STATE_FILE}"
-    if [ -f "${UOM_DIR}/orchestrators/uom-solo-orchestrator.sh" ]; then
-        sh "${UOM_DIR}/orchestrators/uom-solo-orchestrator.sh" &
-        _solo_pid=$!
-        _log "Solo orchestrator started (PID ${_solo_pid})"
-        wait "${_solo_pid}" 2>/dev/null
-    fi
 }
 
 _start_tmux_session() {
@@ -104,19 +91,29 @@ main() {
     _start_tunnel
 
     _last_mode=""
+    _orch_pid=""
     while true; do
         if _laptop_reachable; then
             if [ "${_last_mode}" != "dual" ]; then
                 _log "Laptop reachable → dual mode"
                 _last_mode="dual"
                 jq '.active_agent="laptop"' "${STATE_FILE}" > /tmp/state_tmp.json 2>/dev/null && mv /tmp/state_tmp.json "${STATE_FILE}"
+                if [ -f "${UOM_DIR}/tools/uom-orch-laptop.sh" ]; then
+                    sh "${UOM_DIR}/tools/uom-orch-laptop.sh" &
+                    _orch_pid=$!
+                    _log "Laptop orchestrator started (PID ${_orch_pid})"
+                fi
             fi
         else
             if [ "${_last_mode}" != "solo" ]; then
                 _log "Laptop unreachable → solo mode"
                 _last_mode="solo"
                 jq '.active_agent="phone-solo"' "${STATE_FILE}" > /tmp/state_tmp.json 2>/dev/null && mv /tmp/state_tmp.json "${STATE_FILE}"
-                _run_solo &
+                if [ -f "${UOM_DIR}/orchestrators/uom-solo-orchestrator.sh" ]; then
+                    sh "${UOM_DIR}/orchestrators/uom-solo-orchestrator.sh" &
+                    _orch_pid=$!
+                    _log "Solo orchestrator started (PID ${_orch_pid})"
+                fi
             fi
         fi
         sleep "${CHECK_INTERVAL}"

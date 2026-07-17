@@ -1,4 +1,4 @@
-#!/data/data/com.termux.boot/files/usr/bin/bash
+#!/data/data/com.termux/files/usr/bin/bash
 # install/bootstrap-termux.sh — UOM Bootstrap for Termux/Android ARM64
 # Usage: curl -fsSL https://raw.githubusercontent.com/dharani-sg/universal-omni-master/main/install/bootstrap-termux.sh | bash
 set -euo pipefail

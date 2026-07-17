@@ -23,7 +23,12 @@ _log() {
 
 SOLO_PID_FILE="${HOME}/.uom-termux-user/solo-orchestrator.pid"
 
-if discover_laptop_ip >/dev/null 2>&1; then
+_laptop_reachable() {
+    discover_laptop_ip >/dev/null 2>&1 || \
+        ssh -o ConnectTimeout=2 -o BatchMode=yes -p 18022 127.0.0.1 true 2>/dev/null
+}
+
+if _laptop_reachable; then
     echo 0 > "${FAIL_FILE}"
     _log "Laptop reachable"
 

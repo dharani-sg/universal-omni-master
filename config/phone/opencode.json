@@ -1,0 +1,41 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  "model": "opencode/big-pickle",
+  "small_model": "opencode/north-mini-code-free",
+
+  "autoupdate": false,
+  "share": "manual",
+
+  "enabled_providers": ["opencode"],
+
+  "experimental": {
+    "policies": [
+      { "effect": "deny", "action": "provider.use", "resource": "openai" },
+      { "effect": "deny", "action": "provider.use", "resource": "anthropic" },
+      { "effect": "deny", "action": "provider.use", "resource": "google" },
+      { "effect": "deny", "action": "provider.use", "resource": "openrouter" }
+    ]
+  },
+
+  "permission": {
+    "bash": {
+      "git *": "allow",
+      "*": "ask"
+    },
+    "edit": "ask",
+    "write": "ask",
+    "webfetch": "allow"
+  },
+
+  "shell": "/data/data/com.termux/files/usr/bin/bash",
+  "username": "u0_a608",
+  "instructions": ["NETWORK_CODE_POLICY.md"],
+
+  "command": {
+    "shield": {
+      "description": "Generate a compliant network client following the global policy",
+      "template": "Read `NETWORK_CODE_POLICY.md` (loaded globally) and apply it in full to write one self-contained Python file named `api_wrapper.py` that implements every requirement (retry, pacing, concurrency, quota tracking, logging, HTTP client hygiene) exactly as specified. Include a runnable `if __name__ == \"__main__\":` example with a placeholder BASE_URL and a single example GET request handling success, quota exhaustion, retry exhaustion, and unexpected errors cleanly. Create ONLY `api_wrapper.py`. After writing it, print only a short summary and any required dependency."
+    }
+  }
+}

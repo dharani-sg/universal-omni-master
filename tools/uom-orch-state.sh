@@ -82,6 +82,27 @@ state_git_sync() {
     git push origin main 2>/dev/null || true
 }
 
+state_status() {
+    _state_file="${OMNI_ROOT:-.}/.uom-agent/state.json"
+    if [ ! -f "$_state_file" ]; then
+        echo "STATE_FILE_NOT_FOUND"
+        return 1
+    fi
+
+    _active_agent=$(jq -r '.active_agent // "unknown"' "$_state_file" 2>/dev/null || echo "unknown")
+    _task_status=$(jq -r '.task_status // "idle"' "$_state_file" 2>/dev/null || echo "idle")
+    _current_task=$(jq -r '.current_task_id // "none"' "$_state_file" 2>/dev/null || echo "none")
+
+    echo "status: OK"
+    echo "active_agent: ${_active_agent}"
+    echo "task_status: ${_task_status}"
+    echo "current_task_id: ${_current_task}"
+    echo "last_commit: $(jq -r '.last_commit // "none"' "$_state_file" 2>/dev/null)"
+    echo "takeover_count: $(jq -r '.takeover_count // 0' "$_state_file" 2>/dev/null)"
+    echo "laptop_heartbeat: $(jq -r '.laptop_heartbeat // "none"' "$_state_file" 2>/dev/null)"
+    echo "phone_heartbeat: $(jq -r '.phone_heartbeat // "none"' "$_state_file" 2>/dev/null)"
+}
+
 state_git_pull() {
     cd "${OMNI_ROOT:-.}" || return 1
     git pull --rebase origin main 2>/dev/null || true
