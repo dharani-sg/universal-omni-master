@@ -242,10 +242,17 @@ Auto-detect OpenSSH 9.9+ ML-KEM-768 hybrid KEX. Fleet-wide crypto inventory. TPM
 **Dual-Agent & Commercial Tools:**
 | Tool | Purpose |
 |------|---------|
-| `bin/uom-reverse-ssh.sh` | autossh tunnel phone→laptop at `127.0.0.1:31415` |
+| `bin/omni-project-start.sh` | **Start Menu** — Interactive dashboard + mode switching (detach, phone, laptop, hybrid, aware, tmux) |
+| `bin/uom-tmux-watchdog.sh` | **Tmux Watchdog** — Monitors tmux sessions, auto-recreates if crashed, runs on phone boot |
+| `bin/uom-reverse-ssh.sh` | autossh tunnel phone→laptop at `127.0.0.1:18022` |
+| `bin/uom-status.sh` | **Status Check** — Shows state, queue, tunnel, process health |
+| `bin/uom-deploy-phone.sh` | Deploy scripts + aliases → phone via SSH/SCP |
+| `bin/uom-hybrid.sh` | Hybrid auto-orchestrator (auto-switches dual/solo) |
 | `orchestrators/uom-solo-orchestrator.sh` | Phone-only fallback when laptop dies |
 | `orchestrators/uom-watchdog.sh` | Laptop reachability monitor (60s loop) |
 | `install/bootstrap.sh` | Universal curl installer (auto-detects platform) |
+| `install/bootstrap-termux.sh` | Termux-specific bootstrap (Android version detection) |
+| `install/setup-aliases.sh` | Install all UOM aliases into shell profile |
 | `security/uom-harden-ssh.sh` | ed25519-only SSH, key mode enforcement |
 | `security/uom-firewall.sh` | nftables: allow `22`/`31415`, drop-all-inbound |
 | `security/install-hooks.sh` | Pre-commit secret scanner |
@@ -286,7 +293,7 @@ Auto-detect OpenSSH 9.9+ ML-KEM-768 hybrid KEX. Fleet-wide crypto inventory. TPM
 <tr>
 <th>M</th><th>Phase</th><th>Vision</th>
 </tr>
-<tr><td><b>M30</b></td><td>📱 Mobile</td><td><b>Termux Native Polish</b> — Haptic feedback, push notifications, portrait-optimized TUI, Termux:Boot auto-launch</td></tr>
+<tr><td><b>M30</b></td><td>📱 Mobile</td><td><b>Termux Native Polish</b> — Haptic feedback, push notifications, portrait-optimized TUI, Termux:Boot auto-launch, <b>omni-project-start menu</b>, <b>tmux watchdog</b>, auto-healing reverse tunnel</td></tr>
 <tr><td><b>M31</b></td><td>🔐 Post-Quantum</td><td><b>PQC Fleet Auth</b> — ML-KEM-768 hybrid KEX, crypto inventory, ML-DSA host keys, phased classical removal</td></tr>
 <tr><td><b>M32</b></td><td>🤖 Predictive AI</td><td><b>Predictive Healing</b> — CRC linear regression, thermal telemetry, 60-min failure lookahead, digital twin simulation</td></tr>
 <tr><td><b>M33</b></td><td>📊 Observability</td><td><b>eBPF Kernel Telemetry</b> — bpftrace one-liners, Tetragon TracingPolicy, CO-RE portable syscall observer</td></tr>
@@ -362,6 +369,43 @@ ssh -o ConnectTimeout=5 -p 18022 u0_a608@127.0.0.1 "echo TUNNEL OK"
 # Check agent state:
 cat .uom-agent/state.json
 ```
+
+### Dual-Agent Start Menu (omni-project-start)
+
+The `omni-project-start` command provides an interactive dashboard + sub-command menu. Available on both laptop and phone after running `sh install/setup-aliases.sh` or `sh bin/uom-deploy-phone.sh`.
+
+**Usage:**
+```
+omni-project-start              Interactive menu (dashboard + actions)
+omni-project-start status       Show dashboard + exit
+omni-project-start detach       Force phone takeover (run from phone)
+omni-project-start phone        Switch primary agent to phone
+omni-project-start laptop       Switch primary agent to laptop
+omni-project-start hybrid       Start hybrid auto-orchestrator mode
+omni-project-start aware        Intelligent switching / situation awareness
+omni-project-start tmux         Start or attach project tmux session
+omni-project-start opencode     Launch opencode AI coding agent
+omni-project-start test         Run connectivity test suite
+omni-project-start recover      Reset stuck in_progress tasks to pending
+```
+
+**Tmux session layout** (auto-created by `omni-project-start tmux`):
+| Window | Content |
+|--------|---------|
+| `start` | Interactive start menu |
+| `opencode` | opencode AI agent |
+| `status` | Live status dashboard |
+| `state` | Watch .uom-agent/state.json + queue.json |
+| `git` | Git log (30 commits, graph) |
+| `phone` or `laptop` | SSH tunnel to other device |
+
+**Tmux Watchdog** (`uom-tmux-watchdog --daemon`):
+- Monitors `uom` and `uom-orch` tmux sessions
+- Auto-recreates sessions if they crash
+- Restarts orchestrator process if it dies
+- Restarts reverse tunnel if it drops (phone only)
+- Runs every 30 seconds
+- Auto-started from Termux:Boot on phone
 
 ### Dual-Agent Pre-Build Dependencies
 

@@ -1,92 +1,138 @@
 #!/bin/sh
-# bin/uom-deploy-phone.sh — Deploy opencode config + fixes to phone via SSH
-# Usage: sh bin/uom-deploy-phone.sh [phone_ip] [phone_user]
-# Prerequisites: phone must have sshd running on port 8022
+# bin/uom-deploy-phone.sh — Deploy UOM configs + aliases to phone
+# Updates phone-side .bashrc, ~/bin/ scripts, and Termux:Boot.
+# Usage: sh bin/uom-deploy-phone.sh [--dry-run]
+# Run from laptop; expects SSH access to phone.
 
 set -u
 
-UOM_DIR="${HOME}/src/universal-omni-master"
-PHONE_IP="${1:-$(cat "${UOM_DIR}/.uom-agent/phone.ip" 2>/dev/null || echo "192.168.40.207")}"
-PHONE_USER="${2:-u0_a608}"
-PHONE_SSH="ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new -p 8022 ${PHONE_USER}@${PHONE_IP}"
-DEPLOY_DIR="${UOM_DIR}/config/phone"
+UOM_DIR="${OMNI_ROOT:-$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)}"
+DRY_RUN=false
 
-_log() { printf '[deploy] %s\n' "$*"; }
+_log() { printf '[deploy] %s %s\n' "$(date -u +%H:%M:%S)" "$*"; }
 
-_check_phone() {
-    _log "Checking phone at ${PHONE_IP}:8022..."
-    if ! ${PHONE_SSH} "echo OK" 2>/dev/null; then
-        _log "ERROR: Phone not reachable at ${PHONE_IP}:8022"
-        _log "Ensure sshd is running on phone: sshd"
-        return 1
+if [ "${1:-}" = "--dry-run" ]; then
+    DRY_RUN=true
+    _log "DRY RUN — no changes will be made"
+fi
+
+# ── Discover phone target ──────────────────────────────────────────────
+if ssh -F ~/.ssh/config -o ConnectTimeout=3 -o BatchMode=yes uom-phone-rev true 2>/dev/null; then
+    PHONE_SSH="ssh -F ~/.ssh/config uom-phone-rev"
+    _log "Phone reachable via reverse tunnel"
+elif ssh -F ~/.ssh/config -o ConnectTimeout=5 -o BatchMode=yes uom-phone-lan true 2>/dev/null; then
+    PHONE_SSH="ssh -F ~/.ssh/config uom-phone-lan"
+    _log "Phone reachable via LAN"
+else
+    _log "ERROR: Phone not reachable"
+    _log "Try: ssh u0_a608@192.168.40.207 -p 8022"
+    exit 1
+fi
+
+# ── 1. Create ~/bin/ scripts on phone ──────────────────────────────────
+_log "=== Deploying ~/bin/ scripts ==="
+
+for _script in omni-project-start.sh uom-tmux-watchdog.sh uom-status.sh uom-reverse-ssh.sh; do
+    if [ -f "${UOM_DIR}/bin/${_script}" ]; then
+        $DRY_RUN || $PHONE_SSH "mkdir -p ~/bin"
+        _log "  Copying ${_script} to phone ~/bin/"
+        $DRY_RUN || scp -F ~/.ssh/config "${UOM_DIR}/bin/${_script}" uom-phone-rev:~/bin/ 2>/dev/null
+        $DRY_RUN || $PHONE_SSH "chmod +x ~/bin/${_script}"
     fi
-    _log "Phone reachable"
-    return 0
-}
+done
 
-_deploy_opencode_config() {
-    _log "Deploying opencode.json to phone..."
-    ${PHONE_SSH} "mkdir -p ~/.config/opencode"
-    scp -P 8022 "${DEPLOY_DIR}/opencode.json" "${PHONE_USER}@${PHONE_IP}:~/.config/opencode/opencode.json"
-    _log "opencode.json deployed"
-}
+# ── 2. Update .bashrc with aliases ──────────────────────────────────────
+_log "=== Updating phone .bashrc ==="
 
-_deploy_network_policy() {
-    _log "Deploying NETWORK_CODE_POLICY.md to phone..."
-    scp -P 8022 "${UOM_DIR}/NETWORK_CODE_POLICY.md" "${PHONE_USER}@${PHONE_IP}:~/src/universal-omni-master/NETWORK_CODE_POLICY.md"
-    _log "NETWORK_CODE_POLICY.md deployed"
-}
+$DRY_RUN || $PHONE_SSH 'grep -q "omni-project-start" ~/.bashrc 2>/dev/null || {
+    cat >> ~/.bashrc << '\''EOF'\''
 
-_deploy_api_wrapper() {
-    _log "Deploying api_wrapper.py to phone..."
-    scp -P 8022 "${UOM_DIR}/api_wrapper.py" "${PHONE_USER}@${PHONE_IP}:~/src/universal-omni-master/api_wrapper.py"
-    _log "api_wrapper.py deployed"
-}
+# ── UOM Project Start Menu ─────────────────────────────────────────────
+alias omni-project-start="sh ~/bin/omni-project-start.sh"
+alias omni-start="sh ~/bin/omni-project-start.sh"
+alias omni="sh ~/bin/omni-project-start.sh status"
+alias omni-menu="sh ~/bin/omni-project-start.sh --menu"
+alias omni-status="sh ~/src/universal-omni-master/bin/uom-status.sh"
+alias omni-detach="sh ~/bin/omni-project-start.sh detach"
+alias omni-aware="sh ~/bin/omni-project-start.sh aware"
+alias omni-test="sh ~/bin/omni-project-start.sh test"
+alias omni-recover="sh ~/bin/omni-project-start.sh recover"
+alias uom-tmux-watchdog="sh ~/bin/uom-tmux-watchdog.sh"
+alias uom-tunnel="sh ~/bin/uom-reverse-ssh.sh"
+alias uom-orch-phone="sh ~/src/universal-omni-master/tools/uom-orch-phone.sh"
+alias uom-tmux="sh ~/bin/omni-project-start.sh tmux"
+alias uom-shell="tmux new-session -A -s uom"
+alias uom-status="sh ~/bin/omni-project-start.sh status"
+EOF
+    echo "aliases appended"
+}'
+_log "Phone .bashrc aliases deployed"
 
-_deploy_tunnel_script() {
-    _log "Deploying uom-reverse-ssh.sh to phone..."
-    ${PHONE_SSH} "mkdir -p ~/bin"
-    scp -P 8022 "${UOM_DIR}/bin/uom-reverse-ssh.sh" "${PHONE_USER}@${PHONE_IP}:~/bin/uom-reverse-ssh.sh"
-    ${PHONE_SSH} "chmod +x ~/bin/uom-reverse-ssh.sh"
-    _log "uom-reverse-ssh.sh deployed to ~/bin/"
-}
+# ── 3. Update Termux:Boot script ───────────────────────────────────────
+_log "=== Updating Termux:Boot ==="
 
-_start_tunnel() {
-    _log "Starting reverse tunnel from phone..."
-    ${PHONE_SSH} "nohup sh ~/bin/uom-reverse-ssh.sh > /dev/null 2>&1 &"
+$DRY_RUN || $PHONE_SSH 'mkdir -p ~/.termux/boot
+cat > ~/.termux/boot/start-uom.sh << '\''EOF'\''
+#!/data/data/com.termux/files/usr/bin/sh
+# Termux:Boot auto-start for UOM
+# Starts SSH, tunnel, tmux watchdog, and orchestrator on device boot
+sleep 30
+
+# Start SSH on port 8022
+sshd -p 8022 2>/dev/null || true
+
+# Wait for network
+for i in 1 2 3 4 5; do
+    ping -c 1 -W 2 8.8.8.8 >/dev/null 2>&1 && break
     sleep 5
-    if ssh -o ConnectTimeout=3 -o BatchMode=yes -p 18022 127.0.0.1 true 2>/dev/null; then
-        _log "Reverse tunnel UP"
-    else
-        _log "Tunnel not yet established (may take a few seconds)"
-    fi
-}
+done
 
-_verify_deployment() {
-    _log "Verifying deployment..."
-    ${PHONE_SSH} "
-        echo '--- opencode ---'
-        which opencode 2>/dev/null || echo 'NOT INSTALLED'
-        opencode --version 2>/dev/null || echo 'NO VERSION'
-        echo '--- config ---'
-        cat ~/.config/opencode/opencode.json 2>/dev/null | head -5 || echo 'NO CONFIG'
-        echo '--- tmux ---'
-        tmux list-sessions 2>/dev/null || echo 'NO TMUX'
-        echo '--- sshd ---'
-        ps aux 2>/dev/null | grep sshd | grep -v grep || echo 'NO SSHD'
-    "
-}
+# Source aliases
+[ -f ~/.bashrc ] && . ~/.bashrc
 
-main() {
-    _log "=== UOM Phone Deployment ==="
-    _check_phone || exit 1
-    _deploy_opencode_config
-    _deploy_network_policy
-    _deploy_api_wrapper
-    _deploy_tunnel_script
-    _start_tunnel
-    _verify_deployment
-    _log "=== Deployment Complete ==="
-}
+# Start reverse tunnel
+nohup sh ~/bin/uom-reverse-ssh.sh > ~/.uom-termux-user/tunnel.log 2>&1 &
 
-main "$@"
+# Start tmux watchdog (background)
+nohup sh ~/bin/uom-tmux-watchdog.sh --daemon > ~/.uom-termux-user/tmux-watchdog.log 2>&1 &
+
+# Start phone orchestrator
+nohup sh ~/src/universal-omni-master/tools/uom-orch-phone.sh > ~/.uom-termux-user/phone-orch.log 2>&1 &
+EOF
+chmod +x ~/.termux/boot/start-uom.sh
+echo "Termux:Boot updated"'
+_log "Termux:Boot script deployed"
+
+# ── 4. Copy other necessary scripts ───────────────────────────────────
+_log "=== Syncing bin/ scripts ==="
+
+for _s in uom-reverse-ssh.sh uom-status.sh omni-project-start.sh uom-tmux-watchdog.sh; do
+    $DRY_RUN || scp -F ~/.ssh/config "${UOM_DIR}/bin/${_s}" "uom-phone-rev:~/bin/" 2>/dev/null && \
+        _log "  Synced ${_s}"
+done
+
+$DRY_RUN || $PHONE_SSH "chmod +x ~/bin/*.sh 2>/dev/null || true"
+
+# ── Summary ────────────────────────────────────────────────────────────
+_log ""
+_log "=== DEPLOYMENT COMPLETE ==="
+_log ""
+_log "Aliases added to phone ~/.bashrc:"
+_log "  omni-project-start   — Interactive start menu (default)"
+_log "  omni-start            — Same"
+_log "  omni                  — Quick status"
+_log "  omni-menu             — Menu mode"
+_log "  omni-status           — Detailed status"
+_log "  omni-detach           — Force phone takeover"
+_log "  omni-aware            — Situation awareness"
+_log "  omni-test             — Connectivity tests"
+_log "  omni-recover          — Recover stuck tasks"
+_log "  uom-tmux-watchdog     — Tmux session monitor"
+_log "  uom-tunnel            — Start reverse tunnel"
+_log "  uom-orch-phone        — Start phone orchestrator"
+_log "  uom-tmux              — Start project tmux session"
+_log "  uom-shell             — Tmux session (simple)"
+_log ""
+_log "Termux:Boot auto-starts: SSH, tunnel, tmux watchdog, orchestrator"
+_log ""
+_log "Run 'source ~/.bashrc' on phone to activate aliases"
