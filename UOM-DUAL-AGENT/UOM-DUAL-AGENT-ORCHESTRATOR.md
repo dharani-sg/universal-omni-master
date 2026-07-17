@@ -930,7 +930,7 @@ Both devices use `tools/uom-ip-discover.sh` — a shared POSIX library with mult
 
 ```
 DISCOVERY PRIORITY (both devices):
-1. Reverse SSH tunnel   → 127.0.0.1:18022 (always works if tunnel is up)
+1. Reverse SSH tunnel   → 127.0.0.1:31415 (always works if tunnel is up)
 2. mDNS                 → mi8.local / hp-pavilion.local (avahi-daemon)
 3. Last-known IP        → .uom-agent/phone.ip / laptop.ip (GitHub state)
 4. SSH config aliases   → uom-phone-rev / uom-phone-lan / uom-phone-mdns
@@ -938,7 +938,7 @@ DISCOVERY PRIORITY (both devices):
 6. Gateway range scan   → try .100-.110 in hotspot subnet (phone only)
 ```
 
-**Key insight:** The reverse SSH tunnel (`uom-phone-rev` → `127.0.0.1:18022`) is the PRIMARY communication path. It works regardless of IP changes because it's a tunnel, not a direct connection. The phone keeps this tunnel alive via `uom-reverse-ssh.sh`.
+**Key insight:** The reverse SSH tunnel (`uom-phone-rev` → `127.0.0.1:31415`) is the PRIMARY communication path. It works regardless of IP changes because it's a tunnel, not a direct connection. The phone keeps this tunnel alive via `uom-reverse-ssh.sh`.
 
 ### Scenario A: Phone is your hotspot (most common)
 
@@ -947,7 +947,7 @@ Phone IP as gateway: 192.168.43.1  ← standard Android hotspot
 Laptop IP: 192.168.43.x            ← DHCP from phone
 ```
 
-Laptop can always SSH to phone at `127.0.0.1:18022` (via reverse tunnel) or `192.168.43.1:8022` (direct). No discovery needed.
+Laptop can always SSH to phone at `127.0.0.1:31415` (via reverse tunnel) or `192.168.43.1:8022` (direct). No discovery needed.
 
 ```sh
 # Quick test from laptop
@@ -977,7 +977,7 @@ The `uom-reverse-ssh.sh` script re-discovers the laptop on every reconnect cycle
 ```sh
 # From phone's reverse tunnel script:
 LAPTOP_IP=$(_discover_laptop)  # tries mDNS → gateway scan → state file
-ssh -N -R 18022:127.0.0.1:8022 ${LAPTOP_USER}@${LAPTOP_IP}
+ssh -N -R 31415:127.0.0.1:8022 ${LAPTOP_USER}@${LAPTOP_IP}
 ```
 
 ### Network mode detection
@@ -996,7 +996,7 @@ _my_ip=$(get_my_ip)
 # From laptop:
 cd ~/src/universal-omni-master
 . tools/uom-ip-discover.sh
-discover_phone_ip   # should return 127.0.0.1:18022 or phone IP
+discover_phone_ip   # should return 127.0.0.1:31415 or phone IP
 discover_laptop_ip  # should return laptop IP or alias
 
 # From phone (Termux):

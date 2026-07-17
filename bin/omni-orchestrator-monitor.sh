@@ -36,8 +36,8 @@ status_summary() {
     fi
 
     if [ -d "${HYB_DIR}" ]; then
-        if ssh -o ConnectTimeout=3 -o BatchMode=yes -p 18022 127.0.0.1 true 2>/dev/null; then
-            echo "REVERSE TUNNEL: UP (port 18022)"
+        if ssh -o ConnectTimeout=3 -o BatchMode=yes -p 31415 127.0.0.1 true 2>/dev/null; then
+            echo "REVERSE TUNNEL: UP (port 31415)"
         else
             echo "REVERSE TUNNEL: DOWN"
 

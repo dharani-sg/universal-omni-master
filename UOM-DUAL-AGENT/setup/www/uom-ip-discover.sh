@@ -7,10 +7,10 @@
 
 # ── Helper: try SSH reverse tunnel (laptop only, from phone side) ────────
 _try_reverse_tunnel() {
-    # Phone→laptop reverse tunnel: phone listens on laptop:18022→phone:8022
-    # From laptop perspective: can reach phone at 127.0.0.1:18022
+    # Phone→laptop reverse tunnel: phone listens on laptop:31415→phone:8022
+    # From laptop perspective: can reach phone at 127.0.0.1:31415
     # From phone perspective: can reach laptop via reverse tunnel too
-    ssh -o ConnectTimeout=2 -o BatchMode=yes -p 18022 127.0.0.1 true 2>/dev/null && { echo "127.0.0.1:18022"; return 0; }
+    ssh -o ConnectTimeout=2 -o BatchMode=yes -p 31415 127.0.0.1 true 2>/dev/null && { echo "127.0.0.1:31415"; return 0; }
     return 1
 }
 
@@ -38,7 +38,7 @@ _try_last_known() {
     if [ -f "$_file" ]; then
         _ip=$(cat "$_file" 2>/dev/null | tr -d '[:space:]')
         if [ -n "$_ip" ]; then
-            # Strip port if present (127.0.0.1:18022 → 127.0.0.1)
+            # Strip port if present (127.0.0.1:31415 → 127.0.0.1)
             _host=$(echo "$_ip" | sed 's/:.*//')
             if ping -c 1 -W 2 "$_host" >/dev/null 2>&1; then
                 echo "$_ip"; return 0

@@ -26,7 +26,7 @@ curl -fsSL http://192.168.40.90:8765/uom-phone-tools.tgz | tar -xz
 chmod +x *.sh
 
 # --- C) Open reverse tunnel (KEEP THIS RUNNING) ---
-# After this, laptop can: ssh -p 18022 -i ~/.ssh/id_ed25519_phone $(cat ~/.uom-termux-user)@127.0.0.1
+# After this, laptop can: ssh -p 31415 -i ~/.ssh/id_ed25519_phone $(cat ~/.uom-termux-user)@127.0.0.1
 sh ~/bin/uom-reverse-ssh.sh
 
 # Optional: publish Termux username to laptop (password may be needed once)

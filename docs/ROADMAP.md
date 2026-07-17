@@ -10,7 +10,7 @@
 - **Kernel:** 7.2.0-rc3_1
 - **Boot:** GRUB TELA theme, EFI stubs, initramfs all intact
 - **Dynamic IP discovery:** Working (6-method cascade)
-- **Reverse tunnel (18022→phone:8022):** UP and stable (autossh, no ExitOnForwardFailure)
+- **Reverse tunnel (31415→phone:8022):** UP and stable (autossh, no ExitOnForwardFailure)
 - **Disk:** sda4=85% (Alpine), sda3 (Void Btrfs) synced via git reset
 - **SATA CRC:** 5361 (degraded cable — avoid large writes to primary disk)
 
@@ -39,7 +39,7 @@
 
 ### ✅ Phase 4: Security Hardening
 - `security/uom-harden-ssh.sh` — ed25519-only, key modes
-- `security/uom-firewall.sh` — nftables (22, 18022, established)
+- `security/uom-firewall.sh` — nftables (22, 31415, established)
 - `security/install-hooks.sh` — pre-commit secret scanner
 - `security/SECRETS.md` — secrets storage pattern
 - `.gitignore` — secrets patterns
@@ -50,7 +50,7 @@
 - `install/setup-aliases.sh` — 14 UOM shell aliases for Alpine + Termux
 - `bin/uom-deploy-phone.sh` — SCP-based phone deployment
 - **Tunnel fix:** Removed `ExitOnForwardFailure=yes` + laptop `fuser -k` (false positives killed tunnel)
-- **Result:** Tunnel 18022→phone:8022 is stable, tmux sessions auto-recover, phone boots fully automated
+- **Result:** Tunnel 31415→phone:8022 is stable, tmux sessions auto-recover, phone boots fully automated
 
 ### 📋 Phase 6: Network Switching Stress Test ← NEXT
 - Hotspot ↔ LAN ↔ mDNS transitions

@@ -1,4 +1,4 @@
-# Universal Omni-Master — Durable AI Handoff (v0.30.0)
+# Universal Omni-Master — Durable AI Handoff (v0.31.0)
 
 ## Repository Identity
 - Project root: ~/src/universal-omni-master
@@ -10,7 +10,9 @@
 - Phone: Xiaomi Mi 8 / CrDroid Android 15 / Termux ARM64 (192.168.40.207:8022)
 - Active agent: laptop (current session)
 - Phone heartbeat: watchdog running, tunnel UP — dual-agent alive
-- Current task: M30-termux-native — omni-project-start menu completed
+- Current task: M30-termux-native — omni-project-start menu completed → cloud-only redirect + Zen loop reconciler active
+- Model: opencode/deepseek-v4-flash-free (pure cloud, no local LLM)
+- AI arch: cloud-only — all generation via `opencode` stdin pipe, no ollama/sudo/binaries
 - Takeover count: 1 (phone took over during laptop idle, previously resolved)
 
 ## Immutable Rules
@@ -393,9 +395,14 @@ Never push unless all gates pass.
 5. **Port/host drift?** `sh bin/uom-port-guardian.sh status` — shows live phone/laptop
    target + tunnel; `sh bin/uom-port-guardian.sh start` if not running. The guardian
    auto-rewrites `~/.ssh/config` and signals the hybrid orchestrator on drift.
-6. Start M31: Network Switching Stress Test — hotspot ↔ LAN ↔ mDNS transitions (guardian
+6. **Zen Loop reconciler:** `sh scripts/uom-reconcile.sh` — 6-step pipeline:
+   preflight → tmux → cloud boot → tunnel → guardian → zen loop (generate → verify → reconcile).
+   Run after any git pull to bring the environment up to date.
+7. **Cloud-only generator:** `sh scripts/uom-generator.sh "your prompt here"` — uses
+   `opencode --model opencode/deepseek-v4-flash-free` via stdin pipe. No sudo, no ollama.
+8. Start M31: Network Switching Stress Test — hotspot ↔ LAN ↔ mDNS transitions (guardian
    should keep tunnel + ssh config correct automatically; verify 0 manual intervention)
-7. See docs/ROADMAP.md for full phase list
+9. See docs/ROADMAP.md for full phase list
 
 ## Resume Quick Reference
 ```sh
@@ -408,6 +415,13 @@ tmux attach -t uom              # Attach to running orchestrator
 cat .uom-agent/state.json       # Check current agent mode
 git log --oneline -5            # Check latest work
 
+# Full reconciler (6-step):
+sh scripts/uom-reconcile.sh     # preflight -> tmux -> boot -> tunnel -> guardian -> zen
+
+# Cloud code generation:
+sh scripts/uom-generator.sh "..."   # opencode stdin pipe (pure cloud, no ollama)
+sh scripts/uom-verifier.sh FILE     # syntax/policy verification
+
 # Start tmux watchdog:
 sh bin/uom-tmux-watchdog.sh --daemon  # Auto-recover sessions
 
@@ -419,4 +433,4 @@ jq '.active_agent="laptop"' .uom-agent/state.json > "${TMPDIR:-/tmp}/uom-s.json"
 git add -A && git commit -m "handback: laptop resumed control" && git push
 ```
 
-<!-- last-sync: 2026-07-17T14:37:46Z -->
+<!-- last-sync: 2026-07-17T18:00:00Z -->

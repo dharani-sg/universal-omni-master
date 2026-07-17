@@ -104,7 +104,7 @@ _status_summary() {
     fi
 
     echo "─────────────────────────────────────"
-    echo "REVERSE TUNNEL: $(ssh -o ConnectTimeout=3 -o BatchMode=yes -p 18022 127.0.0.1 true 2>/dev/null && echo "${GREEN}✓ UP (port 18022)${NC}" || echo "${RED}✗ DOWN${NC}")"
+    echo "REVERSE TUNNEL: $(ssh -o ConnectTimeout=3 -o BatchMode=yes -p 31415 127.0.0.1 true 2>/dev/null && echo "${GREEN}✓ UP (port 31415)${NC}" || echo "${RED}✗ DOWN${NC}")"
 
     if [ -f .uom-termux-user/tunnel.pid ]; then
         _pid=$(cat .uom-termux-user/tunnel.pid 2>/dev/null)
@@ -152,8 +152,8 @@ case "${1:-}" in
         fi
         ;;
     tunnel|--tunnel|ssh)
-        if ssh -o ConnectTimeout=3 -o BatchMode=yes -p 18022 127.0.0.1 true 2>/dev/null; then
-            echo "REVERSE TUNNEL STATUS: ${GREEN}✓ UP${NC} (connect on laptop: ssh -p 18022 127.0.0.1)"
+        if ssh -o ConnectTimeout=3 -o BatchMode=yes -p 31415 127.0.0.1 true 2>/dev/null; then
+            echo "REVERSE TUNNEL STATUS: ${GREEN}✓ UP${NC} (connect on laptop: ssh -p 31415 127.0.0.1)"
         else
             echo "REVERSE TUNNEL STATUS: ${RED}✗ DOWN${NC}"
             echo "  Check: ps -ef | grep uom-reverse-ssh.sh"

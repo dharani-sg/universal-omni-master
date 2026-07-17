@@ -1,10 +1,10 @@
 #!/bin/sh
-# verify-phone.sh — verify phone side via reverse tunnel (localhost:18022)
+# verify-phone.sh — verify phone side via reverse tunnel (localhost:31415)
 # Run on laptop after phone has: sshd + reverse tunnel open
 
 set -u
 REV_HOST="${UOM_REV_HOST:-127.0.0.1}"
-REV_PORT="${UOM_REV_PORT:-18022}"
+REV_PORT="${UOM_REV_PORT:-31415}"
 KEY="${UOM_PHONE_KEY:-$HOME/.ssh/id_ed25519_phone}"
 KNOWN="$HOME/.ssh/known_hosts_uom"
 USER_FILE="$HOME/.uom-termux-user"

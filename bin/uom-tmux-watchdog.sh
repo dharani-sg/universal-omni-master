@@ -121,8 +121,8 @@ _check_orchestrator() {
 }
 
 _check_tunnel() {
-    pgrep -f 'autossh.*-R.*18022' >/dev/null 2>&1 || \
-    pgrep -f 'ssh.*-R.*18022' >/dev/null 2>&1
+    pgrep -f 'autossh.*-R.*31415' >/dev/null 2>&1 || \
+    pgrep -f 'ssh.*-R.*31415' >/dev/null 2>&1
 }
 
 _check_state_stale() {

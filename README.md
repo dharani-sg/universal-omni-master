@@ -1,11 +1,11 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Shell-POSIX%20%2F%20BusyBox%20ash-000000?logo=gnubash&logoColor=white" alt="POSIX sh">
   <img src="https://img.shields.io/badge/Tests-300%2B%20Assertions-brightgreen?logo=githubactions" alt="Tests">
-  <img src="https://img.shields.io/badge/Release-v0.30.0-blueviolet?logo=github" alt="Release">
+  <img src="https://img.shields.io/badge/Release-v0.31.0-blueviolet?logo=github" alt="Release">
   <img src="https://img.shields.io/badge/License-MIT-green?logo=opensourceinitiative" alt="License">
   <img src="https://img.shields.io/badge/Cross--Libc-musl%20%E2%86%94%20glibc-orange?logo=linux" alt="Cross-Libc">
   <img src="https://img.shields.io/badge/AI%20Economy-Ready-ff6b6b?logo=openai" alt="AI Economy">
-  <img src="https://img.shields.io/badge/Architecture-19%20CLIs%20%2F%2062%20Modules-brightgreen?logo=gnu" alt="Architecture">
+  <img src="https://img.shields.io/badge/Architecture-19%2B%20CLIs%20%2F%2062%20Modules-brightgreen?logo=gnu" alt="Architecture">
   <img src="https://img.shields.io/badge/Init-OpenRC%20%7C%20systemd%20%7C%20runit%20%7C%20s6%20%7C%20dinit-informational" alt="Init">
   <img src="https://img.shields.io/badge/GPU-AMD%20%7C%20Intel%20%7C%20NVIDIA-informational" alt="GPU">
   <img src="https://img.shields.io/badge/Dual--Agent-Laptop+Phone-orange?logo=android" alt="Dual-Agent">
@@ -22,6 +22,7 @@
   <a href="#-the-ai-infrastructure-singularity">Market</a> •
   <a href="#-zero-trust-bootstrap">Bootstrap</a> •
   <a href="#-dual-agent-orchestration">Dual-Agent</a> •
+  <a href="#-zen-loop-cloud-agent">Zen Loop</a> •
   <a href="#-core-capabilities-for-the-agentic-economy">Capabilities</a> •
   <a href="#%EF%B8%8F-architecture">Architecture</a> •
   <a href="#-cli-surface--commercial-layer">CLI</a> •
@@ -102,6 +103,65 @@ Laptop (Alpine) + Phone (Termux/Android) operate as a **resilient AI agent pair*
 
 **Key differentiator:** Unlike LangGraph + Temporal stacks that require Python, gRPC, and cloud infra, UOM's dual-agent system runs on **any two POSIX devices** connected by SSH. Zero cloud dependency. Zero lock-in. Works when the internet doesn't.
 
+## ☁️ Zen Loop Cloud Agent
+
+The **Zen Loop** is a cloud-only code generation pipeline that replaces local LLM inference with pure cloud models. No ollama, no sudo, no binaries. Every request goes through `opencode --model opencode/deepseek-v4-flash-free` via stdin pipe.
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                     ZEN LOOP (Cloud Pipeline)                    │
+│                                                                  │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────────┐   │
+│  │ uom-reconcile │───>│ uom-reconcile│───>│ uom-reconcile    │   │
+│  │   Step 1-5    │    │   Step 6a   │    │   Step 6b-6c     │   │
+│  │ preflight →   │    │ zen-generate│    │ zen-verify →     │   │
+│  │ tmux → boot → │    │ (opencode   │    │ reconcile diff   │   │
+│  │ tunnel →      │    │  stdin)     │    │ (accept/reject)  │   │
+│  │ guardian      │    │              │    │                  │   │
+│  └───────┬───────┘    └──────┬───────┘    └────────┬─────────┘   │
+│          │                   │                     │              │
+│          └───────────────────┴─────────────────────┘              │
+│                                                                  │
+│  ┌──────────────────────────────────────────────────────────┐    │
+│  │           cloud model: opencode/deepseek-v4-flash-free    │    │
+│  │           retry: 3x exponential (1s, 2s, 4s)            │    │
+│  │           fallback: stub generator if cloud unreachable  │    │
+│  └──────────────────────────────────────────────────────────┘    │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+**6-Step Reconcile Pipeline** (`scripts/uom-reconcile.sh`):
+| Step | Script | Action |
+|------|--------|--------|
+| 1 | pre-flight | Check curl, jq, internet, `sh -n` on all scripts |
+| 2 | tmux | Auto-create `uom-hybrid` session if missing |
+| 3 | bootstrap | Verify cloud env (opencode, DNS, model reachable) |
+| 4 | tunnel | Check reverse tunnel (`127.0.0.1:31415`) |
+| 5 | guardian | Start port-guardian sentinel if not running |
+| 6a | zen-generate | `scripts/uom-generator.sh` — opencode stdin, 3 retries |
+| 6b | zen-verify | `scripts/uom-verifier.sh` — syntax, policy, convention check |
+| 6c | reconcile | Diff generated vs existing, accept or roll back |
+
+**Scripts:**
+| Script | Purpose |
+|--------|---------|
+| `scripts/uom-reconcile.sh` | 6-step orchestrator (all of the above) |
+| `scripts/uom-generator.sh` | Cloud code generator via opencode stdin with retry + fallback |
+| `scripts/uom-verifier.sh` | Syntax/policy verifier (no LLM calls) |
+| `scripts/uom-proot-setup.sh` | Cloud env verifier (curl/jq/internet) |
+
+**Usage:**
+```sh
+# Full pipeline:
+sh scripts/uom-reconcile.sh
+
+# Just generate:
+scripts/uom-generator.sh "write a POSIX sh function to check disk health"
+
+# Just verify:
+scripts/uom-verifier.sh path/to/file.sh
+```
+
 ---
 
 ## ✨ Core Capabilities for the Agentic Economy
@@ -180,6 +240,13 @@ Auto-detect OpenSSH 9.9+ ML-KEM-768 hybrid KEX. Fleet-wide crypto inventory. TPM
 │  │ watchdog/monitor  │  │ tier enforcement │  │ Stripe billing    │     │
 │  │ state machine     │  │ credit limits    │  │ sales agents      │     │
 │  └──────────────────┘  └──────────────────┘  └───────────────────┘     │
+│                                                                          │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │         ☁️  Zen Loop Cloud Pipeline (v0.31.0)                    │   │
+│  │  uom-reconcile.sh → uom-generator.sh → uom-verifier.sh          │   │
+│  │  opencode --model opencode/deepseek-v4-flash-free (pure cloud)  │   │
+│  │  No ollama. No sudo. No local binaries. No API keys.            │   │
+│  └──────────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -259,6 +326,10 @@ Auto-detect OpenSSH 9.9+ ML-KEM-768 hybrid KEX. Fleet-wide crypto inventory. TPM
 | `security/uom-firewall.sh` | nftables: allow `22`/`31415`, drop-all-inbound |
 | `security/install-hooks.sh` | Pre-commit secret scanner |
 | `install/secrets.env.template` | API key template (keys blank — never commit real values) |
+| `scripts/uom-reconcile.sh` | **6-step Zen Loop orchestrator** — preflight → tmux → cloud boot → tunnel → guardian → generate → verify → accept |
+| `scripts/uom-generator.sh` | **Cloud code generator** — opencode stdin pipe with 3-retry exponential backoff + stub fallback |
+| `scripts/uom-verifier.sh` | **Syntax/policy verifier** — POSIX sh check, convention rules, no LLM calls |
+| `scripts/uom-proot-setup.sh` | **Cloud env check** — curl/jq/internet/opencode verification, zero ollama |
 
 > Example secrets template (`~/.config/uom/secrets.env`, mode 600):
 > ```sh
@@ -287,7 +358,8 @@ Auto-detect OpenSSH 9.9+ ML-KEM-768 hybrid KEX. Fleet-wide crypto inventory. TPM
 <tr><td><b>💼 Commercial</b></td><td>M21–M26</td><td>Manager, KVM, SaaS, AI-Patcher, Compliance, OpenClaw</td><td><code>v0.21.0</code>–<code>v0.26.0</code></td></tr>
 <tr><td><b>🖥️ Desktop</b></td><td>M27</td><td>11 WM/DE Profiles, Telemetry, Postboot Verify</td><td><code>v0.27.0</code>–<code>v0.27.4</code></td></tr>
 <tr><td><b>🤖 Dual-Agent</b></td><td>M28–M29</td><td>IP Discovery, State Machine, Bootstrap, Solo Mode, Security</td><td><code>v0.28.0</code>–<code>v0.29.0</code></td></tr>
-<tr><td><b>📱 Mobile</b></td><td>M30</td><td>omni-project-start menu, tmux watchdog, setup-aliases, deploy-phone, tunnel fix, proot-distro Debian + OpenCode provisioner, config mirror, <b>dynamic port-guardian sentinel</b> (Termux sshd-port + laptop-IP drift)</td><td><code>v0.30.0</code></td></tr>
+<tr><td><b>📱 Mobile</b></td><td>M30</td><td>omni-project-start menu, tmux watchdog, setup-aliases, deploy-phone, tunnel fix, proot-distro Debian + OpenCode provisioner, config mirror, <b>dynamic port-guardian sentinel</b> (Termux sshd-port + laptop-IP drift, SSH config autorewrite, hybrid wiring)</td><td><code>v0.30.0</code>–<code>v0.30.1</code></td></tr>
+<tr><td><b>☁️ Cloud + Zen</b></td><td>M30.5</td><td><b>Cloud-only redirect</b> — removed all ollama/local-LLM, pure cloud via <code>opencode --model opencode/deepseek-v4-flash-free</code>. <b>Zen Loop reconciler</b> — 6-step pipeline (preflight → tmux → cloud boot → tunnel → guardian → generate → verify → accept). Scripts: <code>uom-reconcile.sh</code>, <code>uom-generator.sh</code>, <code>uom-verifier.sh</code>, <code>uom-proot-setup.sh</code>. Zero sudo, zero binaries.</td><td><code>v0.31.0</code></td></tr>
 </table>
 
 ### 🔮 Horizon: Mobile, Quantum & Autonomous (M31–M42)
@@ -372,6 +444,23 @@ ssh -o ConnectTimeout=5 -p 31415 u0_a608@127.0.0.1 "echo TUNNEL OK"
 # Check agent state:
 cat .uom-agent/state.json
 ```
+
+### Zen Loop Quick Start (Cloud Code Pipeline)
+
+The Zen Loop is a pure cloud code generation pipeline — no ollama, no sudo, no binaries.
+
+```sh
+# Full 6-step reconcile:
+cd ~/src/universal-omni-master
+sh scripts/uom-reconcile.sh
+
+# Or run steps individually:
+scripts/uom-generator.sh "write a POSIX sh function to parse /proc/meminfo"
+scripts/uom-verifier.sh path/to/generated/file.sh
+```
+
+The pipeline uses `opencode --model opencode/deepseek-v4-flash-free` (free tier, no API key).
+See [Zen Loop Cloud Agent](#-zen-loop-cloud-agent) for the full architecture.
 
 ### Dual-Agent Start Menu (omni-project-start)
 
@@ -682,7 +771,7 @@ The orchestrator handles abrupt termination through:
 
 ---
 
-## ⚠️ Known Issues (v0.29.0)
+## ⚠️ Known Issues (v0.31.0)
 
 - **Reverse tunnel (31415):** DOWN until phone runs `sh bin/uom-reverse-ssh.sh` — bootstrap installs the script automatically; Termux:Boot restarts it on device boot
 - **SATA CRC:** 5361 (degraded cable) — avoid large writes to primary disk
@@ -690,6 +779,7 @@ The orchestrator handles abrupt termination through:
 - **Phone opencode:** recommended path is proot-distro Debian + OpenCode CLI via `sh bin/uom-phone-provision.sh` (mirrors laptop config). Bare Termux `pkg install opencode` also works.
 - **doas TTY requirement:** Never invoke root commands from opencode subprocess — always run manually from terminal
 - **Pre-commit hook:** Installed via `sh security/install-hooks.sh` — blocks accidental secret commits
+- **Cloud-only architecture:** Zero local LLM. All generation uses `opencode --model opencode/deepseek-v4-flash-free` (free tier). Requires internet at generation time. No fallback to local if cloud unreachable (generator uses stub output on 3rd failure).
 
 ---
 
@@ -697,4 +787,4 @@ The orchestrator handles abrupt termination through:
   <i>Built with ❤️ on a failing SATA cable. Validated on 6 distros. Targeting $2.6T AI infrastructure market.</i>
 </p>
 
-<!-- last-sync: 2026-07-17T08:15:00Z -->
+<!-- last-sync: 2026-07-17T18:00:00Z -->

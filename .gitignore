@@ -27,3 +27,8 @@ secrets.env
 *.pem
 *.p12
 .uom-agent/session_key
+.uom-agent/locks/
+.uom-agent/logs/
+.uom-agent/runtime/
+.uom-agent/*.host
+.uom-termux-user/

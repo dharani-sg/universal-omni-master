@@ -26,9 +26,9 @@ _phone_ssh_cmd() {
     # Returns: SSH command prefix for connecting to phone
     # Priority: reverse tunnel > direct LAN > mDNS > last-known
 
-    # Method 1: reverse tunnel (always 127.0.0.1:18022)
-    if ssh -o ConnectTimeout=2 -o BatchMode=yes -p 18022 127.0.0.1 true 2>/dev/null; then
-        printf '%s' "-F ~/.ssh/config -p 18022 uom-phone-rev"
+    # Method 1: reverse tunnel (always 127.0.0.1:31415)
+    if ssh -o ConnectTimeout=2 -o BatchMode=yes -p 31415 127.0.0.1 true 2>/dev/null; then
+        printf '%s' "-F ~/.ssh/config -p 31415 uom-phone-rev"
         return 0
     fi
 

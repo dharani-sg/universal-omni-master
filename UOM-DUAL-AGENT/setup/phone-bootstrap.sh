@@ -6,7 +6,7 @@
 set -u
 
 LAPTOP_USER="${UOM_LAPTOP_USER:-alpine}"
-REV_PORT="${UOM_REV_PORT:-18022}"
+REV_PORT="${UOM_REV_PORT:-31415}"
 PHONE_SSHD_PORT=8022
 REPO_URL="${UOM_REPO_URL:-https://github.com/dharani-sg/universal-omni-master.git}"
 # Laptop public key (for reverse/direct SSH into Termux)
@@ -287,7 +287,7 @@ chmod +x "$HOME_DIR/.termux/boot/start-uom.sh"
 # ── 9. Reverse SSH tunnel helper (dynamic IP) ─────────────────────────────
 cat > "$HOME_DIR/bin/uom-reverse-ssh.sh" << REV
 #!/data/data/com.termux/files/usr/bin/sh
-# Persistent reverse tunnel: laptop:18022 -> phone:8022
+# Persistent reverse tunnel: laptop:31415 -> phone:8022
 # Dynamically discovers laptop IP
 
 LAPTOP_USER="${LAPTOP_USER}"

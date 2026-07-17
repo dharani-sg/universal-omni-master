@@ -1,63 +1,82 @@
-# SESSION RESUME — 2026-07-17T14:37:46Z
+# SESSION RESUME — 2026-07-17 (Full Day)
 
-Repo: `universal-omni-master` | branch: `main` | pre-push HEAD: `4ff111d`
-Next commit (this session): dynamic port-guardian sentinel — see tag `v0.30.1` (timestamped).
+Repo: `universal-omni-master` | branch: `main` | pre-push HEAD: `680cd3d`
+Next commit (this session): cloud-only redirect + Zen Loop reconciler — see tag `v0.31.0-2026-07-17`.
 
 ## What was done this session
-- **Root cause:** Termux (Android) changes its sshd port frequently, and the laptop's IP
-  changes because it connects via the phone's wireless hotspot OR other WiFi. Static
-  `~/.ssh/config` Host blocks drift out of sync within minutes.
-- **New:** `tools/uom-port-watch.sh` (read-only discovery primitives) +
-  `bin/uom-port-guardian.sh` (background sentinel: `start|stop|status|once|dryrun|rewrite|--loop`).
+
+### Part 1: Dynamic Port-Guardian (first half)
+- **Root cause:** Termux (Android) changes its sshd port frequently, laptop IP changes on hotspot/WiFi.
+  Static `~/.ssh/config` Host blocks drift out of sync within minutes.
+- **New:** `tools/uom-port-watch.sh` (read-only discovery) + `bin/uom-port-guardian.sh`
+  (background sentinel: start|stop|status|once|dryrun|rewrite|--loop).
   Watches phone `host:port` + laptop IP, rewrites ssh config idempotently/atomically,
-  publishes `.uom-agent/{phone,laptop}.host` hints, and signals the hybrid orchestrator via
+  publishes `.uom-agent/{phone,laptop}.host` hints, signals hybrid orchestrator via
   `.uom-agent/runtime/portguard.drift`.
-- **Wired:** `bin/uom-hybrid.sh` (`_ensure_guardian` + `_check_drift`);
-  `install/bootstrap-termux.sh` (Termux:Boot now launches the guardian);
-  `scripts/uom-dryrun.sh` (`test_port_guardian`, 13 checks).
-- **Docs:** README "Dynamic IP + Port Handling" section, CLI table, M30 row; AI-HANDOFF entry.
-- **Verified:** dry-run **54 PASS / 0 FAIL**. Live: guardian running (PID 1657, tmux `uom-hybrid-pg`),
-  hybrid running (PID 3074, dual mode), phone target `192.168.40.207:8022` discovered through hotspot.
-- **Tunnel currently DOWN** — phone is not running `uom-reverse-ssh.sh` this session.
+- **Wired:** `bin/uom-hybrid.sh` (ensure_guardian + check_drift);
+  `install/bootstrap-termux.sh` (Termux:Boot launches guardian);
+  `scripts/uom-dryrun.sh` (test_port_guardian, 13 checks).
+- **Verified:** dry-run 54 PASS / 0 FAIL. Live: guardian (PID 1657, tmux uom-hybrid-pg),
+  hybrid (PID 3074, dual mode), phone 192.168.40.207:8022.
+
+### Part 2: Cloud-Only Redirect + Zen Loop (second half)
+- **Critical redirect:** removed ALL Ollama/local-LLM references. No sudo, no binaries,
+  no API keys. `uom-generator.sh` and `uom-reconcile.sh` use pure cloud model
+  `opencode --model opencode/deepseek-v4-flash-free` with stdin pipe.
+- **New:** `scripts/uom-reconcile.sh` — 6-step orchestrator:
+  1. pre-flight (curl, jq, internet, sh -n)
+  2. tmux session auto-create
+  3. bootstrap cloud env
+  4. tunnel check
+  5. guardian start
+  6. zen loop (generate → verify → reconcile)
+- **New:** `scripts/uom-generator.sh` — cloud-only code generator via opencode stdin
+  with 3-retry exponential backoff + stub fallback.
+- **Rewritten:** `scripts/uom-proot-setup.sh` — cloud env verifier (curl/jq/internet
+  with graceful retry, zero ollama).
+- **Unchanged:** `scripts/uom-verifier.sh` — syntax/policy verifier, no LLM calls.
+- **All 4 scripts:** POSIX sh, pass `sh -n`, executable, zero ollama/sudo references.
+- **Network:** tunnel traffic forced to 127.0.0.1 to avoid hotspot routing loops.
 
 ## Environment state
-- Laptop: Alpine Linux 3.24, x86_64, `/dev/sda4` (only rootfs mounted).
-- Void Linux dual-boot NOT accessible this session → sync via `git pull` on next Void boot.
-- Phone: Xiaomi Mi 8, crDroid/Android 15, Termux. Tunnel port `31415`, phone sshd `8022`.
-- Laptop `~/.ssh/config` `uom-phone-rev` now auto-managed by the guardian (points at live phone IP).
-- Running: `uom-port-guardian.sh --loop 20` (PID 1657), `uom-hybrid.sh` (PID 3074),
-  `uom-orch-laptop.sh` (spawned by hybrid).
+- Laptop: Alpine Linux 3.24, x86_64, /dev/sda4.
+- Void Linux dual-boot NOT synced this session — git pull on next Void boot.
+- Phone: Xiaomi Mi 8, crDroid/Android 15, Termux. Port 8022, tunnel port 31415.
+- Laptop ~/.ssh/config uom-phone-rev auto-managed by guardian.
+- Running: port-guardian (PID 1657), hybrid (PID 3074).
+- Tunnel currently DOWN — phone not running uom-reverse-ssh.sh this session.
+- Model: `opencode/deepseek-v4-flash-free` (pure cloud, no local LLM).
 
 ## How to resume
 ```sh
 cd ~/src/universal-omni-master
 sh bin/uom-port-guardian.sh status     # live phone/laptop target + tunnel state
+sh scripts/uom-reconcile.sh            # full 6-step: preflight → tmux → boot → tunnel → guardian → zen
 tmux attach -t uom-hybrid              # hybrid orchestrator session
 sh scripts/uom-dryrun.sh               # must stay 0 FAIL after any change
-# If phone comes online, on the PHONE run:
-sh bin/uom-reverse-ssh.sh start        # guardian will keep it pointed at laptop
-# Provision proot OpenCode on phone (one-time, needs tunnel up):
-sh bin/uom-phone-provision.sh --auto
+```
+To run just the Zen loop generator + verifier:
+```sh
+scripts/uom-generator.sh "write a POSIX sh function that..."  # generates code
+scripts/uom-verifier.sh /path/to/file.sh                       # validates
+```
+To start the full reconcile pipeline:
+```sh
+scripts/uom-reconcile.sh                                       # 6-step orchestrator
 ```
 
 ## Future todos (next session)
-1. **M31 — Network Switching Stress Test:** toggle laptop between phone hotspot and another
-   WiFi repeatedly; confirm the guardian keeps `~/.ssh/config` + tunnel correct with ZERO
-   manual intervention and sub-20s convergence. Fix any edge case (e.g., both interfaces up).
-2. **Phone-side guardian validation:** boot the phone, confirm Termux:Boot launches the
-   guardian and it restarts `uom-reverse-ssh.sh` when the laptop IP changes (role=phone path).
-3. **proot OpenCode provisioning:** run `bin/uom-phone-provision.sh --auto` once tunnel is up;
-   verify OpenCode CLI works inside proot-distro Debian; wire `_opencode_bin` path into orch-phone.
-4. **Void dual-boot sync:** on next Void boot, `git pull` to bring Void copy to this commit;
-   optionally add a Void runit service for the port-guardian + hybrid orchestrator.
-5. **Harden guardian:** add exponential-backoff on repeated restart failures; add a systemd
-   (or OpenRC/runit) unit so it survives laptop reboot without Termux:Boot (laptop side).
-6. **End-to-end dual verification:** with tunnel + proot OpenCode both up, run one real task
-   across both agents and confirm git state machine handoff is clean.
-7. **Docs:** add a `docs/NETWORK-DRIFT.md` runbook (guardian troubleshooting + manual override).
+1. **M31 — Network Switching Stress Test:** toggle laptop between phone hotspot and
+   another WiFi; confirm guardian + tunnel survive with sub-20s convergence.
+2. **Phone-side guardian:** boot phone, confirm Termux:Boot launches guardian + reverse-ssh.
+3. **Phone reconcile:** port reconcile.sh to phone side for solo-mode Zen loop.
+4. **Void dual-boot sync:** git pull on next Void boot; add runit service for port-guardian.
+5. **Harden guardian:** exponential backoff on restart failures; OpenRC/runit unit.
+6. **End-to-end dual verification:** run one real task across both agents with clean handoff.
+7. **Docs:** docs/NETWORK-DRIFT.md runbook; docs/ZEN-LOOP.md for reconciler details.
 
 ## Gates before any push
 - `sh scripts/uom-dryrun.sh` → RESULT: PASS (0 FAIL).
-- `git push` requires `UOM_ALLOW_PUSH=1` in `uom-orch-state.sh` (orchestrator path); direct
-  CLI push is the operator's explicit choice.
-- Prefer timestamped tag per milestone (e.g., `v0.30.1-<date>`).
+- `git push` requires `UOM_ALLOW_PUSH=1` in uom-orch-state.sh (orchestrator path);
+  direct CLI push is the operator's explicit choice.
+- Prefer timestamped tag per milestone (e.g., `v0.31.0-<date>`).

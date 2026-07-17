@@ -59,7 +59,7 @@ bash ~/bin/uom-reverse-ssh.sh
 
 Verify from laptop:
 ```sh
-ssh -o ConnectTimeout=5 127.0.0.1 -p 18022 echo "TUNNEL OK"
+ssh -o ConnectTimeout=5 127.0.0.1 -p 31415 echo "TUNNEL OK"
 ```
 
 ### 5. Start tmux Session
@@ -86,13 +86,13 @@ The watchdog runs every 60s, checking laptop reachability via `discover_laptop_i
 - Scripts deployed: omni-project-start.sh, uom-tmux-watchdog.sh, uom-reverse-ssh.sh, uom-status.sh
 - Aliases: 14 UOM aliases installed in `~/.bashrc`
 - Boot: Termux:Boot starts SSH + tunnel + watchdog + orchestrator
-- Tunnel port: 18022 (laptop) ↔ 8022 (phone)
+- Tunnel port: 31415 (laptop) ↔ 8022 (phone)
 
 ## Next Steps
 
 1. Start: `bash ~/bin/omni-project-start.sh` — interactive menu
 2. Or direct: `bash ~/bin/uom-tmux-watchdog.sh --daemon`
-3. Verify tunnel: `ssh -p 18022 127.0.0.1 echo OK`
+3. Verify tunnel: `ssh -p 31415 127.0.0.1 echo OK`
 4. Next phase: M31 — Network Switching Stress Test
 
 <!-- last-sync: 2026-07-17T18:00:00Z -->

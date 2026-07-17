@@ -45,9 +45,9 @@ _discover_phone_ip() {
         echo "$_gw"; return 0
     fi
 
-    # Method 2: Reverse tunnel (always localhost:18022)
-    if ssh -o ConnectTimeout=2 -o BatchMode=yes -p 18022 127.0.0.1 true 2>/dev/null; then
-        echo "127.0.0.1:18022"; return 0
+    # Method 2: Reverse tunnel (always localhost:31415)
+    if ssh -o ConnectTimeout=2 -o BatchMode=yes -p 31415 127.0.0.1 true 2>/dev/null; then
+        echo "127.0.0.1:31415"; return 0
     fi
 
     # Method 3: mDNS resolution

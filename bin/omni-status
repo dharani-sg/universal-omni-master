@@ -103,9 +103,9 @@ def check_processes():
 def check_ssh_tunnel():
     """Check reverse tunnel status"""
     print("Reverse Tunnel:")
-    success, out, err = run_cmd("ssh -o ConnectTimeout=3 -o BatchMode=yes -p 18022 127.0.0.1 true 2>/dev/null && echo 'UP' || echo 'DOWN'")
+    success, out, err = run_cmd("ssh -o ConnectTimeout=3 -o BatchMode=yes -p 31415 127.0.0.1 true 2>/dev/null && echo 'UP' || echo 'DOWN'")
     if out == "UP":
-        print(f"  {GREEN}✓ UP{NC} (laptop → phone:18022)")
+        print(f"  {GREEN}✓ UP{NC} (laptop → phone:31415)")
     else:
         print(f"  {RED}✗ DOWN{NC}")
         # Check if tunnel process exists

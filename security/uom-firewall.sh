@@ -1,6 +1,6 @@
 #!/bin/sh
 # security/uom-firewall.sh — nftables ruleset for UOM laptop
-# Allows: SSH(22), reverse tunnel(18022), established, loopback
+# Allows: SSH(22), reverse tunnel(31415), established, loopback
 # Drops: all other inbound
 # Run as root: doas sh security/uom-firewall.sh
 
@@ -24,7 +24,7 @@ table inet filter {
     iif lo accept
     ct state established,related accept
     tcp dport 22 accept
-    tcp dport 18022 accept
+    tcp dport 31415 accept
     icmp type echo-request accept
     icmpv6 type { echo-request, nd-neighbor-solicit, nd-router-advert } accept
   }

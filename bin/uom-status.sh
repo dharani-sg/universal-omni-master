@@ -62,10 +62,10 @@ _status_summary() {
 
     echo "────────────────────"
     # Detect tunnel by checking the process first, then the port
-    if pgrep -f 'autossh.*-R.*18022' >/dev/null 2>&1 || pgrep -f 'ssh.*-R.*18022' >/dev/null 2>&1; then
+    if pgrep -f 'autossh.*-R.*31415' >/dev/null 2>&1 || pgrep -f 'ssh.*-R.*31415' >/dev/null 2>&1; then
         echo "REVERSE TUNNEL: ${GREEN}✓ UP (autossh)${NC}"
     elif ssh -F ~/.ssh/config -o ConnectTimeout=2 -o BatchMode=yes uom-phone-rev true 2>/dev/null; then
-        echo "REVERSE TUNNEL: ${GREEN}✓ UP (port 18022)${NC}"
+        echo "REVERSE TUNNEL: ${GREEN}✓ UP (port 31415)${NC}"
     else
         echo "REVERSE TUNNEL: ${RED}✗ DOWN${NC}"
     fi
@@ -123,10 +123,10 @@ case "${1:-}" in
         fi
         ;;
     tunnel|--tunnel|ssh)
-        if pgrep -f 'autossh.*-R.*18022' >/dev/null 2>&1; then
+        if pgrep -f 'autossh.*-R.*31415' >/dev/null 2>&1; then
             echo "REVERSE TUNNEL STATUS: ${GREEN}✓ UP (autossh)${NC}"
         elif ssh -F ~/.ssh/config -o ConnectTimeout=3 -o BatchMode=yes uom-phone-rev true 2>/dev/null; then
-            echo "REVERSE TUNNEL STATUS: ${GREEN}✓ UP (port 18022)${NC}"
+            echo "REVERSE TUNNEL STATUS: ${GREEN}✓ UP (port 31415)${NC}"
         else
             echo "REVERSE TUNNEL STATUS: ${RED}✗ DOWN${NC}"
             echo "  Start tunnel: nohup sh /uom-reverse-ssh.sh >/dev/null 2>&1 &"

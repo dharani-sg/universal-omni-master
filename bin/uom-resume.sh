@@ -82,11 +82,14 @@ main() {
 
     echo ""
     echo " Quick commands:"
-    echo "   tmux attach -t uom-hybrid    # Attach to running session"
-    echo "   sh bin/uom-hybrid.sh          # Start hybrid orchestrator"
-    echo "   sh bin/uom-reverse-ssh.sh    # Start reverse tunnel"
-    echo "   cat .uom-agent/state.json    # Check current state"
-    echo "   cat .uom-agent/queue.json    # Check pending tasks"
+    echo "   tmux attach -t uom-hybrid        # Attach to running session"
+    echo "   sh bin/uom-hybrid.sh              # Start hybrid orchestrator"
+    echo "   sh bin/uom-reverse-ssh.sh        # Start reverse tunnel"
+    echo "   sh scripts/uom-reconcile.sh      # 6-step: preflight -> tmux -> boot -> tunnel -> guardian -> zen"
+    echo "   sh scripts/uom-generator.sh ...  # Cloud code generator (opencode stdin)"
+    echo "   sh scripts/uom-verifier.sh ...   # Syntax/policy verifier"
+    echo "   cat .uom-agent/state.json        # Check current state"
+    echo "   cat .uom-agent/queue.json        # Check pending tasks"
     echo "=========================================="
 }
 

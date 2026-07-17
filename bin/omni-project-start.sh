@@ -78,10 +78,10 @@ _status_dashboard() {
     fi
 
     # ── Tunnel ─────────────────────────────────────────────────────
-    if pgrep -f 'autossh.*-R.*18022' >/dev/null 2>&1 || pgrep -f 'ssh.*-R.*18022' >/dev/null 2>&1; then
+    if pgrep -f 'autossh.*-R.*31415' >/dev/null 2>&1 || pgrep -f 'ssh.*-R.*31415' >/dev/null 2>&1; then
         _tunnel="${GREEN}✓ UP (autossh)${NC}"
     elif ssh -F ~/.ssh/config -o ConnectTimeout=2 -o BatchMode=yes uom-phone-rev true 2>/dev/null; then
-        _tunnel="${GREEN}✓ UP (port 18022)${NC}"
+        _tunnel="${GREEN}✓ UP (port 31415)${NC}"
     else
         _tunnel="${RED}✗ DOWN${NC}"
     fi
@@ -165,8 +165,8 @@ action_detach() {
 
     # Kill tunnel (phone side)
     _log "Stopping reverse tunnel..."
-    pkill -f 'autossh.*-R.*18022' 2>/dev/null || true
-    pkill -f 'ssh.*-R.*18022' 2>/dev/null || true
+    pkill -f 'autossh.*-R.*31415' 2>/dev/null || true
+    pkill -f 'ssh.*-R.*31415' 2>/dev/null || true
     sleep 2
 
     # Try to disable laptop orchestrator via direct SSH
@@ -301,12 +301,12 @@ action_aware() {
     # ── Tunnel check ───────────────────────────────────────────────
     printf '║ %-60s ║\n' "3. REVERSE TUNNEL CHECK"
     _tunnel_found=false
-    if pgrep -f 'autossh.*-R.*18022' >/dev/null 2>&1 || pgrep -f 'ssh.*-R.*18022' >/dev/null 2>&1; then
+    if pgrep -f 'autossh.*-R.*31415' >/dev/null 2>&1 || pgrep -f 'ssh.*-R.*31415' >/dev/null 2>&1; then
         printf '║   %-57s ║\n' "Tunnel process: ${GREEN}ALIVE${NC}"
         _tunnel_found=true
     fi
     if ssh -F ~/.ssh/config -o ConnectTimeout=2 -o BatchMode=yes uom-phone-rev true 2>/dev/null; then
-        printf '║   %-57s ║\n' "Tunnel reachable: ${GREEN}YES${NC} (laptop:18022→phone:8022)"
+        printf '║   %-57s ║\n' "Tunnel reachable: ${GREEN}YES${NC} (laptop:31415→phone:8022)"
         _tunnel_found=true
     fi
     if ! $_tunnel_found; then
@@ -494,14 +494,14 @@ action_test() {
     printf '║   %-57s ║\n' "Gateway: ${_gw:-unknown}"
 
     # 3. Reverse tunnel
-    printf '║ %-60s ║\n' "3. REVERSE TUNNEL (phone:18022↔laptop:8022)"
-    if pgrep -f 'autossh.*-R.*18022' >/dev/null 2>&1; then
+    printf '║ %-60s ║\n' "3. REVERSE TUNNEL (phone:31415↔laptop:8022)"
+    if pgrep -f 'autossh.*-R.*31415' >/dev/null 2>&1; then
         printf '║   %-57s ║\n' "Autossh: ${GREEN}PASS${NC} (running)"
     else
         printf '║   %-57s ║\n' "Autossh: ${RED}FAIL${NC} (not running)"
     fi
     if ssh -F ~/.ssh/config -o ConnectTimeout=3 -o BatchMode=yes uom-phone-rev true 2>/dev/null; then
-        printf '║   %-57s ║\n' "Connect: ${GREEN}PASS${NC} (laptop:18022→phone:8022)"
+        printf '║   %-57s ║\n' "Connect: ${GREEN}PASS${NC} (laptop:31415→phone:8022)"
     else
         printf '║   %-57s ║\n' "Connect: ${RED}FAIL${NC}"
     fi
