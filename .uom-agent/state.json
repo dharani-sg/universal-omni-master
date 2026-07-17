@@ -1,10 +1,10 @@
 {
   "schema": 1,
   "active_agent": "laptop",
-  "laptop_heartbeat": "2026-07-17T16:38:16+05:30",
+  "laptop_heartbeat": "2026-07-17T17:08:34+05:30",
   "phone_heartbeat": "2026-07-17T15:57:44+05:30",
-  "current_task_id": "M01-reverse-tunnel",
-  "task_status": "failed",
+  "current_task_id": "M02-state-sync",
+  "task_status": "in_progress",
   "last_commit": "",
   "session_id": "",
   "takeover_count": "0",
