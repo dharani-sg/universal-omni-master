@@ -101,7 +101,7 @@ _status_summary() {
     fi
 
     echo "───────────────────────────────────────────────────────────────────"
-    echo "REVERSE TUNNEL: $(ssh -o ConnectTimeout=3 -o BatchMode=yes -p 18022 127.0.0.1 true 2>/dev/null && echo "${GREEN}✓ UP (port 18022)${NC}" || echo "${RED}✗ DOWN${NC}")"
+    echo "REVERSE TUNNEL: $(ssh -o ConnectTimeout=3 -o BatchMode=yes -p 31415 127.0.0.1 true 2>/dev/null && echo "${GREEN}✓ UP (port 31415)${NC}" || echo "${RED}✗ DOWN${NC}")"
 
     if [ -f "${HYB_DIR}/tunnel.pid" ]; then
         _pid=$(cat "${HYB_DIR}/tunnel.pid" 2>/dev/null)
@@ -158,8 +158,8 @@ case "${1:-}" in
         fi
         ;;
     tunnel|--tunnel|ssh)
-        if ssh -o ConnectTimeout=3 -o BatchMode=yes -p 18022 127.0.0.1 true 2>/dev/null; then
-            echo "REVERSE TUNNEL STATUS: ${GREEN}✓ UP${NC} (connect on laptop: ssh -p 18022 127.0.0.1)"
+        if ssh -o ConnectTimeout=3 -o BatchMode=yes -p 31415 127.0.0.1 true 2>/dev/null; then
+            echo "REVERSE TUNNEL STATUS: ${GREEN}✓ UP${NC} (connect on laptop: ssh -p 31415 127.0.0.1)"
         else
             echo "REVERSE TUNNEL STATUS: ${RED}✗ DOWN${NC}"
             echo "  Check: ps -ef | grep uom-reverse-ssh.sh"
@@ -196,13 +196,14 @@ _log "omni-project-status script created on phone"
 # Create a launcher script in ~/bin/ for easy access
 _log "Creating alias launcher script in ~/bin/ for ${PHONE_USER}@${PHONE_IP}"
 
-cat << 'EOF' > /tmp/phone_launcher.sh
+_launcher_tmp=$(mktemp "${TMPDIR:-/tmp}/uom-launcher-XXXXXX.sh")
+cat << 'EOF' > "$_launcher_tmp"
 #!/bin/sh
 cd /src/universal-omni-master
 ./bin/omni-orchestrator-monitor.sh "$@"
 EOF
 
-chmod +x /tmp/phone_launcher.sh
+chmod +x "$_launcher_tmp"
 ssh -o ConnectTimeout=5 -p "${PHONE_PORT}" "${PHONE_USER}@${PHONE_IP}" "
 mkdir -p ~/bin
 cat << 'ENDSCRIPT' > ~/bin/omni-project-status

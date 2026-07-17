@@ -244,9 +244,10 @@ Auto-detect OpenSSH 9.9+ ML-KEM-768 hybrid KEX. Fleet-wide crypto inventory. TPM
 |------|---------|
 | `bin/omni-project-start.sh` | **Start Menu** — Interactive dashboard + mode switching (detach, phone, laptop, hybrid, aware, tmux) |
 | `bin/uom-tmux-watchdog.sh` | **Tmux Watchdog** — Monitors tmux sessions, auto-recreates if crashed, runs on phone boot |
-| `bin/uom-reverse-ssh.sh` | autossh tunnel phone→laptop at `127.0.0.1:18022` |
+| `bin/uom-reverse-ssh.sh` | autossh tunnel phone→laptop at `127.0.0.1:31415` |
 | `bin/uom-status.sh` | **Status Check** — Shows state, queue, tunnel, process health |
 | `bin/uom-deploy-phone.sh` | Deploy scripts + aliases → phone via SSH/SCP |
+| `bin/uom-phone-provision.sh` | Provision proot-distro Debian + OpenCode CLI on phone via reverse tunnel; mirror laptop config |
 | `bin/uom-hybrid.sh` | Hybrid auto-orchestrator (auto-switches dual/solo) |
 | `orchestrators/uom-solo-orchestrator.sh` | Phone-only fallback when laptop dies |
 | `orchestrators/uom-watchdog.sh` | Laptop reachability monitor (60s loop) |
@@ -285,7 +286,7 @@ Auto-detect OpenSSH 9.9+ ML-KEM-768 hybrid KEX. Fleet-wide crypto inventory. TPM
 <tr><td><b>💼 Commercial</b></td><td>M21–M26</td><td>Manager, KVM, SaaS, AI-Patcher, Compliance, OpenClaw</td><td><code>v0.21.0</code>–<code>v0.26.0</code></td></tr>
 <tr><td><b>🖥️ Desktop</b></td><td>M27</td><td>11 WM/DE Profiles, Telemetry, Postboot Verify</td><td><code>v0.27.0</code>–<code>v0.27.4</code></td></tr>
 <tr><td><b>🤖 Dual-Agent</b></td><td>M28–M29</td><td>IP Discovery, State Machine, Bootstrap, Solo Mode, Security</td><td><code>v0.28.0</code>–<code>v0.29.0</code></td></tr>
-<tr><td><b>📱 Mobile</b></td><td>M30</td><td>omni-project-start menu, tmux watchdog, setup-aliases, deploy-phone, tunnel fix</td><td><code>v0.30.0</code></td></tr>
+<tr><td><b>📱 Mobile</b></td><td>M30</td><td>omni-project-start menu, tmux watchdog, setup-aliases, deploy-phone, tunnel fix, proot-distro Debian + OpenCode provisioner, config mirror</td><td><code>v0.30.0</code></td></tr>
 </table>
 
 ### 🔮 Horizon: Mobile, Quantum & Autonomous (M31–M42)
@@ -365,7 +366,7 @@ sh tools/uom-orch-laptop.sh        # Primary orchestrator (processes tasks)
 curl -fsSL https://raw.githubusercontent.com/dharani-sg/universal-omni-master/main/install/bootstrap.sh | bash
 
 # Verify tunnel from laptop:
-ssh -o ConnectTimeout=5 -p 18022 u0_a608@127.0.0.1 "echo TUNNEL OK"
+ssh -o ConnectTimeout=5 -p 31415 u0_a608@127.0.0.1 "echo TUNNEL OK"
 
 # Check agent state:
 cat .uom-agent/state.json
@@ -472,15 +473,42 @@ curl -fsSL https://raw.githubusercontent.com/dharani-sg/universal-omni-master/ma
 #    - Generate ed25519 SSH key (output the public key — add to laptop's authorized_keys)
 #    - Configure SSH with tunnel/LAN/mDNS aliases
 #    - Start SSHD on port 8022
-#    - Start reverse tunnel (autossh: laptop:18022 → phone:8022)
+#    - Start reverse tunnel (autossh: laptop:31415 → phone:8022)
 #    - Try to install opencode (prefers Termux deb, falls back to source build)
 
 # 4. On the laptop, add the phone's public key:
 echo "ssh-ed25519 AAA... uom-phone-20260717" >> ~/.ssh/authorized_keys
 
 # 5. Verify tunnel from laptop:
-ssh -p 18022 u0_a608@127.0.0.1 "cd ~/src/universal-omni-master && sh bin/uom-status.sh"
+ssh -p 31415 u0_a608@127.0.0.1 "cd ~/src/universal-omni-master && sh bin/uom-status.sh"
 ```
+
+### Phone OpenCode via proot-distro Debian (recommended)
+
+The Rust-based opencode (v1.17+) needs a clean glibc environment. On Android/Termux, the most reliable path is **proot-distro Debian** with the OpenCode CLI installed inside it, then mirrored from the laptop's exact config. The `uom-phone-provision.sh` script does this end-to-end over the reverse tunnel:
+
+```sh
+# From the LAPTOP (phone tunnel must be up: bin/uom-reverse-ssh.sh on phone):
+
+# Full interactive provisioning (proot → opencode → mirror config):
+sh bin/uom-phone-provision.sh
+
+# Non-interactive:
+sh bin/uom-phone-provision.sh --auto
+
+# Or per-stage:
+sh bin/uom-phone-provision.sh --stage 1   # install proot-distro debian
+sh bin/uom-phone-provision.sh --stage 2   # install opencode CLI inside proot
+sh bin/uom-phone-provision.sh --stage 3   # mirror laptop ~/.config/opencode (model, perms, policy)
+sh bin/uom-phone-provision.sh --check     # verify what's installed
+```
+
+What the provisioner does:
+1. **proot-distro Debian** — installs a full glibc Debian rootfs in `$HOME/debian` (no root, no custom recovery needed).
+2. **OpenCode CLI** — `curl -fsSL https://opencode.ai/install.sh | sh` inside the proot; symlinked into Termux `~/bin/opencode` so bare `opencode` works.
+3. **Config mirror** — tars the laptop's `~/.config/opencode/` (including `opencode.json`, `opencode.jsonc`, `NETWORK_CODE_POLICY.md`, `command/`) and extracts it into the proot. The phone then runs the **same model, permissions, and network policy** as the laptop.
+
+The phone orchestrator (`tools/uom-orch-phone.sh`) auto-detects the proot OpenCode binary (`$HOME/debian/usr/local/bin/opencode`) before falling back to a bare Termux `opencode`.
 
 ### One-Click New Laptop Deployment
 
@@ -500,7 +528,7 @@ ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -N "" -C "uom-laptop-$(date +%Y%m%d)"
 cat >> ~/.ssh/config << 'EOF'
 Host uom-phone-rev
   HostName 127.0.0.1
-  Port 18022
+  Port 31415
   User u0_a608
   IdentityFile ~/.ssh/id_ed25519
   ServerAliveInterval 30
@@ -529,7 +557,7 @@ Both orchestrators discover target IPs via multiple fallback methods:
 5. Default fallback: `192.168.40.90`
 
 **Laptop → Phone discovery (for SSH connection):**
-1. Reverse tunnel via `127.0.0.1:18022` (always works if tunnel is up)
+1. Reverse tunnel via `127.0.0.1:31415` (always works if tunnel is up)
 2. mDNS via `avahi-resolve mi8.local`
 3. Stored IP from `.uom-agent/phone.ip`
 4. SSH config aliases (`uom-phone-lan`, `uom-phone-mdns`)
@@ -631,10 +659,10 @@ The orchestrator handles abrupt termination through:
 
 ## ⚠️ Known Issues (v0.29.0)
 
-- **Reverse tunnel (31415):** DOWN until phone runs `bash ~/bin/uom-reverse-ssh.sh` — bootstrap installs the script automatically
+- **Reverse tunnel (31415):** DOWN until phone runs `sh bin/uom-reverse-ssh.sh` — bootstrap installs the script automatically; Termux:Boot restarts it on device boot
 - **SATA CRC:** 5361 (degraded cable) — avoid large writes to primary disk
 - **Disk usage:** 85% on root partition — monitor for space exhaustion
-- **Phone opencode:** npm rejected on ARM64 — uses `go install` (confirmed working)
+- **Phone opencode:** recommended path is proot-distro Debian + OpenCode CLI via `sh bin/uom-phone-provision.sh` (mirrors laptop config). Bare Termux `pkg install opencode` also works.
 - **doas TTY requirement:** Never invoke root commands from opencode subprocess — always run manually from terminal
 - **Pre-commit hook:** Installed via `sh security/install-hooks.sh` — blocks accidental secret commits
 

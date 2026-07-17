@@ -25,13 +25,13 @@ _log() {
 }
 
 _is_tunnel_up() {
-    ssh -o ConnectTimeout=3 -o BatchMode=yes -p 18022 127.0.0.1 true 2>/dev/null
+    ssh -o ConnectTimeout=3 -o BatchMode=yes -p 31415 127.0.0.1 true 2>/dev/null
 }
 
 _start_tunnel() {
     _log "Checking reverse tunnel status..."
-    if ssh -o ConnectTimeout=3 -o BatchMode=yes -p 18022 127.0.0.1 true 2>/dev/null; then
-        _log "Reverse tunnel UP (phone reachable at 127.0.0.1:18022)"
+    if ssh -o ConnectTimeout=3 -o BatchMode=yes -p 31415 127.0.0.1 true 2>/dev/null; then
+        _log "Reverse tunnel UP (phone reachable at 127.0.0.1:31415)"
         return 0
     fi
     _log "Reverse tunnel DOWN — phone must run uom-reverse-ssh.sh"
@@ -40,7 +40,7 @@ _start_tunnel() {
     while [ "$_wait" -lt 60 ]; do
         sleep 5
         _wait=$(( _wait + 5 ))
-        if ssh -o ConnectTimeout=3 -o BatchMode=yes -p 18022 127.0.0.1 true 2>/dev/null; then
+        if ssh -o ConnectTimeout=3 -o BatchMode=yes -p 31415 127.0.0.1 true 2>/dev/null; then
             _log "Reverse tunnel established after ${_wait}s"
             return 0
         fi
@@ -97,7 +97,7 @@ main() {
             if [ "${_last_mode}" != "dual" ]; then
                 _log "Laptop reachable → dual mode"
                 _last_mode="dual"
-                jq '.active_agent="laptop"' "${STATE_FILE}" > /tmp/state_tmp.json 2>/dev/null && mv /tmp/state_tmp.json "${STATE_FILE}"
+                jq '.active_agent="laptop"' "${STATE_FILE}" > "${STATE_FILE}.tmp.$$" 2>/dev/null && mv "${STATE_FILE}.tmp.$$" "${STATE_FILE}"
                 if [ -f "${UOM_DIR}/tools/uom-orch-laptop.sh" ]; then
                     sh "${UOM_DIR}/tools/uom-orch-laptop.sh" &
                     _orch_pid=$!
@@ -108,7 +108,7 @@ main() {
             if [ "${_last_mode}" != "solo" ]; then
                 _log "Laptop unreachable → solo mode"
                 _last_mode="solo"
-                jq '.active_agent="phone-solo"' "${STATE_FILE}" > /tmp/state_tmp.json 2>/dev/null && mv /tmp/state_tmp.json "${STATE_FILE}"
+                jq '.active_agent="phone-solo"' "${STATE_FILE}" > "${STATE_FILE}.tmp.$$" 2>/dev/null && mv "${STATE_FILE}.tmp.$$" "${STATE_FILE}"
                 if [ -f "${UOM_DIR}/orchestrators/uom-solo-orchestrator.sh" ]; then
                     sh "${UOM_DIR}/orchestrators/uom-solo-orchestrator.sh" &
                     _orch_pid=$!

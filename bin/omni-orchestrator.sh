@@ -58,7 +58,7 @@ main() {
 
 _sync_state() {
     # Sync current mode to state file
-    jq ".hybrid_mode=\"${_mode}\"" "${STATE_FILE}" > /tmp/state_tmp.json && mv /tmp/state_tmp.json "${STATE_FILE}" 2>/dev/null || true
+    jq ".hybrid_mode=\"${_mode}\"" "${STATE_FILE}" > "${STATE_FILE}.tmp.$$" && mv "${STATE_FILE}.tmp.$$" "${STATE_FILE}" 2>/dev/null || true
 }
 
 _check_dual_feasible() {
@@ -66,7 +66,7 @@ _check_dual_feasible() {
 }
 
 _check_laptop_reachable() {
-    ssh -o ConnectTimeout=3 -o BatchMode=yes -p 18022 127.0.0.1 true 2>/dev/null
+    ssh -o ConnectTimeout=3 -o BatchMode=yes -p 31415 127.0.0.1 true 2>/dev/null
 }
 
 _run_dual_agents() {

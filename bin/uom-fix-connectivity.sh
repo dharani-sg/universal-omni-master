@@ -65,7 +65,8 @@ fi
 # 3. Fix the reverse tunnel configuration on phone
 echo "Fixing reverse SSH tunnel configuration..."
 
-cat << 'EOF' > /tmp/fix_reverse_tunnel.sh
+_tunnel_fix_tmp=$(mktemp "${TMPDIR:-/tmp}/uom-fix-tunnel-XXXXXX.sh")
+cat << 'EOF' > "$_tunnel_fix_tmp"
 #!/data/data/com.termux/files/usr/bin/sh
 
 # Kill any existing tunnel processes
@@ -85,7 +86,7 @@ fi
 if [ "$USE_AUTOSSH" = true ]; then
     nohup autossh -M 0 \\
         -N -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 \\
-        -R 18022:127.0.0.1:8022 \\
+        -R 31415:127.0.0.1:8022 \\
         -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 \\
         u0_a608@192.168.40.207 >/dev/null 2>&1 &
     echo $! > ~/.uom-termux-user/tunnel.pid
@@ -93,7 +94,7 @@ else
     # Fallback with retry loop
     while true; do
         ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new \\
-            -R 18022:127.0.0.1:8022 \\
+            -R 31415:127.0.0.1:8022 \\
             u0_a608@192.168.40.207 || true
         echo "Tunnel dropped, reconnecting in 10 seconds..."
         sleep 10
@@ -102,7 +103,7 @@ fi
 
 EOF
 
-chmod +x /tmp/fix_reverse_tunnel.sh
+chmod +x "$_tunnel_fix_tmp"
 
 echo "✓ Reverse tunnel fix created"
 
@@ -183,8 +184,8 @@ status_summary() {
     fi
 
     echo "----------------------------------"
-    if ssh -o ConnectTimeout=3 -o BatchMode=yes -p 18022 127.0.0.1 true 2>/dev/null; then
-        echo "  Reverse Tunnel: ${GREEN}✓ UP${NC} (port 18022)"
+    if ssh -o ConnectTimeout=3 -o BatchMode=yes -p 31415 127.0.0.1 true 2>/dev/null; then
+        echo "  Reverse Tunnel: ${GREEN}✓ UP${NC} (port 31415)"
     else
         echo "  Reverse Tunnel: ${RED}✗ DOWN${NC}"
         if [ -f "${HYB_DIR}/tunnel.pid" ]; then
@@ -247,7 +248,7 @@ case "${1:-}" in
         fi
         ;;
     tunnel|--tunnel|t)
-        ssh -o ConnectTimeout=3 -o BatchMode=yes -p 18022 127.0.0.1 true 2>/dev/null && echo "Reverse tunnel is UP" || echo "Reverse tunnel is DOWN"
+        ssh -o ConnectTimeout=3 -o BatchMode=yes -p 31415 127.0.0.1 true 2>/dev/null && echo "Reverse tunnel is UP" || echo "Reverse tunnel is DOWN"
         ;;
     mode|--mode|m)
         if [ -f "${STATE_FILE}" ]; then

@@ -79,7 +79,9 @@ state_git_sync() {
     git add .uom-agent/ 2>/dev/null
     git diff --cached --quiet && return 0
     git commit -m "$_msg" || return 1
-    git push origin main 2>/dev/null || true
+    if [ "${UOM_ALLOW_PUSH:-0}" = "1" ]; then
+        git push origin main 2>/dev/null || true
+    fi
 }
 
 state_status() {

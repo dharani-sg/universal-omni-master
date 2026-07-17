@@ -187,7 +187,7 @@ M44–M51: Commercialization (Enterprise licensing, Omni-Cloud, AI Marketplace, 
 **Commit:** 1b12380
 - **Problem:** All scripts had hardcoded IPs. Network switching required manual updates.
 - **New file: `uom-ip-discover.sh`** — shared POSIX library with 6-method cascade:
-  1. Reverse SSH tunnel (127.0.0.1:18022 — always works)
+  1. Reverse SSH tunnel (127.0.0.1:31415 — always works)
   2. mDNS (mi8.local / hp-pavilion.local)
   3. Last-known IP from `.uom-agent/*.ip`
   4. SSH config aliases
@@ -211,7 +211,7 @@ M44–M51: Commercialization (Enterprise licensing, Omni-Cloud, AI Marketplace, 
   - Current active: tela (confirmed in /etc/default/grub)
   - Switch command: edit GRUB_THEME in /etc/default/grub → `doas grub-mkconfig -o /boot/grub/grub.cfg`
 - **Kernel:** Running 7.2.0-rc3_1, latest vmlinuz-7.2.0-rc3_1 (match) ✓
-- **SSH:** Listening on port 22 + reverse tunnel 18022 ✓
+- **SSH:** Listening on port 22 + reverse tunnel 31415 ✓
 - **All 5 orchestrator scripts pass `sh -n`** ✓
 - **Hardcoded IP audit:** 0 in orchestrators, patterns only in detection scripts ✓
 - **User cannot run doas from this shell** (no TTY) — all root operations need terminal
@@ -262,10 +262,10 @@ M44–M51: Commercialization (Enterprise licensing, Omni-Cloud, AI Marketplace, 
 - **`install/setup-aliases.sh`** — Installs 14 UOM aliases into shell profile. Supports Alpine (`.profile`) and Termux (`.bashrc`). Idempotent (skips existing aliases).
 
 **Tunnel fix (critical):**
-- **Root cause:** OpenSSH 10.x on Alpine reports false positive "remote port forwarding failed" for `-R 18022:127.0.0.1:8022` when `GatewayPorts=no` on server. The forward actually WORKS despite the warning message, but `ExitOnForwardFailure=yes` was killing `autossh` on the false error.
+- **Root cause:** OpenSSH 10.x on Alpine reports false positive "remote port forwarding failed" for `-R 31415:127.0.0.1:8022` when `GatewayPorts=no` on server. The forward actually WORKS despite the warning message, but `ExitOnForwardFailure=yes` was killing `autossh` on the false error.
 - **Fix 1:** Removed `ExitOnForwardFailure=yes` from `bin/uom-reverse-ssh.sh` — autossh `GATETIME=0` now retries naturally until laptop frees the stale port (≤90s via ServerAliveInterval/CountMax).
-- **Fix 2:** Removed `fuser -k 18022/tcp` from laptop-side tunnel cleanup — the fuser was killing the tunnel's own `sshd-session`, breaking the connection.
-- **Result:** Tunnel is now stable. Port 18022 stays listening. `ssh uom-phone-rev "echo TUNNEL_OK"` passes consistently.
+- **Fix 2:** Removed `fuser -k 31415/tcp` from laptop-side tunnel cleanup — the fuser was killing the tunnel's own `sshd-session`, breaking the connection.
+- **Result:** Tunnel is now stable. Port 31415 stays listening. `ssh uom-phone-rev "echo TUNNEL_OK"` passes consistently.
 
 **Phone deployment:**
 - **`bin/uom-deploy-phone.sh`** — Deploys all scripts to phone via SCP (SSH over LAN) + tunnel SCP (for when phone initiates). Smart kill patterns that don't kill own SSH session.
@@ -290,7 +290,7 @@ M44–M51: Commercialization (Enterprise licensing, Omni-Cloud, AI Marketplace, 
 - **PHASE 3 — orchestrators/uom-solo-orchestrator.sh** — phone-only fallback mode
 - **orchestrators/uom-watchdog.sh** — laptop reachability monitor (60s loop, 3-fail threshold)
 - **PHASE 4 — security/uom-harden-ssh.sh** — idempotent SSH hardening (laptop+phone)
-- **security/uom-firewall.sh** — nftables ruleset (allow 22, 18022, drop rest)
+- **security/uom-firewall.sh** — nftables ruleset (allow 22, 31415, drop rest)
 - **security/install-hooks.sh** — pre-commit secret scanner
 - **security/SECRETS.md** — secrets storage pattern
 - **install/secrets.env.template** — committed template (keys blank)
@@ -306,6 +306,25 @@ M44–M51: Commercialization (Enterprise licensing, Omni-Cloud, AI Marketplace, 
 - Bootstrap ready: single curl link auto-detects platform
 - Security: SSH hardened, firewall ruleset, pre-commit guard installed
 - Known issue: phone tunnel not up until phone runs bootstrap or reverse-ssh manually
+
+---
+
+### 2026-07-17 13:45 — M30 Bug Fixes + Dry-Run Hardening
+
+**Session:** opencode (big-pickle) — dual-instance merge + implementation
+**Dry-run:** 40 PASS, 0 FAIL (was 37 PASS, 2 FAIL, 4 WARN)
+
+**Fixes applied:**
+1. **uom-state-lib.sh:19** — `BASH_SOURCE[0]` → `$0` (POSIX compliance)
+2. **uom-state-lib.sh:303-310** — compare-and-update recheck: removed incorrect mode comparison after filter changes it; now only verifies epoch increment
+3. **bootstrap-termux.sh:18** — `SSHD_PORT=31415` → `8022` (correct phone sshd port); added `TUNNEL_PORT=31415` for reverse tunnel SSH config
+4. **uom-orch-state.sh:82** — `git push` gated behind `UOM_ALLOW_PUSH=1`
+5. **6 bin/ scripts** — bare `/tmp` writes replaced with `${STATE_FILE}.tmp.$$`, `mktemp`, or `${TMPDIR:-/tmp}` patterns
+6. **uom-dryrun.sh:381** — `_init_dual()` now unsets `_UOM_STATE_LIB_LOADED` before re-sourcing (fixed state-machine test reading wrong fixture)
+
+**New docs:**
+- `docs/M30-MANUAL-RUNBOOK.md` — state machine operations, manual interventions, recovery procedures
+- `docs/M30-SOURCE-VERIFICATION.md` — environment, port, POSIX, state library, and test suite verification
 
 ---
 
@@ -345,7 +364,7 @@ sh bin/uom-tmux-watchdog.sh --daemon  # Auto-recover sessions
 sh bin/uom-deploy-phone.sh            # SCP scripts + aliases + boot config
 
 # If phone was solo:
-jq '.active_agent="laptop"' .uom-agent/state.json > /tmp/s.json && mv /tmp/s.json .uom-agent/state.json
+jq '.active_agent="laptop"' .uom-agent/state.json > "${TMPDIR:-/tmp}/uom-s.json" && mv "${TMPDIR:-/tmp}/uom-s.json" .uom-agent/state.json
 git add -A && git commit -m "handback: laptop resumed control" && git push
 ```
 

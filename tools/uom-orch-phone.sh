@@ -71,7 +71,7 @@ _laptop_ssh_cmd() {
 # ── Check if laptop is reachable (any method) ────────────────────────────
 _laptop_reachable() {
     # Method 1: Check if reverse tunnel SSH process is alive (phone→laptop)
-    if pgrep -f 'ssh.*-R.*18022' >/dev/null 2>&1; then
+    if pgrep -f 'ssh.*-R.*31415' >/dev/null 2>&1; then
         return 0
     fi
     # Method 2: Try direct LAN ping to laptop IP
@@ -91,6 +91,24 @@ _laptop_reachable() {
     return 1
 }
 
+# ── Locate opencode (prefer proot-distro Debian build) ──────────────────
+_opencode_bin() {
+    # 1. proot-distro Debian install (glibc-clean, mirrors laptop)
+    _proot_bin="$HOME/debian/usr/local/bin/opencode"
+    if [ -x "$_proot_bin" ]; then
+        echo "$_proot_bin"; return 0
+    fi
+    # 2. Termux-linked symlink / bare in PATH
+    if command -v opencode >/dev/null 2>&1; then
+        command -v opencode; return 0
+    fi
+    # 3. Direct proot login fallback
+    if command -v proot-distro >/dev/null 2>&1 && proot-distro list 2>/dev/null | grep -q '^debian'; then
+        echo "proot-distro login debian -- opencode"; return 0
+    fi
+    echo ""; return 1
+}
+
 _run_opencode() {
     _task_id="$1"; _task_desc="$2"; _context="$3"
     _prompt="UOM project — PHONE FALLBACK AGENT (Xiaomi Mi 8 / Termux)
@@ -103,7 +121,21 @@ ${_context}
 
 Implement the task. Output complete file paths and contents."
 
-    printf '%s\n' "$_prompt" | timeout "$OPENCODE_TIMEOUT" opencode 2>&1
+    _oc=$(_opencode_bin)
+    if [ -z "$_oc" ]; then
+        _log "ERROR: opencode not found on phone (proot or Termux). Run: sh bin/uom-phone-provision.sh"
+        return 1
+    fi
+
+    # If _oc is a proot-distro login wrapper, invoke via proot
+    case "$_oc" in
+        proot-distro*)
+            printf '%s\n' "$_prompt" | timeout "$OPENCODE_TIMEOUT" proot-distro login debian -- opencode 2>&1
+            ;;
+        *)
+            printf '%s\n' "$_prompt" | timeout "$OPENCODE_TIMEOUT" "$_oc" 2>&1
+            ;;
+    esac
 }
 
 # ── Clean stale tunnel port on laptop via direct SSH ─────────────────────
@@ -113,7 +145,7 @@ _clean_laptop_tunnel_port() {
     _lip="${UOM_LAPTOP_IP:-192.168.40.90}"
     ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new \
         "${UOM_LAPTOP_USER:-alpine}@${_lip}" \
-        "fuser -k 18022/tcp 2>/dev/null || pkill -f 'sshd:.*@notty' 2>/dev/null || true; echo 'done'" \
+        "fuser -k 31415/tcp 2>/dev/null || pkill -f 'sshd:.*@notty' 2>/dev/null || true; echo 'done'" \
         2>/dev/null
 }
 

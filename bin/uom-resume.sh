@@ -20,7 +20,7 @@ _log() {
 }
 
 _check_tunnel() {
-    ssh -o ConnectTimeout=3 -o BatchMode=yes -p 18022 127.0.0.1 true 2>/dev/null
+    ssh -o ConnectTimeout=3 -o BatchMode=yes -p 31415 127.0.0.1 true 2>/dev/null
 }
 
 _get_state() {
@@ -59,7 +59,7 @@ main() {
     fi
 
     if _check_tunnel; then
-        echo " Reverse tunnel: UP (127.0.0.1:18022)"
+        echo " Reverse tunnel: UP (127.0.0.1:31415)"
     else
         echo " Reverse tunnel: DOWN"
         echo " Start: sh bin/uom-reverse-ssh.sh"
@@ -70,7 +70,7 @@ main() {
         if [ "${_active_agent}" = "phone-solo" ]; then
             echo ""
             echo " >>> Laptop recovered from solo mode. <<<"
-            echo " Run: jq '.active_agent=\"dual-pending\"' .uom-agent/state.json > /tmp/s.json && mv /tmp/s.json .uom-agent/state.json"
+            echo " Run: sh -c 'jq \".active_agent=\\\"dual-pending\\\"\" .uom-agent/state.json > \"\${TMPDIR:-/tmp}/uom-s.json\" && mv \"\${TMPDIR:-/tmp}/uom-s.json\" .uom-agent/state.json'"
             echo " Then: tmux kill-session -t uom-hybrid && sh bin/uom-hybrid.sh --daemon"
         fi
     else
