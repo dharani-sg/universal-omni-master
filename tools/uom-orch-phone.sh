@@ -70,17 +70,22 @@ _laptop_ssh_cmd() {
 
 # ── Check if laptop is reachable (any method) ────────────────────────────
 _laptop_reachable() {
-    # Try mDNS
+    # Method 1: Check if reverse tunnel SSH process is alive (phone→laptop)
+    if pgrep -f 'ssh.*-R.*18022' >/dev/null 2>&1; then
+        return 0
+    fi
+    # Method 2: Try direct LAN ping to laptop IP
+    _lip="${UOM_LAPTOP_IP:-192.168.40.90}"
+    if ping -c 1 -W 2 "$_lip" >/dev/null 2>&1; then
+        return 0
+    fi
+    # Method 3: Try last-known IP from state file
+    _lip2=$(cat "$OMNI_ROOT/.uom-agent/laptop.ip" 2>/dev/null)
+    if [ -n "$_lip2" ] && ping -c 1 -W 2 "$_lip2" >/dev/null 2>&1; then
+        return 0
+    fi
+    # Method 4: Try mDNS
     if ping -c 1 -W 2 hp-pavilion.local >/dev/null 2>&1; then
-        return 0
-    fi
-    # Try last-known IP
-    _lip=$(cat "$OMNI_ROOT/.uom-agent/laptop.ip" 2>/dev/null)
-    if [ -n "$_lip" ] && ping -c 1 -W 2 "$_lip" >/dev/null 2>&1; then
-        return 0
-    fi
-    # Try laptop SSH (reverse tunnel)
-    if ssh -o ConnectTimeout=2 -o BatchMode=yes -p 22 127.0.0.1 true 2>/dev/null; then
         return 0
     fi
     return 1
@@ -118,11 +123,19 @@ main() {
         state_set "phone_heartbeat" "$_now"
 
         if [ "$_mode" = "watchdog" ]; then
+            # First check if laptop is reachable via tunnel/LAN
+            if _laptop_reachable; then
+                _log "Watchdog: laptop OK (reachable)."
+                state_git_sync "heartbeat: phone watchdog $(date -Iseconds)"
+                sleep "$WATCHDOG_SLEEP"
+                continue
+            fi
+            # Only check heartbeat staleness if tunnel/LAN checks fail
             if state_laptop_stale; then
                 _log "Laptop stale. Grace ${TAKEOVER_GRACE}s..."
                 sleep "$TAKEOVER_GRACE"
                 state_git_pull
-                if state_laptop_stale; then
+                if state_laptop_stale && ! _laptop_reachable; then
                     _log "TAKEOVER: laptop offline confirmed. Phone → PRIMARY."
                     _mode="active"
                     _c=$(state_get "takeover_count"); _c=$(( ${_c:-0} + 1 ))
@@ -132,7 +145,7 @@ main() {
                     _log "Laptop returned during grace. Staying watchdog."
                 fi
             else
-                _log "Watchdog: laptop OK."
+                _log "Watchdog: laptop OK (heartbeat fresh)."
                 state_git_sync "heartbeat: phone watchdog $(date -Iseconds)"
                 sleep "$WATCHDOG_SLEEP"
             fi
