@@ -1,4 +1,4 @@
-# Universal Omni-Master — Durable AI Handoff (v0.27.5-pre)
+# Universal Omni-Master — Durable AI Handoff (v0.27.6)
 
 ## Repository Identity
 - Project root: ~/src/universal-omni-master
@@ -92,6 +92,29 @@ M28+: Zero-trust networking, predictive healing, fleet AI orchestration
 ### Pending (requires root)
 - Regenerate fallback grub.cfg to include Void Linux entries: `doas grub-mkconfig -o /boot/grub/grub.cfg`
 - Verify fallback sync: `grub-theme verify` (Fish alias)
+
+### GRUB Verify v5 + Sync-All Fix (2026-07-17 continued)
+- **Root cause:** `/boot/grub/grub.cfg` mode 600 (root:root) caused all verify/sync scripts to fail when run as user `alpine`
+- **grub-verify v5:** Copies mode-600 main grub.cfg to temp via `doas cp` before auditing
+  - Added: duplicate `--id` check, entry parity (main vs fallback), theme `($root)` normalization
+  - Removed: obsolete "kswarm NOT patched" warning → replaced with TUI dispatch check
+- **grub-sync-all:** 3 doas-wrapped reads fixed (lines 283, 313, 321 — `wc -l`, `grep -c`, `grep theme`)
+- **omni-master TUI dispatch:** `[s] Grub-Sync` → `/usr/local/bin/grub-sync-all`, `[u] Grub-Update` → `doas grub-mkconfig -o /boot/grub/grub.cfg`
+- **Theme normalization:** `set theme=($root)/boot/grub/themes/tela/theme.txt` (main) vs `set theme="/boot/grub/themes/tela/theme.txt"` (fallback) — now normalized via `sed 's/[(][^)]*[)]//'` before comparison
+- **Stale generators:** `41_void_custom` + `42_advanced_submenu` not executable — safe, entries ignored by grub-mkconfig
+  - 41_void_custom refs: vmlinuz-7.2.0-rc1_1, vmlinuz-6.18.37_1 (stale)
+  - 42_advanced_submenu refs: vmlinuz-7.2.0-rc1, vmlinuz-7.2.0-rc1_1, vmlinuz-6.18.37_1 (stale)
+  - Actual Void: vmlinuz-7.2.0-rc3_1, 7.2.0-rc2_1, 6.18.38_1 (correct in main grub.cfg via 10_kswarm)
+- **Final audit (100% clean):**
+  - Main: 211 lines, syntax valid, 2 menuentries + 1 submenu
+  - Fallback: 80 lines, syntax valid, 2 menuentries + 1 submenu
+  - Entry parity: main=2 fallback=2
+  - 15/15 kernel/initrd files present
+  - All 9 terminal_box PNGs present
+  - Theme: tela (consistent)
+  - No duplicate --id values
+  - Default: alpine-top (resolves)
+  - EFI chain: alpine-fallback/grubx64.efi + BOOT/BOOTX64.EFI present
 
 ## Recovery Prompt
 Read this file, then run:
