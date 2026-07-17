@@ -5,7 +5,7 @@
   "phone_heartbeat": "",
   "current_task_id": "M01-reverse-tunnel",
   "current_task_desc": "",
-  "task_status": "in_progress",
+  "task_status": "failed",
   "last_commit": "",
   "session_id": "",
   "takeover_count": 0
