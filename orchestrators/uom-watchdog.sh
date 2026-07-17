@@ -6,6 +6,21 @@
 
 set -eu
 
+_LOCK_DIR="/tmp/.uom_watchdog_lock"
+if ! mkdir "$_LOCK_DIR" 2>/dev/null; then
+    if [ -f "$_LOCK_DIR/pid" ]; then
+        _old=$(cat "$_LOCK_DIR/pid" 2>/dev/null)
+        if [ -n "$_old" ] && kill -0 "$_old" 2>/dev/null; then
+            printf '[watchdog] already running (PID %s)\n' "$_old" >&2
+            exit 1
+        fi
+    fi
+    rm -rf "$_LOCK_DIR" 2>/dev/null || true
+    mkdir "$_LOCK_DIR" 2>/dev/null || { echo "Cannot acquire lock"; exit 1; }
+fi
+echo $$ > "$_LOCK_DIR/pid"
+trap 'rm -rf "$_LOCK_DIR"' EXIT INT TERM
+
 # ── Resolve and source state library ────────────────────────────────────────
 _SELF_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
 _UOM_DIR="$(cd "$_SELF_DIR/.." 2>/dev/null && pwd)"

@@ -4,6 +4,22 @@
 # Auto-started via ~/.termux/boot/start-uom.sh
 
 set -u
+
+_LOCK_DIR="/tmp/.uom_orch_phone_lock"
+if ! mkdir "$_LOCK_DIR" 2>/dev/null; then
+    if [ -f "$_LOCK_DIR/pid" ]; then
+        _old=$(cat "$_LOCK_DIR/pid" 2>/dev/null)
+        if [ -n "$_old" ] && kill -0 "$_old" 2>/dev/null; then
+            printf '[PHONE] orchestrator already running (PID %s)\n' "$_old" >&2
+            exit 1
+        fi
+    fi
+    rm -rf "$_LOCK_DIR" 2>/dev/null || true
+    mkdir "$_LOCK_DIR" 2>/dev/null || { echo "Cannot acquire lock"; exit 1; }
+fi
+echo $$ > "$_LOCK_DIR/pid"
+trap 'rm -rf "$_LOCK_DIR"' EXIT INT TERM
+
 export OMNI_ROOT="${OMNI_ROOT:-$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)}"
 export PATH="$HOME/go/bin:$HOME/bin:/data/data/com.termux/files/usr/bin:/data/data/com.termux/files/usr/bin/applets"
 . "$OMNI_ROOT/tools/uom-orch-state.sh"

@@ -4,6 +4,22 @@
 # Usage: tmux new -s orch 'cd ~/src/universal-omni-master && sh tools/uom-orch-laptop.sh'
 
 set -u
+
+_LOCK_DIR="/tmp/.uom_orch_laptop_lock"
+if ! mkdir "$_LOCK_DIR" 2>/dev/null; then
+    if [ -f "$_LOCK_DIR/pid" ]; then
+        _old=$(cat "$_LOCK_DIR/pid" 2>/dev/null)
+        if [ -n "$_old" ] && kill -0 "$_old" 2>/dev/null; then
+            printf '[LAPTOP] orchestrator already running (PID %s)\n' "$_old" >&2
+            exit 1
+        fi
+    fi
+    rm -rf "$_LOCK_DIR" 2>/dev/null || true
+    mkdir "$_LOCK_DIR" 2>/dev/null || { echo "Cannot acquire lock"; exit 1; }
+fi
+echo $$ > "$_LOCK_DIR/pid"
+trap 'rm -rf "$_LOCK_DIR"' EXIT INT TERM
+
 export OMNI_ROOT="${OMNI_ROOT:-$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)}"
 export PATH="$HOME/.opencode/bin:$HOME/bin:/usr/local/bin:/usr/bin:/bin"
 . "$OMNI_ROOT/tools/uom-state-lib.sh"
