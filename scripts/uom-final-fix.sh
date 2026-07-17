@@ -1,6 +1,7 @@
 #!/bin/sh
 # UOM Final Fix - Simple Working Solution
-# Port 18022 cleanup + Reverse SSH tunnel + Phone OpenCode deployment
+# Reverse SSH tunnel + Phone OpenCode deployment
+# NOTE: Legacy/deprecated script retained for reference. Port 31415 is canonical.
 
 set -u
 UOM_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -13,13 +14,10 @@ _log() {
     printf '[fix] %s %s\n' "$_ts" "$*" | tee -a "$LOG_DIR/fix.log"
 }
 
-# Fix Port 18022 conflicts
-_fix_port_18022() {
-    _log "Fixing Port 18022 conflicts..."
-    if ss -tlnp 2>/dev/null | grep -q ':18022'; then
-        _log "Port 18022 occupied - stopping any running tunnels"
-        pkill -f "uom-reverse-ssh.sh" 2>/dev/null || true
-        _log "Starting reverse SSH tunnel with Port 18022..."
+_ensure_tunnel() {
+    _log "Checking reverse tunnel..."
+    if ! pgrep -f 'autossh.*-R.*31415' >/dev/null 2>&1 && ! pgrep -f 'ssh.*-R.*31415' >/dev/null 2>&1; then
+        _log "No tunnel process — starting reverse SSH tunnel (port 31415)..."
         if [ -f "${UOM_DIR}/bin/uom-reverse-ssh.sh" ]; then
             cd "${UOM_DIR}"
             UOM_LAPTOP_HOST="$(uom_pw_discover_laptop 2>/dev/null || echo "192.168.40.90")"
@@ -29,10 +27,10 @@ _fix_port_18022() {
             sh bin/uom-reverse-ssh.sh start 2>&1 | tee -a "$LOG_DIR/tunnel-start.log" &
             TUNNEL_PID=$!
             echo "$TUNNEL_PID" > "${STATE_DIR}/runtime/tunnel.pid"
-            _log "Tunnel started (PID $TUNNEL_PID, listening on Port 18022)"
+            _log "Tunnel started (PID $TUNNEL_PID, port 31415)"
         fi
     else
-        _log "Port 18022 is free - no tunnel needed"
+        _log "Reverse tunnel already running on port 31415"
     fi
 }
 
@@ -56,18 +54,12 @@ _install_opencode_phone() {
 _run_watchdog() {
     _log "Starting Comprehensive Watchdog..."
     while true; do
-        # Check Port 18022 conflicts
-        if ss -tlnp 2>/dev/null | grep -q ':18022'; then
-            _log "Port 18022 conflict detected - auto-fixing..."
-            _fix_port_18022
-        fi
-        
-        # Check tunnel health
+        # Check tunnel health on port 31415
         if [ -f "${STATE_DIR}/runtime/tunnel.pid" ]; then
             _pid=$(cat "${STATE_DIR}/runtime/tunnel.pid" 2>/dev/null)
             if [ -n "$_pid" ] && ! kill -0 "$_pid" 2>/dev/null; then
                 _log "Tunnel dead - restarting..."
-                _fix_port_18022
+                _ensure_tunnel
             fi
         fi
         
@@ -86,24 +78,16 @@ main() {
     _log "Starting comprehensive deployment with watchdog..."
     
     # Apply fixes
-    _fix_port_18022
+    _ensure_tunnel
     _install_opencode_phone
-    
-    # Start watchdog in background
-    cd "${UOM_DIR}"
-    sh "$SERVICE_FILE" >/dev/null 2>&1 &
-    WATCHDOG_PID=$!
-    echo "$WATCHDOG_PID" > "${STATE_DIR}/runtime/watchdog.pid"
     
     _log "=== FIX DEPLOYMENT COMPLETE ==="
     _log "Services:"
-    _log "  - Reverse SSH tunnel (Port 18022)"
+    _log "  - Reverse SSH tunnel (port 31415)"
     _log "  - Phone OpenCode provisioning (proot deb + CLI)"
-    _log "  - Comprehensive watchdog monitoring"
     _log ""
     _log "Key files:"
     _log "  - Tunnel PID: ${STATE_DIR}/runtime/tunnel.pid"
-    _log "  - Watchdog PID: ${STATE_DIR}/runtime/watchdog.pid"
     _log "  - Provision PID: ${STATE_DIR}/runtime/provision.pid"
     _log "  - logs: $LOG_DIR/"
     _log ""

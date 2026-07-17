@@ -8,7 +8,7 @@
 #
 # Environment:
 #   UOM_DIR       — project root (default: auto-detect)
-#   LLM_MODEL     — Ollama model name (default: auto from setup-env.json)
+#   LLM_MODEL     — Model name (default: auto from setup-env.json)
 #   LLM_CMD       — custom LLM command override (pipe-based)
 #   POLL_INTERVAL — seconds between queue polls (default: 5)
 #

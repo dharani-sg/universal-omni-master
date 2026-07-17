@@ -20,4 +20,4 @@ sudo ln -s ~/src/universal-omni-master/init/runit/port-guardian /etc/runit/sv/
 sudo ln -s /etc/runit/sv/port-guardian /var/service/
 ```
 
-(Service files not yet created — pending M30.5.)
+(Service files not yet created — deferred post-M30.5.)
