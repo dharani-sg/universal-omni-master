@@ -1,4 +1,4 @@
-# Universal Omni-Master — Durable AI Handoff (v0.27.6)
+# Universal Omni-Master — Durable AI Handoff (v0.28.0)
 
 ## Repository Identity
 - Project root: ~/src/universal-omni-master
@@ -53,6 +53,48 @@ Total: 17 CLI tools, 300+ automated assertions.
 ## Next Phase
 M27: Termux Native Polish (haptic feedback, push notifications, portrait optimization)
 M28+: Zero-trust networking, predictive healing, fleet AI orchestration
+
+## Session Log: UOM Dual-Agent Dynamic IP System (2026-07-17)
+### Problem
+All orchestrator scripts had hardcoded IPs (`192.168.40.90`, `192.168.43.1`, `192.168.40.207`). Network switching (hotspot → external WiFi → hotspot) required manual IP updates.
+
+### Solution: Dynamic IP Discovery System
+Created 3 new files + rewrote 3 existing files:
+
+**New files:**
+- `tools/uom-ip-discover.sh` — Shared POSIX library with 6-method discovery cascade:
+  1. Reverse SSH tunnel (`127.0.0.1:18022` — always works if tunnel is up)
+  2. mDNS resolution (`mi8.local` / `hp-pavilion.local`)
+  3. Last-known IP from `.uom-agent/*.ip` state files
+  4. SSH config aliases
+  5. Subnet scan (nmap for port 8022/22)
+  6. Gateway range scan (phone hotspot `.100-.110`)
+- `tools/uom-net-detect.sh` — Network mode detection (hotspot/lan/external/offline) with dynamic phone/laptop IP discovery
+
+**Rewritten files:**
+- `tools/uom-orch-laptop.sh` — Uses `uom-ip-discover.sh`, dynamic `_phone_ssh_cmd()` function
+- `tools/uom-orch-phone.sh` — Uses `uom-ip-discover.sh`, dynamic `_laptop_ssh_cmd()`, `_laptop_reachable()`
+- `setup/phone-bootstrap.sh` — Dynamic `_discover_laptop_ip()` (mDNS → gateway scan → state file → subnet scan)
+- `UOM-DUAL-AGENT-ORCHESTRATOR.md` — Phase 6 rewritten with discovery architecture + 4 network scenarios
+
+### Key Architecture Decisions
+- Reverse SSH tunnel is PRIMARY communication path (works regardless of IP changes)
+- `uom-reverse-ssh.sh` re-discovers laptop on every reconnect cycle
+- Phone hotspot gateway detection uses pattern matching (not hardcoded IPs)
+- All remaining `192.168.43.1` references are pattern matches or fallback defaults (acceptable)
+- Laptop SSH config retains static aliases (`uom-phone-hotspot`, `uom-phone-lan`) as secondary options
+
+### OpenCode on Phone
+- npm install failed (android/arm64 excluded from package)
+- `opencode.ai/install` script also failed (no ARM64 binary)
+- Go not available in Termux packages (`pkg search golang` empty)
+- **Status:** BLOCKED — needs Go source build or alternative AI agent
+- **Fallback documented:** `pkg install golang && go install github.com/opencode-ai/opencode@latest`
+
+### Verification
+- All 6 scripts pass `sh -n` syntax check ✓
+- Hardcoded IP audit: orchestrators = 0 hardcoded IPs, detection scripts = pattern matches only ✓
+- SSH tunnel connectivity verified: `ssh -F ~/.ssh/config uom-phone-rev echo ok` ✓
 
 ## Consolidation Log (2026-07-16)
 - M41 (OpenCode Sentinel) merged into M24 (AI-Patcher) — sentinel is now a feature, not standalone

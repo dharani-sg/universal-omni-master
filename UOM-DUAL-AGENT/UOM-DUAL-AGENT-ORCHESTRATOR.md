@@ -922,68 +922,88 @@ sh tools/uom-orch-laptop.sh >> /var/log/uom-laptop.log 2>&1 &
 
 ---
 
-## Phase 6 — Network / Hotspot Switching
+## Phase 6 — Network / Hotspot Switching (Dynamic IPs)
+
+### Architecture: How device discovery works
+
+Both devices use `tools/uom-ip-discover.sh` — a shared POSIX library with multiple fallback methods:
+
+```
+DISCOVERY PRIORITY (both devices):
+1. Reverse SSH tunnel   → 127.0.0.1:18022 (always works if tunnel is up)
+2. mDNS                 → mi8.local / hp-pavilion.local (avahi-daemon)
+3. Last-known IP        → .uom-agent/phone.ip / laptop.ip (GitHub state)
+4. SSH config aliases   → uom-phone-rev / uom-phone-lan / uom-phone-mdns
+5. Subnet scan (nmap)   → scan for port 8022 or 22 on local subnet
+6. Gateway range scan   → try .100-.110 in hotspot subnet (phone only)
+```
+
+**Key insight:** The reverse SSH tunnel (`uom-phone-rev` → `127.0.0.1:18022`) is the PRIMARY communication path. It works regardless of IP changes because it's a tunnel, not a direct connection. The phone keeps this tunnel alive via `uom-reverse-ssh.sh`.
 
 ### Scenario A: Phone is your hotspot (most common)
 
 ```
-Phone IP as gateway: 192.168.43.1  ← ALWAYS FIXED when phone is hotspot
+Phone IP as gateway: 192.168.43.1  ← standard Android hotspot
 Laptop IP: 192.168.43.x            ← DHCP from phone
 ```
 
-Laptop can always SSH to phone at `192.168.43.1:8022`. No discovery needed.
+Laptop can always SSH to phone at `127.0.0.1:18022` (via reverse tunnel) or `192.168.43.1:8022` (direct). No discovery needed.
 
 ```sh
 # Quick test from laptop
-ssh -p 8022 -i ~/.ssh/id_ed25519_phone u0_aXXX@192.168.43.1 echo "phone connected"
+ssh -F ~/.ssh/config uom-phone-rev echo "phone connected"
 ```
 
 ### Scenario B: Switch to mom/dad WiFi mid-session
 
-```sh
-# Automatic: when laptop connects to new WiFi, it runs /etc/network/if-up.d/uom-announce
-# This writes new IP to .uom-agent/laptop.ip and pushes to GitHub.
-# Phone reads the new IP on next state_git_pull.
-# No manual steps needed.
-```
-
-The network detect script handles it:
-
-```sh
-cat > ~/src/universal-omni-master/tools/uom-net-detect.sh << 'EOF'
-#!/bin/sh
-# Detect current network mode and set connection targets
-# Returns: hotspot | external | offline
-
-_gw=$(ip route 2>/dev/null | awk '/^default/{print $3; exit}')
-_my_ip=$(ip route get 8.8.8.8 2>/dev/null | awk '/src/{print $7; exit}')
-
-if [ -z "$_gw" ] || [ -z "$_my_ip" ]; then
-    echo "offline"; exit 0
-fi
-
-if [ "$_gw" = "192.168.43.1" ]; then
-    # Phone is our hotspot
-    echo "hotspot"
-    printf 'PHONE_IP=192.168.43.1\nLAPTOP_IP=%s\n' "$_my_ip"
-else
-    # External WiFi (mom/dad/etc)
-    echo "external"
-    printf 'LAPTOP_IP=%s\nGATEWAY=%s\n' "$_my_ip" "$_gw"
-fi
-EOF
-chmod +x ~/src/universal-omni-master/tools/uom-net-detect.sh
-```
+**Automatic — no manual steps:**
+1. Laptop connects to new WiFi → new IP assigned
+2. `/etc/network/if-up.d/uom-announce` fires → writes new IP to `.uom-agent/laptop.ip` + pushes to GitHub
+3. Phone's `uom-reverse-ssh.sh` reconnects (rediscovers laptop via mDNS/last-known)
+4. Laptop's orchestrator discovers phone via `discover_phone_ip()` (tunnel > mDNS > last-known > scan)
+5. Both devices continue where they left off
 
 ### Scenario C: Reconnect after power loss on different hotspot
 
 Both devices:
-1. Boot/reconnect → write their IP to `.uom-agent/laptop.ip` or `phone.ip`
-2. Commit + push to GitHub
+1. Boot/reconnect → `uom-ip-discover.sh` finds the other device
+2. Write their IP to `.uom-agent/laptop.ip` or `phone.ip` + commit/push
 3. Other device pulls → discovers new IP
 4. SSH works again automatically
 
-No manual steps. The IP files in GitHub are the discovery mechanism.
+### Scenario D: Phone hotspot → External WiFi → Phone hotspot
+
+The `uom-reverse-ssh.sh` script re-discovers the laptop on every reconnect cycle:
+```sh
+# From phone's reverse tunnel script:
+LAPTOP_IP=$(_discover_laptop)  # tries mDNS → gateway scan → state file
+ssh -N -R 18022:127.0.0.1:8022 ${LAPTOP_USER}@${LAPTOP_IP}
+```
+
+### Network mode detection
+
+```sh
+# Source from any script:
+. tools/uom-ip-discover.sh
+is_phone_hotspot && echo "on hotspot" || echo "on external WiFi"
+net_ok && echo "online" || echo "offline"
+_my_ip=$(get_my_ip)
+```
+
+### Verifying dynamic discovery works
+
+```sh
+# From laptop:
+cd ~/src/universal-omni-master
+. tools/uom-ip-discover.sh
+discover_phone_ip   # should return 127.0.0.1:18022 or phone IP
+discover_laptop_ip  # should return laptop IP or alias
+
+# From phone (Termux):
+cd ~/src/universal-omni-master
+. tools/uom-ip-discover.sh
+discover_laptop_ip  # should return laptop IP via mDNS/scan
+```
 
 ---
 
