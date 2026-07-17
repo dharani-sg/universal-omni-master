@@ -18,7 +18,7 @@
     "desc": "Implement Termux native polish: haptic feedback, notifications, portrait-optimized TUI",
     "context_file": ".uom-agent/context/M30-termux-native.md",
     "priority": 3,
-    "status": "pending"
+    "status": "in_progress"
   },
   {
     "id": "M30-reverse-tunnel-auto",
