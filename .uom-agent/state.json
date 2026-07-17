@@ -1,8 +1,8 @@
 {
   "schema": 1,
-  "active_agent": "laptop",
+  "active_agent": "phone",
   "laptop_heartbeat": "2026-07-17T15:35:52+05:30",
-  "phone_heartbeat": "2026-07-17T13:26:41+05:30",
+  "phone_heartbeat": "2026-07-17T15:49:34+05:30",
   "current_task_id": "M01-reverse-tunnel",
   "current_task_desc": "",
   "task_status": "pending",
