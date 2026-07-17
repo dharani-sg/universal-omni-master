@@ -4,13 +4,13 @@
     "desc": "Fix reverse SSH tunnel from phone to laptop",
     "context_file": ".uom-agent/context/M01-reverse-tunnel.md",
     "priority": 1,
-    "status": "failed"
+    "status": "pending"
   },
   {
     "id": "M02-state-sync",
     "desc": "Verify dual-agent state sync between laptop and phone",
     "context_file": ".uom-agent/context/M02-state-sync.md",
     "priority": 2,
-    "status": "failed"
+    "status": "pending"
   }
 ]
