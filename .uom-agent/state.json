@@ -1,13 +1,12 @@
 {
   "schema": 1,
   "active_agent": "laptop",
-  "laptop_heartbeat": "2026-07-17T16:11:50+05:30",
+  "laptop_heartbeat": "2026-07-17T15:55:55+05:30",
   "phone_heartbeat": "2026-07-17T15:57:44+05:30",
-  "current_task_id": "M30-termux-native",
-  "current_task_desc": "",
-  "task_status": "in_progress",
+  "current_task_id": "",
+  "task_status": "idle",
   "last_commit": "",
   "session_id": "",
-  "takeover_count": "1",
+  "takeover_count": "0",
   "hybrid_mode": "dual"
 }
