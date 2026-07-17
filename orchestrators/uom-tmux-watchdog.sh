@@ -13,6 +13,23 @@
 
 set -u
 
+_LOCK_DIR="/tmp/.uom_tmuxwatch_lock"
+if [ "${1:-}" != "--stop" ]; then
+    if ! mkdir "$_LOCK_DIR" 2>/dev/null; then
+        if [ -f "$_LOCK_DIR/pid" ]; then
+            _old=$(cat "$_LOCK_DIR/pid" 2>/dev/null)
+            if [ -n "$_old" ] && kill -0 "$_old" 2>/dev/null; then
+                echo "uom-tmux-watchdog already running (PID $_old)"
+                exit 1
+            fi
+        fi
+        rm -rf "$_LOCK_DIR" 2>/dev/null || true
+        mkdir "$_LOCK_DIR" 2>/dev/null || { echo "Cannot acquire lock"; exit 1; }
+    fi
+    echo $$ > "$_LOCK_DIR/pid"
+    trap 'rm -rf "$_LOCK_DIR"' EXIT INT TERM
+fi
+
 UOM_DIR="${OMNI_ROOT:-$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)}"
 STATE_FILE="${UOM_DIR}/.uom-agent/state.json"
 QUEUE_FILE="${UOM_DIR}/.uom-agent/queue.json"
