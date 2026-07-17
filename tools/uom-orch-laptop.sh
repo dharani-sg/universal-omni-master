@@ -5,6 +5,7 @@
 
 set -u
 export OMNI_ROOT="${OMNI_ROOT:-$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)}"
+export PATH="$HOME/.opencode/bin:$HOME/bin:/usr/local/bin:/usr/bin:/bin"
 . "$OMNI_ROOT/tools/uom-orch-state.sh"
 . "$OMNI_ROOT/tools/uom-ip-discover.sh"
 
