@@ -13,3 +13,7 @@ sandbox/run/
 
 # Stray files from accidental shell commands
 -X
+
+# UOM dual-agent state (tracked)
+!.uom-agent/
+!.uom-agent/**

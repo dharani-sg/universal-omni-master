@@ -54,109 +54,165 @@ Total: 17 CLI tools, 300+ automated assertions.
 M27: Termux Native Polish (haptic feedback, push notifications, portrait optimization)
 M28+: Zero-trust networking, predictive healing, fleet AI orchestration
 
-## Session Log: UOM Dual-Agent Dynamic IP System (2026-07-17)
-### Problem
-All orchestrator scripts had hardcoded IPs (`192.168.40.90`, `192.168.43.1`, `192.168.40.207`). Network switching (hotspot → external WiFi → hotspot) required manual IP updates.
+---
 
-### Solution: Dynamic IP Discovery System
-Created 3 new files + rewrote 3 existing files:
+## Chronological Session Log
 
-**New files:**
-- `tools/uom-ip-discover.sh` — Shared POSIX library with 6-method discovery cascade:
-  1. Reverse SSH tunnel (`127.0.0.1:18022` — always works if tunnel is up)
-  2. mDNS resolution (`mi8.local` / `hp-pavilion.local`)
-  3. Last-known IP from `.uom-agent/*.ip` state files
-  4. SSH config aliases
-  5. Subnet scan (nmap for port 8022/22)
-  6. Gateway range scan (phone hotspot `.100-.110`)
-- `tools/uom-net-detect.sh` — Network mode detection (hotspot/lan/external/offline) with dynamic phone/laptop IP discovery
+### 2026-07-10: Milestones M1-M5
+**Commits:** 1-11 (13:29 to 22:01 IST)
+- M1: Detection core + sandbox + profile freeze + monolith bundler
+- M2: Init system abstraction layer (5 backends + fixture testing)
+- M3: Bootloader abstraction (GRUB + systemd-boot + EFI simulation)
+- M4: GPU policy engine (AMD/NVIDIA/Intel hybrid abstraction)
+- M5: Storage telemetry (SMART/NVMe/Btrfs/LUKS)
 
-**Rewritten files:**
-- `tools/uom-orch-laptop.sh` — Uses `uom-ip-discover.sh`, dynamic `_phone_ssh_cmd()` function
-- `tools/uom-orch-phone.sh` — Uses `uom-ip-discover.sh`, dynamic `_laptop_ssh_cmd()`, `_laptop_reachable()`
-- `setup/phone-bootstrap.sh` — Dynamic `_discover_laptop_ip()` (mDNS → gateway scan → state file → subnet scan)
-- `UOM-DUAL-AGENT-ORCHESTRATOR.md` — Phase 6 rewritten with discovery architecture + 4 network scenarios
+### 2026-07-11: Milestones M6-M13-A
+**Commits:** 12-35 (08:45 to 23:27 IST)
+- M6: Unified diagnostics + filesystem detection
+- M7: Deploy/bootstrap installer + gate fixes
+- M8: omni-healer self-healing watchdog daemon
+- M9: Comparative audit vs chatbot-B reference
+- M10: Btrfs snapshot lifecycle manager
+- M11: Atomic rollback + boot-to-snapshot
+- M12: Fish TUI gate v1 + POSIX shell trap fixes
+- M13-A: Monolith bundler (inline all libs + 9 CLIs)
+- M13-B: SSH remote transport for omni-deploy
+- M13-C: Directory-based plugin ecosystem
+- **First AI-HANDOFF.md created** (v0.12.0)
 
-### Key Architecture Decisions
-- Reverse SSH tunnel is PRIMARY communication path (works regardless of IP changes)
-- `uom-reverse-ssh.sh` re-discovers laptop on every reconnect cycle
-- Phone hotspot gateway detection uses pattern matching (not hardcoded IPs)
-- All remaining `192.168.43.1` references are pattern matches or fallback defaults (acceptable)
-- Laptop SSH config retains static aliases (`uom-phone-hotspot`, `uom-phone-lan`) as secondary options
+### 2026-07-12: Milestones M14-M21
+**Commits:** 36-54 (07:07 to 23:13 IST)
+- M14: Security hardening (TPM2-LUKS, UKI validation, SBAT)
+- M15: Fleet orchestration + multi-node coordination
+- M16: Heuristic State Machine for crash-resume
+- M17: Adaptive TUI + Progressive Disclosure
+- M18: Omni-Seed one-liner bootstrap
+- M19: Declarative Manifests (Desired-State Configuration)
+- M20: Live Telemetry Feed
+- M21: Central Control Manager with module registry
+- **Bug 13 (mkfifo) discovered and documented**
 
-### OpenCode on Phone
-- npm install failed (android/arm64 excluded from package)
-- `opencode.ai/install` script also failed (no ARM64 binary)
-- Go not available in Termux packages (`pkg search golang` empty)
-- **Status:** BLOCKED — needs Go source build or alternative AI agent
-- **Fallback documented:** `pkg install golang && go install github.com/opencode-ai/opencode@latest`
+### 2026-07-13: Milestones M22-M26
+**Commits:** 55-64 (07:44 to 22:07 IST)
+- M22: Headless QEMU testbed with mock serial fallback
+- M23: SaaS Metering + License Gateway + tier switching
+- M24: AI-Patcher + heuristic auto-remediation + monolith fix
+- M25: Fleet STIG/CIS Compliance
+- M26: OpenClaw Commercial Telemetry Bridge
+- **AI-HANDOFF.md v0.26.0** with full M1-M26 history
 
-### Verification
-- All 6 scripts pass `sh -n` syntax check ✓
-- Hardcoded IP audit: orchestrators = 0 hardcoded IPs, detection scripts = pattern matches only ✓
-- SSH tunnel connectivity verified: `ssh -F ~/.ssh/config uom-phone-rev echo ok` ✓
+### 2026-07-14: Milestones M27
+**Commits:** 65-71 (07:44 to 09:52 IST)
+- M27: Universal desktop + window-manager profile engine
+- M27.1: Desktop telemetry dashboard
+- M27-B: Integrate omni-desktop into omni-deploy
+- M27-C: Post-reboot DISPLAY_OK verification
+- M27-C.1: Complete POSIX postboot dispatch integration
+- **Tags:** v0.27.1 through v0.27.4
 
-## Consolidation Log (2026-07-16)
-- M41 (OpenCode Sentinel) merged into M24 (AI-Patcher) — sentinel is now a feature, not standalone
-- JSON escapers: 4 duplicates → 2 (canonical in core/utils.sh + postboot variant)
-- Service-status: 3 duplicates → 1 (canonical via init modules, healer delegates)
+### 2026-07-16: Consolidation
+**Commit:** 67c145c (15:36 IST)
+- JSON escapers: 4 duplicates → 2 (canonical in core/utils.sh)
+- Service-status: 3 duplicates → 1 (healer delegates)
+- M41 (OpenCode Sentinel) merged into M24 (AI-Patcher)
+- test-detect.sh fixture additions
 - All files pass sh -n syntax check
 
-## Session Log: Dual-Boot GRUB + SSH Fix (2026-07-17)
-### GRUB Dual-Boot Detection
-- **Root cause:** `GRUB_DISABLE_OS_PROBER=true` in /etc/default/grub prevented Void Linux detection
+---
+
+### 2026-07-17: UOM Dual-Agent + GRUB Audit (Full Day)
+
+#### 09:05 — GRUB Mode-600 Fix + SSH Enable + Dual-Boot
+**Commit:** 0936baf
+- **Root cause:** `GRUB_DISABLE_OS_PROBER=true` prevented Void Linux detection
 - **Fix:** Set `GRUB_DISABLE_OS_PROBER=false`, ran `grub-mkconfig -o /boot/grub/grub.cfg`
-- **Result:** Void Linux 7.2.0-rc3_1 now appears in GRUB menu (id: void-top)
-- **Main grub.cfg entries:** 8 total (3 Alpine, 3 Void, submenu, UEFI Firmware)
-- **Fallback grub.cfg:** 5 entries (Alpine only, pre-os-prober — needs root to regenerate)
-- **EFI stubs:** Alpine, Void, Artix, GRUB2NORD, alpine-fallback all present in /boot/efi/EFI/
-
-### omni-boot grub.sh Hardening
-- **Issue:** grub.cfg mode 600 (root-only) caused `[error] grub.cfg not found` in omni-boot
-- **Fix:** Added `_grub_cfg_readable()` and `_grub_cfg_cat()` — detects doas/sudo, reads via privilege helper
-- **Pattern:** Same as grub-theme.fish (Fish) — direct read first, doas fallback for mode 600
+- **Result:** Void Linux 7.2.0-rc3_1 now appears in GRUB menu
+- **Main grub.cfg:** 8 entries (3 Alpine, 3 Void, submenu, UEFI Firmware)
+- **Fallback grub.cfg:** 5 entries (Alpine only)
+- **EFI stubs:** Alpine, Void, Artix, GRUB2NORD, alpine-fallback
+- **omni-boot grub.sh hardening:** `_grub_cfg_readable()` and `_grub_cfg_cat()` with doas fallback for mode 600
 - **Tests:** 47/47 pass (31 detect + 16 service-layer)
+- **SSH:** sshd enabled on OpenRC default runlevel, started
 
-### SSH Service
-- **Status:** sshd enabled on OpenRC default runlevel, service started
-- **Host keys:** RSA, ECDSA, ED25519 all present in /etc/ssh/
-
-### GRUB Theme Config
-- **Fixed:** omni_conf.fish GRUB_THEME_DIR corrected from whitesur → tela (matching active theme)
-- **Fallback grub.cfg:** Theme=tela (consistent with main)
-- **Available themes:** catppuccin-mocha, nord, stylish, tela, vimix, whitesur
-
-### Dual-Distro Dry Run Results
-- **Alpine (native):** distro=alpine, init=openrc, libc=musl, pkg=apk, priv=doas, boot=grub, UEFI=yes, SB=disabled
-- **Void (sysroot):** distro=void, init=runit, libc=glibc, pkg=xbps, priv=doas, boot=grub, seat=seatd+elogind
-- **Hardware:** Intel i3-3217U, AMD+Intel hybrid GPU, CT240BX500 SSD, AC power
-
-### Pending (requires root)
-- Regenerate fallback grub.cfg to include Void Linux entries: `doas grub-mkconfig -o /boot/grub/grub.cfg`
-- Verify fallback sync: `grub-theme verify` (Fish alias)
-
-### GRUB Verify v5 + Sync-All Fix (2026-07-17 continued)
-- **Root cause:** `/boot/grub/grub.cfg` mode 600 (root:root) caused all verify/sync scripts to fail when run as user `alpine`
-- **grub-verify v5:** Copies mode-600 main grub.cfg to temp via `doas cp` before auditing
-  - Added: duplicate `--id` check, entry parity (main vs fallback), theme `($root)` normalization
-  - Removed: obsolete "kswarm NOT patched" warning → replaced with TUI dispatch check
-- **grub-sync-all:** 3 doas-wrapped reads fixed (lines 283, 313, 321 — `wc -l`, `grep -c`, `grep theme`)
-- **omni-master TUI dispatch:** `[s] Grub-Sync` → `/usr/local/bin/grub-sync-all`, `[u] Grub-Update` → `doas grub-mkconfig -o /boot/grub/grub.cfg`
-- **Theme normalization:** `set theme=($root)/boot/grub/themes/tela/theme.txt` (main) vs `set theme="/boot/grub/themes/tela/theme.txt"` (fallback) — now normalized via `sed 's/[(][^)]*[)]//'` before comparison
-- **Stale generators:** `41_void_custom` + `42_advanced_submenu` not executable — safe, entries ignored by grub-mkconfig
-  - 41_void_custom refs: vmlinuz-7.2.0-rc1_1, vmlinuz-6.18.37_1 (stale)
-  - 42_advanced_submenu refs: vmlinuz-7.2.0-rc1, vmlinuz-7.2.0-rc1_1, vmlinuz-6.18.37_1 (stale)
-  - Actual Void: vmlinuz-7.2.0-rc3_1, 7.2.0-rc2_1, 6.18.38_1 (correct in main grub.cfg via 10_kswarm)
+#### 10:36 — GRUB Verify v5 + Sync-All Fix
+**Commit:** a19e301 (v0.27.6)
+- **grub-verify v5:** Copies mode-600 grub.cfg via `doas cp` before auditing
+  - Added: duplicate `--id` check, entry parity, theme normalization
+  - Removed: obsolete "kswarm NOT patched" warning → TUI dispatch check
+- **grub-sync-all:** 3 doas-wrapped reads fixed (wc -l, grep -c, grep theme)
+- **omni-master TUI:** `[s]` → grub-sync-all, `[u]` → `doas grub-mkconfig`
+- **Theme normalization:** `($root)` prefix normalized via sed
+- **Stale generators:** `41_void_custom` + `42_advanced_submenu` not executable (safe)
 - **Final audit (100% clean):**
-  - Main: 211 lines, syntax valid, 2 menuentries + 1 submenu
-  - Fallback: 80 lines, syntax valid, 2 menuentries + 1 submenu
-  - Entry parity: main=2 fallback=2
-  - 15/15 kernel/initrd files present
-  - All 9 terminal_box PNGs present
-  - Theme: tela (consistent)
-  - No duplicate --id values
-  - Default: alpine-top (resolves)
+  - Main: 211 lines, fallback: 80 lines, both syntax valid
+  - 2 menuentries each, tela theme consistent
+  - 15/15 kernel/initrd files, 9/9 terminal_box PNGs present
+  - No duplicate --id values, default alpine-top resolves
   - EFI chain: alpine-fallback/grubx64.efi + BOOT/BOOTX64.EFI present
+
+#### 10:53 — Dual-Agent Phase 1: SSH Tunnel + Avahi + Phone Bootstrap
+**Commits:** (uncommitted until 11:11)
+- **Phone→laptop key** installed in laptop authorized_keys ✓
+- **Reverse tunnel** verified: `ssh -F ~/.ssh/config uom-phone-rev` works ✓
+- **uom-reverse-ssh.sh** patched (`/tmp/` → `$HOME/.uom-termux-user`)
+- **Phone IP detected:** 192.168.40.207 (direct LAN)
+- **Phase 2 laptop setup scripts read:**
+  - `/etc/network/if-up.d/uom-announce` — installed (23 lines, executable)
+  - `/etc/local.d/uom-announce.start` + `uom-resume.start` — created
+  - `rc-update add local default` ✓
+- **avahi-daemon:** enabled, started, mdns4_minimal in nsswitch ✓
+- **SSH config:** 4 aliases (uom-phone-rev, uom-phone-hotspot, uom-phone-lan, uom-phone-mdns)
+
+#### 11:11 — Heartbeat: Laptop IP Announce
+**Commit:** 5e3b48c
+- `.uom-agent/laptop.ip` written (192.168.40.90)
+- `.uom-agent/phone.ip` written (192.168.40.207)
+- Dual-agent state files created
+
+#### 11:57 — Dynamic IP Discovery System
+**Commit:** 1b12380
+- **Problem:** All scripts had hardcoded IPs. Network switching required manual updates.
+- **New file: `uom-ip-discover.sh`** — shared POSIX library with 6-method cascade:
+  1. Reverse SSH tunnel (127.0.0.1:18022 — always works)
+  2. mDNS (mi8.local / hp-pavilion.local)
+  3. Last-known IP from `.uom-agent/*.ip`
+  4. SSH config aliases
+  5. Subnet scan (nmap port 8022/22)
+  6. Gateway range scan (.100-.110)
+- **Rewritten: `uom-net-detect.sh`** — pattern-based hotspot/lan/external/offline detection
+- **Rewritten: `uom-orch-laptop.sh`** — uses `discover_phone_ip()`, dynamic SSH target
+- **Rewritten: `uom-orch-phone.sh`** — uses `discover_laptop_ip()`, re-discovery on reconnect
+- **Rewritten: `phone-bootstrap.sh`** — dynamic `_discover_laptop_ip()` (mDNS → scan → state)
+- **Updated: `UOM-DUAL-AGENT-ORCHESTRATOR.md`** Phase 6 — 4 network scenarios
+- **Updated: `AI-HANDOFF.md`** → v0.28.0
+
+#### 12:09 — Duplicate File Cleanup
+- `tools/` synced with current `UOM-DUAL-AGENT/` versions
+- `setup/www/` tool scripts synced and tarball regenerated
+- OLD versions purged, uom-ip-discover.sh added to both
+
+#### 12:10 — Comprehensive Dry-Run Audit
+- **GRUB:** All 6 themes verified (catppuccin-mocha, nord, stylish, tela, vimix, whitesur)
+  - Each has theme.txt, background, icons (72-76), fonts, and complete asset sets
+  - Current active: tela (confirmed in /etc/default/grub)
+  - Switch command: edit GRUB_THEME in /etc/default/grub → `doas grub-mkconfig -o /boot/grub/grub.cfg`
+- **Kernel:** Running 7.2.0-rc3_1, latest vmlinuz-7.2.0-rc3_1 (match) ✓
+- **SSH:** Listening on port 22 + reverse tunnel 18022 ✓
+- **All 5 orchestrator scripts pass `sh -n`** ✓
+- **Hardcoded IP audit:** 0 in orchestrators, patterns only in detection scripts ✓
+- **User cannot run doas from this shell** (no TTY) — all root operations need terminal
+
+---
+
+## GRUB Theme Quick Reference
+| Theme | Files | Background | Icons | Font | Status |
+|---|---|---|---|---|---|
+| catppuccin-mocha | 8 | background.png | 73 | font.pf2 | ✓ |
+| nord | 26 | background.jpg | 72 | dejavu_sans_12.pf2 | ✓ |
+| stylish | 14 | background.jpg | 76 | terminus-12.pf2 | ✓ |
+| **tela** (current) | 23 | background.jpg | 76 | terminus-12.pf2 | ✓ ACTIVE |
+| vimix | 14 | background.jpg | 76 | terminus-12.pf2 | ✓ |
+| whitesur | 23 | background.jpg | 76 | terminus-12.pf2 | ✓ |
 
 ## Recovery Prompt
 Read this file, then run:

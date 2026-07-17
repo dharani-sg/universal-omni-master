@@ -1,0 +1,37 @@
+================================================================================
+UOM Dual-Agent — PHONE (Termux) one-shot reverse-SSH setup
+Laptop: alpine@192.168.40.90   |   You are SSHed from phone → laptop already
+================================================================================
+
+PREREQ on LAPTOP (this Grok session / another terminal):
+  1) Enable reverse tunnels (needs your doas password ONCE):
+       sh /home/alpine/src/universal-omni-master/UOM-DUAL-AGENT/setup/enable-reverse-ssh-laptop.sh
+  2) HTTP serve is running on :8765 (or start it):
+       cd .../UOM-DUAL-AGENT/setup/www && python3 -m http.server 8765
+
+ON PHONE — open a NEW Termux session (swipe from left → New session)
+Do NOT close the SSH session into the laptop.
+
+Paste these commands in the NEW Termux session:
+
+# --- A) Bootstrap phone packages, sshd, keys, repo ---
+curl -fsSL http://192.168.40.90:8765/phone-bootstrap.sh -o ~/phone-bootstrap.sh
+chmod +x ~/phone-bootstrap.sh
+sh ~/phone-bootstrap.sh
+
+# --- B) Pull orchestrator tools from laptop pack ---
+mkdir -p ~/src/universal-omni-master/tools
+cd ~/src/universal-omni-master/tools
+curl -fsSL http://192.168.40.90:8765/uom-phone-tools.tgz | tar -xz
+chmod +x *.sh
+
+# --- C) Open reverse tunnel (KEEP THIS RUNNING) ---
+# After this, laptop can: ssh -p 18022 -i ~/.ssh/id_ed25519_phone $(cat ~/.uom-termux-user)@127.0.0.1
+sh ~/bin/uom-reverse-ssh.sh
+
+# Optional: publish Termux username to laptop (password may be needed once)
+#   ssh alpine@192.168.40.90 "echo $(id -un) > ~/.uom-termux-user"
+
+================================================================================
+After tunnel is up, tell Grok: "tunnel is up" so it can verify Phase 1.
+================================================================================
