@@ -1,1 +1,12 @@
-{"schema":1,"active_agent":"none","laptop_heartbeat":"","phone_heartbeat":"","current_task_id":"","current_task_desc":"","task_status":"idle","last_commit":"","session_id":"","takeover_count":0}
+{
+  "schema": 1,
+  "active_agent": "laptop",
+  "laptop_heartbeat": "2026-07-17T12:35:37+05:30",
+  "phone_heartbeat": "",
+  "current_task_id": "M01-reverse-tunnel",
+  "current_task_desc": "",
+  "task_status": "in_progress",
+  "last_commit": "",
+  "session_id": "",
+  "takeover_count": 0
+}
