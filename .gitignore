@@ -17,3 +17,13 @@ sandbox/run/
 # UOM dual-agent state (tracked)
 !.uom-agent/
 !.uom-agent/**
+
+# Secrets — never track
+.env
+*.env
+secrets.env
+.config/uom/secrets.env
+*.key
+*.pem
+*.p12
+.uom-agent/session_key

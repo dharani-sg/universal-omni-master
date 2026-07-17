@@ -1,4 +1,4 @@
-# Universal Omni-Master — Durable AI Handoff (v0.28.0)
+# Universal Omni-Master — Durable AI Handoff (v0.29.0)
 
 ## Repository Identity
 - Project root: ~/src/universal-omni-master
@@ -7,6 +7,7 @@
 - Reference host: Alpine Linux 3.24 (musl, OpenRC)
 - Secondary host: Void Linux (glibc, runit)
 - Hardware: HP Pavilion 15-n010tx (degraded SATA cable, UDMA_CRC baseline 5360)
+- Phone: Xiaomi Mi 8 / CrDroid Android 15 / Termux ARM64
 
 ## Immutable Rules
 1. POSIX sh only. Zero bashisms. Zero eval. Zero set --.
@@ -14,6 +15,7 @@
 3. Never push on failing gate. Never rewrite tags.
 4. Commit messages with $/{}/backticks use git commit -F file.
 5. All file writes verified with sh -n + wc -l + tail -3.
+6. Security: secrets never in tracked files. Pre-commit hook blocks leaks.
 
 ## Sealed Milestones (M1-M26)
 | Milestone | Tag | CLIs Added |
@@ -49,10 +51,12 @@ Total: 17 CLI tools, 300+ automated assertions.
 15. /dev/null is not a regular file ([ -f ] fails)
 16. Mock PATH=$MOCKDIR vs $MOCKDIR/bin
 17. Python re.subn \1 backreference in replacement
+18. BusyBox ash nested quote landmine (M24)
 
 ## Next Phase
-M27: Termux Native Polish (haptic feedback, push notifications, portrait optimization)
-M28+: Zero-trust networking, predictive healing, fleet AI orchestration
+M28: Dual-Agent Orchestration (laptop+phone) ✓
+M29: Bootstrap Installer + Phone-Solo Mode + Security Hardening ← CURRENT
+M30+: Full dual-agent loop, network stress tests, power-failure recovery
 
 ---
 
@@ -214,6 +218,35 @@ M28+: Zero-trust networking, predictive healing, fleet AI orchestration
 | vimix | 14 | background.jpg | 76 | terminus-12.pf2 | ✓ |
 | whitesur | 23 | background.jpg | 76 | terminus-12.pf2 | ✓ |
 
+### 2026-07-17 13:00 — v0.29.0: Bootstrap + Solo Mode + Security Hardening
+
+**Commits:** (v0.29.0 — see git log)
+- **PHASE 1 — bin/uom-reverse-ssh.sh** rewritten with autossh, PID, logging, ssh fallback guard
+- **PHASE 2 — install/bootstrap.sh** universal curl installer (auto-detects Termux/Alpine)
+- **install/bootstrap-termux.sh** — full Termux/ARM64 bootstrap (Go build for opencode)
+- **install/bootstrap-laptop.sh** — Alpine Linux bootstrap
+- **PHASE 3 — orchestrators/uom-solo-orchestrator.sh** — phone-only fallback mode
+- **orchestrators/uom-watchdog.sh** — laptop reachability monitor (60s loop, 3-fail threshold)
+- **PHASE 4 — security/uom-harden-ssh.sh** — idempotent SSH hardening (laptop+phone)
+- **security/uom-firewall.sh** — nftables ruleset (allow 22, 18022, drop rest)
+- **security/install-hooks.sh** — pre-commit secret scanner
+- **security/SECRETS.md** — secrets storage pattern
+- **install/secrets.env.template** — committed template (keys blank)
+- **.gitignore** — secrets patterns added
+- **PHASE 5 — README.md** full rewrite with bootstrap curl, arch diagram, agent modes
+- **docs/AI-HANDOFF.md** — v0.29.0 update with this entry
+- **docs/ROADMAP.md** — phases 1-8 with status, milestone table
+- **docs/PHONE-SETUP.md** — phone bootstrap, Termux:Boot, watchdog reference
+
+**Current state:**
+- HEAD: ~v0.29.0 (bootstrap+solo+security work committed)
+- Reverse tunnel script: in repo at `bin/uom-reverse-ssh.sh`
+- Bootstrap ready: single curl link auto-detects platform
+- Security: SSH hardened, firewall ruleset, pre-commit guard installed
+- Known issue: phone tunnel not up until phone runs bootstrap or reverse-ssh manually
+
+---
+
 ## Recovery Prompt
 Read this file, then run:
   git status --short
@@ -221,3 +254,5 @@ Read this file, then run:
   git tag --sort=-version:refname | head -20
 Report: branch, commit, tags, dirty files, latest milestone, failing gates.
 Never push unless all gates pass.
+
+<!-- last-sync: 2026-07-17T13:00:00Z -->

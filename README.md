@@ -1,23 +1,26 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Shell-POSIX%20%2F%20BusyBox%20ash-000000?logo=gnubash&logoColor=white" alt="POSIX sh">
   <img src="https://img.shields.io/badge/Tests-300%2B%20Assertions-brightgreen?logo=githubactions" alt="Tests">
-  <img src="https://img.shields.io/badge/Release-v0.27.4-blueviolet?logo=github" alt="Release">
+  <img src="https://img.shields.io/badge/Release-v0.29.0-blueviolet?logo=github" alt="Release">
   <img src="https://img.shields.io/badge/License-MIT-green?logo=opensourceinitiative" alt="License">
   <img src="https://img.shields.io/badge/Cross--Libc-musl%20%E2%86%94%20glibc-orange?logo=linux" alt="Cross-Libc">
   <img src="https://img.shields.io/badge/AI-Augmented%20Fleet-SaaS%20Ready-blue?logo=openai" alt="AI">
-  <img src="https://img.shields.io/badge/Architecture-17%20CLIs%20%2F%2062%20Modules-brightgreen?logo=gnu" alt="Architecture">
+  <img src="https://img.shields.io/badge/Architecture-19%20CLIs%20%2F%2062%20Modules-brightgreen?logo=gnu" alt="Architecture">
   <img src="https://img.shields.io/badge/Init-OpenRC%20%7C%20systemd%20%7C%20runit%20%7C%20s6%20%7C%20dinit-informational" alt="Init">
   <img src="https://img.shields.io/badge/GPU-AMD%20%7C%20Intel%20%7C%20NVIDIA-informational" alt="GPU">
+  <img src="https://img.shields.io/badge/Dual--Agent-Laptop+Phone-orange?logo=android" alt="Dual-Agent">
 </p>
 
-<h1 align="center">🛰️ Universal Omni-Master (UOM)</h1>
+<h1 align="center">Universal Omni-Master (UOM)</h1>
 <p align="center">
-  <b>The Universal Bare-Metal Provisioning, Self-Healing & AI-Augmented Fleet Engine</b><br>
+  <b>Resilient dual-agent AI orchestration across laptop + Android phone</b><br>
   <i>One framework. Any distro. Any init. Any bootloader. Any GPU. Any libc. Any terminal. Any failure mode.</i>
 </p>
 
 <p align="center">
   <a href="#-what-is-universal-omni-master">Overview</a> •
+  <a href="#-quick-bootstrap">Bootstrap</a> •
+  <a href="#-dual-agent-architecture">Dual-Agent</a> •
   <a href="#-core-capabilities">Capabilities</a> •
   <a href="#-architecture">Architecture</a> •
   <a href="#-the-19-tool-cli-surface">CLI Tools</a> •
@@ -39,6 +42,56 @@ Universal Omni-Master (UOM) is a **strictly POSIX-compliant, distribution-agnost
 Today, UOM is a **Class-1 Bare-Metal Provisioning Engine**. The entire framework — **19 CLI tools and 62 library modules** — compiles into a single, self-extracting POSIX shell script (`omni-monolith.sh`). **No Python. No Git. No external dependencies.** Just `scp` and run.
 
 > *"If your hardware is failing, your OS is wrong, your terminal is tiny, and your SSH connection drops every 5 minutes — UOM still boots."*
+
+---
+
+## 🚀 Quick Bootstrap
+
+One curl command. Auto-detects Termux/Android (ARM64) or Alpine Linux (x86_64).
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/dharani-sg/universal-omni-master/main/install/bootstrap.sh | bash
+```
+
+Sets up: tmux, SSH keys, opencode (Go build on phone, binary on Alpine), UOM repo, reverse tunnel, and tmux config.
+
+---
+
+## 🤖 Dual-Agent Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    UOM DUAL-AGENT SYSTEM                         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌─────────────────────┐          ┌─────────────────────────┐   │
+│  │   LAPTOP (Primary)   │◄───────►│    PHONE (Secondary)     │   │
+│  │   Alpine 3.24        │  SSH    │    Termux / Android      │   │
+│  │   opencode + omni    │reverse  │    opencode (Go build)   │   │
+│  │   192.168.40.90      │ tunnel  │    192.168.40.207        │   │
+│  └──────────┬──────────┘   18022  └──────────┬──────────────┘   │
+│             │                                 │                 │
+│  ┌──────────▼─────────────────────────────────▼──────────────┐  │
+│  │              Git (Shared State Store)                     │  │
+│  │  .uom-agent/state.json  │  queue.json  │  done.json       │  │
+│  └───────────────────────────────────────────────────────────┘  │
+│                                                                  │
+│  Agent Modes:                                                    │
+│  ┌──────────┬─────────────────────────┬──────────────────────┐   │
+│  │ Mode     │ Trigger                 │ Who runs opencode    │   │
+│  ├──────────┼─────────────────────────┼──────────────────────┤   │
+│  │ dual     │ Both devices reachable  │ Laptop primary       │   │
+│  │ phone-   │ Laptop unreachable      │ Phone only (solo)    │   │
+│  │ solo     │ >15 min (3 watchdog)    │                      │   │
+│  │ dual-    │ Laptop recovered from   │ Manual confirm to    │   │
+│  │ pending  │ solo mode               │ switch back          │   │
+│  └──────────┴─────────────────────────┴──────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Watchdog (Phone-side)
+
+Monitors laptop reachability every 60s. After 3 consecutive failures, triggers `phone-solo` mode autonomously. When laptop recovers, sets `dual-pending` — requires explicit confirmation to avoid split-brain.
 
 ---
 
@@ -145,7 +198,7 @@ Parallel sub-daemons monitor `dmesg`, SMART, and services, auto-recovering from 
 
 ---
 
-## 🛠️ The 19-Tool CLI Surface
+## 🛠️ The 19-Tool CLI Surface (+ Dual-Agent Tools)
 
 UOM compiles into a single monolith containing **19 distinct POSIX CLI entrypoints**:
 
@@ -252,13 +305,22 @@ UOM compiles into a single monolith containing **19 distinct POSIX CLI entrypoin
 </tr>
 </table>
 
+**Dual-Agent Tools:**
+- `bin/uom-reverse-ssh.sh` — Reverse tunnel (phone→laptop) with autossh
+- `orchestrators/uom-solo-orchestrator.sh` — Phone-only fallback when laptop is offline
+- `orchestrators/uom-watchdog.sh` — Laptop reachability monitor
+- `install/bootstrap.sh` — Universal curl installer (auto-detects platform)
+- `security/uom-harden-ssh.sh` — Idempotent SSH hardening
+- `security/uom-firewall.sh` — nftables ruleset
+- `security/install-hooks.sh` — Pre-commit secret scanner
+
 *Extensible via `omni-plugin` — a POSIX-safe directory-based hook system with subshell isolation.*
 
 ---
 
 ## 🗺️ Milestone Roadmap
 
-### ✅ Sealed: The Foundation & Intelligence (M1–M27-C.1)
+### ✅ Sealed: The Foundation & Intelligence (M1–M29)
 
 <table>
 <tr>
@@ -303,9 +365,15 @@ UOM compiles into a single monolith containing **19 distinct POSIX CLI entrypoin
 <td>WM/DE Profiles, Telemetry Dashboard, Hardening, Postboot Verify</td>
 <td><code>v0.27.0</code>–<code>v0.27.4</code></td>
 </tr>
+<tr>
+<td><b>🤖 Dual-Agent</b></td>
+<td>M28–M29</td>
+<td>Dynamic IP Discovery, State Machine, Bootstrap Installer, Solo Mode, Security Hardening</td>
+<td><code>v0.28.0</code>–<code>v0.29.0</code></td>
+</tr>
 </table>
 
-### 🔮 Planned: The Mobile, Quantum & Autonomous Horizon (M28–M40)
+### 🔮 Planned: The Mobile, Quantum & Autonomous Horizon (M30–M42)
 
 <table>
 <tr>
@@ -314,67 +382,67 @@ UOM compiles into a single monolith containing **19 distinct POSIX CLI entrypoin
 <th>Vision</th>
 </tr>
 <tr>
-<td><b>M28</b></td>
+<td><b>M30</b></td>
 <td>📱 Mobile</td>
-<td><b>Termux Native Polish</b> — Android haptic feedback (<code>termux-vibrate</code>), native notifications, 9:16 swipe/key shortcuts, Termux:Boot auto-launch, widget for quick deploy status.</td>
+<td><b>Termux Native Polish</b> — Android haptic feedback (<code>termux-vibrate</code>), native notifications, 9:16 swipe/key shortcuts, widget for quick deploy status.</td>
 </tr>
 <tr>
-<td><b>M29</b></td>
+<td><b>M31</b></td>
 <td>🔐 Post-Quantum</td>
 <td><b>Post-Quantum Crypto Fleet Auth</b> — Auto-detect OpenSSH 9.9+ and configure <code>mlkem768x25519-sha256</code> as default KEX. Fleet-wide crypto inventory scan. ML-DSA host key readiness detection. Phased PQC migration: ML-KEM-768 hybrid → sntrup761 fallback → classical removal.</td>
 </tr>
 <tr>
-<td><b>M30</b></td>
+<td><b>M32</b></td>
 <td>🤖 Predictive AI</td>
 <td><b>Predictive Fleet Healing</b> — AI-driven hardware failure prediction via linear regression on UDMA_CRC deltas, thermal telemetry, and SMART attributes. Causal root-cause analysis (PCMCI-inspired). 60-minute failure lookahead. Digital twin simulation before applying healing actions.</td>
 </tr>
 <tr>
-<td><b>M31</b></td>
+<td><b>M33</b></td>
 <td>📊 Observability</td>
 <td><b>eBPF Kernel Telemetry</b> — Embedded bpftrace one-liners for provisioning workflow tracing. Tetragon TracingPolicy for security (detect unauthorized disk writes, boot chain tampering). Zero-overhead syscall observer feeding the AI healer. CO-RE for kernel-version portability.</td>
 </tr>
 <tr>
-<td><b>M32</b></td>
+<td><b>M34</b></td>
 <td>🏗️ Edge/IoT</td>
 <td><b>Golden Image Builder</b> — Nix-based reproducible minimal base images. First-boot enrollment with provisioning key → real identity exchange. dm-verity + Secure Boot chain. A/B partition scheme with <code>systemd-sysupdate</code> for safe OTA. Batch provisioning (50+ simultaneous nodes).</td>
 </tr>
 <tr>
-<td><b>M33</b></td>
+<td><b>M35</b></td>
 <td>🛡️ Confidential</td>
 <td><b>TEE-Aware Provisioning</b> — Detect AMD SEV-SNP / Intel TDX / ARM CCA hardware. Provision Trust Domains for sensitive workloads. Remote attestation for provisioned nodes. Encryption keys released only after attestation. Multi-vendor TEE abstraction behind unified API.</td>
 </tr>
 <tr>
-<td><b>M34</b></td>
+<td><b>M36</b></td>
 <td>🔌 Protocol</td>
 <td><b>MCP Server Integration</b> — Embedded Model Context Protocol server so AI assistants (Claude, GPT, local LLMs) can query provisioning state, system health, and healing history via natural language. Plugin architecture for custom hardware sensors.</td>
 </tr>
 <tr>
-<td><b>M35</b></td>
+<td><b>M37</b></td>
 <td>🥾 Bootloader</td>
 <td><b>Modern Boot Chain</b> — Default to systemd-boot for single-OS UEFI systems. BLS Type 1 boot entries for consistent kernel management across distros. Limine for multi-arch (ARM64, RISC-V). Crash-loop recovery with NVRAM state machine. UKI as first-class provisionable artifact.</td>
 </tr>
 <tr>
-<td><b>M36</b></td>
+<td><b>M38</b></td>
 <td>🌍 Federation</td>
 <td><b>Fleet Federation</b> — Hub + daemon + dashboard architecture over gRPC. Prometheus/OpenMetrics export. mDNS auto-discovery (Ratatoskr pattern). Bifröst multi-site federation. Unprivileged by default. Threshold alerting with hysteresis.</td>
 </tr>
 <tr>
-<td><b>M37</b></td>
+<td><b>M39</b></td>
 <td>⚡ Power</td>
 <td><b>Smart Power Management</b> — Auto-detect power source (AC/battery). TLP + power-profiles-daemon integration. CPU governor auto-tuning. Battery health dashboard with charge thresholds. RAPL/AmdPmu power consumption profiling. Laptop-specific provisioning profiles.</td>
 </tr>
 <tr>
-<td><b>M38</b></td>
+<td><b>M40</b></td>
 <td>🔄 OverlayFS</td>
 <td><b>OS Layering Engine</b> — OverlayFS-based OS switching without container overhead. Host base system, swap guest OSes via SquashFS + writable overlay. Shared /home across distros with per-DE isolation. Machine-ID based boot entry isolation per distro.</td>
 </tr>
 <tr>
-<td><b>M39</b></td>
+<td><b>M41</b></td>
 <td>📝 Trust</td>
 <td><b>Immutable Audit Trail</b> — Hash-chained, Merkle-rooted healing action log. Post-quantum signed audit entries. Boot trust-evidence logging to ESP. TPM-backed device identity with PKI certificate lifecycle. Dual-signature artifact verification (classical + PQ).</td>
 </tr>
 <tr>
-<td><b>M40</b></td>
+<td><b>M42</b></td>
 <td>🌐 Platform</td>
 <td><b>Omni-Cloud SaaS GA</b> — Fleet management web dashboard with real-time maps. Multi-tenant isolation. REST/gRPC API for third-party integrations. Webhook-based alerting (Slack, Discord, PagerDuty). Usage-based billing with Stripe integration. SOC 2 compliance framework.</td>
 </tr>
@@ -527,6 +595,9 @@ These bugs were traced, fixed, and documented. They remain as engineering lesson
 ## 🚦 Quick Start
 
 ```sh
+# Quick bootstrap (any device)
+curl -fsSL https://raw.githubusercontent.com/dharani-sg/universal-omni-master/main/install/bootstrap.sh | bash
+
 # Clone the repository
 git clone https://github.com/dharani-sg/universal-omni-master.git
 cd universal-omni-master
@@ -545,6 +616,23 @@ cd universal-omni-master
 
 # Run the full-stack regression gate (M1–M27.1)
 ./scripts/compat-check.sh
+```
+
+### Dual-Agent Quick Start
+
+```sh
+# On laptop (Alpine):
+cd ~/src/universal-omni-master
+sh bin/uom-reverse-ssh.sh  # wait for phone to connect
+
+# On phone (Termux):
+curl -fsSL https://raw.githubusercontent.com/dharani-sg/universal-omni-master/main/install/bootstrap.sh | bash
+# or manually:
+cd ~/src/universal-omni-master
+bash bin/uom-reverse-ssh.sh  # opens tunnel to laptop
+
+# Verify tunnel from either device:
+ssh -o ConnectTimeout=5 127.0.0.1 -p 18022 echo "TUNNEL OK"
 ```
 
 ---
@@ -577,7 +665,10 @@ universal-omni-master/
 ├── scripts/                # 38 build/test/deploy scripts
 ├── config/                 # hardware profiles + snapshot config
 ├── sandbox/                # fixture sysroots (5 distros)
-├── docs/                   # AI-HANDOFF + M11-ROADMAP
+├── docs/                   # AI-HANDOFF, ROADMAP, PHONE-SETUP, SECRETS
+├── install/                # Bootstrap installers (detect-and-dispatch, termux, laptop)
+├── orchestrators/          # Dual-agent orchestrators (solo, watchdog)
+├── security/               # SSH hardening, firewall, pre-commit hooks
 └── tests/                  # BATS fixtures
 ```
 
@@ -598,6 +689,19 @@ UOM is built on **immutable engineering rules**. Before contributing:
 ## 📄 License
 
 **MIT** — Forged in the constraints of legacy hardware, engineered for the AI-augmented fleet of the future.
+
+---
+
+## ⚠️ Known Issues (v0.29.0)
+
+- **Reverse tunnel (18022):** DOWN until phone runs `bash ~/bin/uom-reverse-ssh.sh` — bootstrap installs the script automatically
+- **SATA CRC:** 5361 (degraded cable) — avoid large writes to sda4 (`/`)
+- **sda4 disk:** 85% used — monitor for space exhaustion
+- **Phone opencode:** npm rejected on ARM64 — uses `go install` instead
+- **doas TTY requirement:** Never invoke root commands from opencode subprocess — always run manually from terminal
+- **Pre-commit hook:** Installed via `sh security/install-hooks.sh` — blocks accidental secret commits
+
+<!-- last-sync: 2026-07-17T13:00:00Z -->
 
 ---
 
