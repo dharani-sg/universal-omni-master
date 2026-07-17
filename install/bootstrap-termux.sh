@@ -441,8 +441,10 @@ sleep 30
 if command -v sshd >/dev/null 2>&1; then
   sshd 2>/dev/null || true
 fi
-cd ~/src/universal-omni-master 2>/dev/null && \
+  cd ~/src/universal-omni-master 2>/dev/null && \
   sh bin/uom-reverse-ssh.sh &>/dev/null &
+  cd ~/src/universal-omni-master 2>/dev/null && \
+  sh bin/uom-port-guardian.sh start &>/dev/null &
 BOOTEOF
 
   chmod 700 "$boot_dir/start-uom.sh"

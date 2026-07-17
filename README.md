@@ -249,6 +249,7 @@ Auto-detect OpenSSH 9.9+ ML-KEM-768 hybrid KEX. Fleet-wide crypto inventory. TPM
 | `bin/uom-deploy-phone.sh` | Deploy scripts + aliases → phone via SSH/SCP |
 | `bin/uom-phone-provision.sh` | Provision proot-distro Debian + OpenCode CLI on phone via reverse tunnel; mirror laptop config |
 | `bin/uom-hybrid.sh` | Hybrid auto-orchestrator (auto-switches dual/solo) |
+| `bin/uom-port-guardian.sh` | Dynamic host/port **sentinel** — watches Termux sshd-port + laptop-IP drift, rewrites SSH config, re-points tunnel |
 | `orchestrators/uom-solo-orchestrator.sh` | Phone-only fallback when laptop dies |
 | `orchestrators/uom-watchdog.sh` | Laptop reachability monitor (60s loop) |
 | `install/bootstrap.sh` | Universal curl installer (auto-detects platform) |
@@ -286,7 +287,7 @@ Auto-detect OpenSSH 9.9+ ML-KEM-768 hybrid KEX. Fleet-wide crypto inventory. TPM
 <tr><td><b>💼 Commercial</b></td><td>M21–M26</td><td>Manager, KVM, SaaS, AI-Patcher, Compliance, OpenClaw</td><td><code>v0.21.0</code>–<code>v0.26.0</code></td></tr>
 <tr><td><b>🖥️ Desktop</b></td><td>M27</td><td>11 WM/DE Profiles, Telemetry, Postboot Verify</td><td><code>v0.27.0</code>–<code>v0.27.4</code></td></tr>
 <tr><td><b>🤖 Dual-Agent</b></td><td>M28–M29</td><td>IP Discovery, State Machine, Bootstrap, Solo Mode, Security</td><td><code>v0.28.0</code>–<code>v0.29.0</code></td></tr>
-<tr><td><b>📱 Mobile</b></td><td>M30</td><td>omni-project-start menu, tmux watchdog, setup-aliases, deploy-phone, tunnel fix, proot-distro Debian + OpenCode provisioner, config mirror</td><td><code>v0.30.0</code></td></tr>
+<tr><td><b>📱 Mobile</b></td><td>M30</td><td>omni-project-start menu, tmux watchdog, setup-aliases, deploy-phone, tunnel fix, proot-distro Debian + OpenCode provisioner, config mirror, <b>dynamic port-guardian sentinel</b> (Termux sshd-port + laptop-IP drift)</td><td><code>v0.30.0</code></td></tr>
 </table>
 
 ### 🔮 Horizon: Mobile, Quantum & Autonomous (M31–M42)
@@ -545,24 +546,48 @@ cd ~/src/universal-omni-master
 sh tools/uom-orch-laptop.sh
 ```
 
-### Dynamic IP Handling
+### Dynamic IP + Port Handling (port-guardian sentinel)
 
-Both orchestrators discover target IPs via multiple fallback methods:
+The laptop connects to the internet **either through the phone's wireless hotspot
+OR through another WiFi source**, so the laptop's own IP and the phone's LAN IP
+shift constantly. On top of that, Termux on Android frequently **changes the sshd
+port** it listens on. A plain static `Host` block in `~/.ssh/config` drifts out of
+sync within minutes.
 
-**Phone → Laptop discovery (for reverse tunnel):**
-1. Explicit env var `UOM_LAPTOP_IP` (e.g., `192.168.40.90`)
-2. mDNS via `avahi-resolve hp-pavilion.local`
-3. Subnet scan from gateway IP (tries .100–.110)
-4. Stored IP from `.uom-agent/laptop.ip`
-5. Default fallback: `192.168.40.90`
+`bin/uom-port-guardian.sh` is a background **sentinel/guardian** that continuously
+watches for both kinds of drift and re-points everything automatically:
 
-**Laptop → Phone discovery (for SSH connection):**
-1. Reverse tunnel via `127.0.0.1:31415` (always works if tunnel is up)
-2. mDNS via `avahi-resolve mi8.local`
-3. Stored IP from `.uom-agent/phone.ip`
-4. SSH config aliases (`uom-phone-lan`, `uom-phone-mdns`)
+- **Host/port discovery** (`tools/uom-port-watch.sh`, read-only probes):
+  stored hint → known IPs → subnet scan for the live phone sshd port
+  (8022/22/2222/9022) and laptop sshd port. Detects whether we are currently
+  tethered through the phone hotspot vs. another WiFi via gateway inspection.
+- **Drift reaction** (every ~20s loop):
+  - rewrites `~/.ssh/config` `uom-phone-rev` / `uom-phone-lan` to the live
+    `host:port` (idempotent, atomic, no duplicates),
+  - publishes `.uom-agent/phone.host` and `.uom-agent/laptop.host` hints,
+  - touches `.uom-agent/runtime/portguard.drift` to signal the hybrid
+    orchestrator to re-evaluate,
+  - on the **phone role** it restarts `uom-reverse-ssh.sh` against the laptop's
+    current target; on the **laptop role** it keeps config + hints correct and
+    lets the phone-side guardian own the tunnel.
+- **Service model**: `start | stop | status | once | dryrun | rewrite | --loop`.
+  Auto-launched at boot via Termux:Boot (`install/bootstrap-termux.sh`) and
+  auto-ensured by the hybrid orchestrator (`bin/uom-hybrid.sh` → `_ensure_guardian`).
 
-**On network change:** Each orchestrator updates `.uom-agent/{laptop,phone}.ip` on every loop iteration (every 60-120s), giving sub-2-minute convergence.
+**Usage:**
+```sh
+sh bin/uom-port-guardian.sh start      # background daemon (tmux)
+sh bin/uom-port-guardian.sh status     # running? last-seen phone/laptop target?
+sh bin/uom-port-guardian.sh dryrun     # self-test the watch primitives
+sh bin/uom-port-guardian.sh stop
+```
+
+**Fallback discovery (still used by the orchestrators):**
+- **Phone → Laptop:** `UOM_LAPTOP_HOST` env → stored `laptop.host` → mDNS → subnet scan → default `192.168.40.90`.
+- **Laptop → Phone:** reverse tunnel `127.0.0.1:31415` → mDNS `mi8.local` → stored `phone.host` → SSH aliases.
+
+The guardian tightens convergence from "sub-2-minute" to **sub-20-second** on any
+IP/port change.
 
 ### Bulletproof State Recovery
 

@@ -13,6 +13,8 @@ HYBRID_PID="${HOME}/.uom-termux-user/hybrid.pid"
 LOG_FILE="${HOME}/.uom-termux-user/hybrid.log"
 CHECK_INTERVAL=60
 STALE_THRESHOLD=300
+DRIFT_SENTINEL="${UOM_DIR}/.uom-agent/runtime/portguard.drift"
+PORT_GUARDIAN="${UOM_DIR}/bin/uom-port-guardian.sh"
 
 . "${UOM_DIR}/tools/uom-ip-discover.sh" 2>/dev/null || true
 
@@ -62,6 +64,26 @@ _laptop_reachable() {
     discover_laptop_ip >/dev/null 2>&1 || _is_tunnel_up
 }
 
+# ── Ensure the dynamic port/host guardian is running ───────────────────────
+_ensure_guardian() {
+    if [ -x "${PORT_GUARDIAN}" ] || [ -f "${PORT_GUARDIAN}" ]; then
+        if ! sh "${PORT_GUARDIAN}" status 2>/dev/null | grep -q RUNNING; then
+            _log "port-guardian not running — starting it"
+            sh "${PORT_GUARDIAN}" start >/dev/null 2>&1 || true
+        fi
+    fi
+}
+
+# ── React to phone-target drift detected by the guardian ───────────────────
+_check_drift() {
+    if [ -f "${DRIFT_SENTINEL}" ]; then
+        _log "port-guardian reported target drift — re-evaluating tunnel"
+        rm -f "${DRIFT_SENTINEL}" 2>/dev/null || true
+        _start_tunnel
+        _last_mode=""
+    fi
+}
+
 _start_tmux_session() {
     _session="uom-hybrid"
     tmux kill-session -t "${_session}" 2>/dev/null || true
@@ -88,11 +110,13 @@ main() {
     _log "=== UOM Hybrid Orchestrator starting ==="
     echo "$$" > "${HYBRID_PID}"
 
+    _ensure_guardian
     _start_tunnel
 
     _last_mode=""
     _orch_pid=""
     while true; do
+        _check_drift
         if _laptop_reachable; then
             if [ "${_last_mode}" != "dual" ]; then
                 _log "Laptop reachable → dual mode"

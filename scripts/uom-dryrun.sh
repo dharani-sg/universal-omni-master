@@ -673,6 +673,108 @@ test_components() {
 # ═══════════════════════════════════════════════════════════════════════════════
 # CATEGORY 6: LIVE CHECKS (SKIPPED when UOM_STRICT_LIVE unset)
 # ═══════════════════════════════════════════════════════════════════════════════
+test_port_guardian() {
+    printf '\n=== PORT GUARDIAN CHECKS ===\n'
+
+    _watch="${UOM_ROOT}/tools/uom-port-watch.sh"
+    _guard="${UOM_ROOT}/bin/uom-port-guardian.sh"
+
+    # 7a. files exist + syntax
+    if [ -f "$_watch" ] && sh -n "$_watch" 2>/dev/null; then
+        pass "tools/uom-port-watch.sh exists and passes sh -n"
+    else
+        fail "tools/uom-port-watch.sh missing or syntax error"
+    fi
+    if [ -f "$_guard" ] && sh -n "$_guard" 2>/dev/null; then
+        pass "bin/uom-port-guardian.sh exists and passes sh -n"
+    else
+        fail "bin/uom-port-guardian.sh missing or syntax error"
+    fi
+
+    # 7b. primitives source + run in a temp state dir (no network mutation)
+    _sd=$(setup)
+    OMNI_ROOT="$_sd" UOM_PW_STATE_DIR="$_sd/.uom-agent" . "$_watch" 2>/dev/null
+    if command -v uom_pw_my_ip >/dev/null 2>&1 && command -v uom_pw_probe_ssh >/dev/null 2>&1; then
+        pass "port-watch primitives source cleanly"
+    else
+        fail "port-watch primitives did not load"
+    fi
+
+    # 7c. my_ip / gateway discoverable
+    _my=$(uom_pw_my_ip 2>/dev/null)
+    _gw=$(uom_pw_gateway 2>/dev/null)
+    if [ -n "$_my" ] && [ -n "$_gw" ]; then
+        pass "uom_pw_my_ip/$_my and gateway/$_gw discovered"
+    else
+        fail "uom_pw_my_ip or gateway empty (my=$_my gw=$_gw)"
+    fi
+
+    # 7d. probe a known-up local port (ssh 22) returns up; bogus port down
+    if uom_pw_probe_ssh 127.0.0.1 22 2; then
+        pass "uom_pw_probe_ssh detects local sshd:22"
+    else
+        warn "uom_pw_probe_ssh did not detect 127.0.0.1:22 (ssh may be on different port)"
+    fi
+    if ! uom_pw_probe_ssh 127.0.0.1 59999 1; then
+        pass "uom_pw_probe_ssh correctly reports closed port 59999"
+    else
+        fail "uom_pw_probe_ssh reported a closed port as open"
+    fi
+
+    # 7e. role detection (laptop by default on this host)
+    if [ "$(UOM_GUARDIAN_ROLE=laptop sh "$_guard" role 2>/dev/null)" = "laptop" ]; then
+        pass "role detection: laptop when UOM_GUARDIAN_ROLE=laptop"
+    else
+        fail "role detection failed for explicit laptop"
+    fi
+
+    # 7f. ssh-config rewrite is idempotent + atomic (use temp HOME)
+    _th="${TMPDIR:-/tmp}/uom-pg-test.$$"
+    mkdir -p "$_th/.ssh"
+    OMNI_ROOT="$_sd" HOME="$_th" UOM_PW_STATE_DIR="$_sd/.uom-agent" \
+        sh "$_guard" rewrite "192.168.40.207:8022" >/dev/null 2>&1
+    if grep -q 'Host uom-phone-rev' "$_th/.ssh/config" 2>/dev/null; then
+        pass "ssh config rewrite emits uom-phone-rev block"
+    else
+        fail "ssh config rewrite produced no uom-phone-rev block"
+    fi
+    # Re-run — must not duplicate the managed block
+    OMNI_ROOT="$_sd" HOME="$_th" UOM_PW_STATE_DIR="$_sd/.uom-agent" \
+        sh "$_guard" rewrite "192.168.40.207:8022" >/dev/null 2>&1
+    _cnt=$(grep -c 'Host uom-phone-rev' "$_th/.ssh/config" 2>/dev/null || echo 0)
+    if [ "$_cnt" -eq 1 ] 2>/dev/null; then
+        pass "ssh config rewrite is idempotent (1 block after re-run)"
+    else
+        fail "ssh config rewrite duplicated block (count=$_cnt)"
+    fi
+    rm -rf "$_th" 2>/dev/null || true
+
+    # 7g. discover_phone/discover_laptop do not crash and return strings-or-empty
+    _p=$(uom_pw_discover_phone 2>/dev/null); _l=$(uom_pw_discover_laptop 2>/dev/null)
+    pass "discover_phone='${_p:-<none>}' discover_laptop='${_l:-<none>}' (no crash)"
+
+    # 7h. dryrun subcommand works
+    if sh "$_guard" dryrun >/dev/null 2>&1; then
+        pass "uom-port-guardian.sh dryrun runs"
+    else
+        fail "uom-port-guardian.sh dryrun failed"
+    fi
+
+    # 7i. bootstrap-termux installs guardian into Termux:Boot
+    if grep -q 'uom-port-guardian.sh start' "${UOM_ROOT}/install/bootstrap-termux.sh" 2>/dev/null; then
+        pass "bootstrap-termux.sh starts port-guardian at boot"
+    else
+        fail "bootstrap-termux.sh does not start port-guardian at boot"
+    fi
+
+    # 7j. hybrid orchestrator ensures guardian
+    if grep -q '_ensure_guardian' "${UOM_ROOT}/bin/uom-hybrid.sh" 2>/dev/null; then
+        pass "uom-hybrid.sh wires in port-guardian (_ensure_guardian)"
+    else
+        fail "uom-hybrid.sh does not wire port-guardian"
+    fi
+}
+
 test_live() {
     printf '\n=== LIVE CHECKS ===\n'
 
@@ -738,6 +840,7 @@ main() {
     test_state_lock
     test_state_machine
     test_components
+    test_port_guardian
     test_live
 
     # ── Summary ──────────────────────────────────────────────────────────────

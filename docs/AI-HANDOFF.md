@@ -328,6 +328,53 @@ M44–M51: Commercialization (Enterprise licensing, Omni-Cloud, AI Marketplace, 
 
 ---
 
+### 2026-07-17 19:00 — Dynamic Port/Host Guardian Sentinel (M30 follow-up)
+
+**Session:** opencode (big-pickle) — dual-instance merge + implementation
+**Dry-run:** 54 PASS, 0 FAIL (was 41 PASS, 0 FAIL)
+
+**Problem addressed:**
+- Android Termux constantly changes its **sshd port**; the laptop's **IP** changes
+  because it hops between the phone's wireless hotspot and other WiFi sources.
+- Static `Host` blocks in `~/.ssh/config` drift out of sync within minutes.
+
+**New scripts:**
+- **`tools/uom-port-watch.sh`** — read-only host/port discovery primitives
+  (`uom_pw_my_ip`, `uom_pw_gateway`, `uom_pw_on_phone_hotspot`, `uom_pw_probe_ssh`,
+  `uom_pw_discover_phone`, `uom_pw_discover_laptop`, `uom_pw_tunnel_up`,
+  hint read/write). Zero bashisms, zero network mutation.
+- **`bin/uom-port-guardian.sh`** — background **sentinel/guardian** service
+  (`start|stop|status|once|dryrun|role|rewrite|--loop`). Every ~20s it:
+  1. discovers the phone's live `host:port` (stored hint → known IPs → subnet scan),
+  2. rewrites `~/.ssh/config` `uom-phone-rev`/`uom-phone-lan` (idempotent, atomic),
+  3. publishes `.uom-agent/phone.host` + `.uom-agent/laptop.host` hints,
+  4. touches `.uom-agent/runtime/portguard.drift` to signal the hybrid orchestrator,
+  5. role-aware drift handling: phone restarts `uom-reverse-ssh.sh`; laptop keeps
+     config + hints correct (phone owns the tunnel).
+
+**Wiring:**
+- `bin/uom-hybrid.sh` — added `_ensure_guardian` (auto-starts guardian) + `_check_drift`
+  (reacts to the `portguard.drift` sentinel by re-running `_start_tunnel`).
+- `install/bootstrap-termux.sh` — Termux:Boot now also launches
+  `sh bin/uom-port-guardian.sh start` so the sentinel runs on phone boot.
+- `scripts/uom-dryrun.sh` — added `test_port_guardian` (13 checks: syntax,
+  primitives, role detection, idempotent ssh-config rewrite, boot wiring, hybrid wiring).
+- `README.md` — replaced "Dynamic IP Handling" with "Dynamic IP + Port Handling
+  (port-guardian sentinel)"; added guardian to CLI table + M30 deliverables row.
+
+**Verified live:**
+- Laptop on phone hotspot (`192.168.40.90`, gw `192.168.40.207`) — guardian detects
+  `HOTSPOT` context, discovers phone at `192.168.40.207:8022`, rewrites ssh config,
+  publishes hints. Guardian running (tmux `uom-hybrid-pg`, PID 1657). Hybrid running
+  (PID 3074) in dual mode, tunnel DOWN (phone not running reverse-ssh this session).
+- Dry-run: 54 PASS / 0 FAIL.
+
+**Note on dual-boot (Void):** Only the Alpine rootfs (`/dev/sda4`) is mounted in this
+environment; the Void Linux install is not currently accessible. The Void copy must be
+synced on next Void boot via `git pull` (this commit is pushed to `origin/main`).
+
+---
+
 ## Recovery Prompt
 Read this file, then run:
   git status --short
@@ -343,8 +390,12 @@ Never push unless all gates pass.
 2. OR use the new menu: `sh bin/omni-project-start.sh` — interactive dashboard with all commands
 3. Attach to running orchestrator: `tmux attach -t uom` (if session exists)
 4. If tunnel down: check `bin/uom-phone-boot.sh` on phone (Termux:Boot restarts on reboot)
-5. Start M31: Network Switching Stress Test — hotspot ↔ LAN ↔ mDNS transitions
-6. See docs/ROADMAP.md for full phase list
+5. **Port/host drift?** `sh bin/uom-port-guardian.sh status` — shows live phone/laptop
+   target + tunnel; `sh bin/uom-port-guardian.sh start` if not running. The guardian
+   auto-rewrites `~/.ssh/config` and signals the hybrid orchestrator on drift.
+6. Start M31: Network Switching Stress Test — hotspot ↔ LAN ↔ mDNS transitions (guardian
+   should keep tunnel + ssh config correct automatically; verify 0 manual intervention)
+7. See docs/ROADMAP.md for full phase list
 
 ## Resume Quick Reference
 ```sh
@@ -368,4 +419,4 @@ jq '.active_agent="laptop"' .uom-agent/state.json > "${TMPDIR:-/tmp}/uom-s.json"
 git add -A && git commit -m "handback: laptop resumed control" && git push
 ```
 
-<!-- last-sync: 2026-07-17T18:00:00Z -->
+<!-- last-sync: 2026-07-17T14:37:46Z -->
