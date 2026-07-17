@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "active_agent": "laptop",
-  "laptop_heartbeat": "2026-07-17T13:20:14+05:30",
+  "laptop_heartbeat": "2026-07-17T13:21:18+05:30",
   "phone_heartbeat": "2026-07-17T13:20:26+05:30",
   "current_task_id": "M02-state-sync",
   "current_task_desc": "",
