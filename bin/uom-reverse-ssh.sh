@@ -12,6 +12,8 @@ TUNNEL_DIR="${HOME}/.uom-termux-user"
 TUNNEL_LOG="${TUNNEL_DIR}/tunnel.log"
 TUNNEL_PID="${TUNNEL_DIR}/tunnel.pid"
 SSH_OPTS="-N -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10"
+# Explicit laptop IP override (phone side, LAN via hotspot)
+UOM_LAPTOP_IP="${UOM_LAPTOP_IP:-192.168.40.90}"
 
 mkdir -p "${TUNNEL_DIR}"
 
@@ -37,7 +39,7 @@ _discover_laptop() {
     fi
     [ -f ~/src/universal-omni-master/.uom-agent/laptop.ip ] && \
         cat ~/src/universal-omni-master/.uom-agent/laptop.ip && return 0
-    echo "${UOM_LAPTOP_IP:-192.168.43.1}"
+    echo "${UOM_LAPTOP_IP:-192.168.40.90}"
 }
 
 # Ensure sshd is running
@@ -60,6 +62,9 @@ else
     while true; do
         echo "$$" > "${TUNNEL_PID}"
         LAPTOP_IP=$(_discover_laptop)
+        # Kill any stale SSH connections to laptop that might hold port
+        pkill -f "ssh.*-R.*${REV_PORT}.*${LAPTOP_IP}" 2>/dev/null || true
+        sleep 2
         ssh ${SSH_OPTS} \
             -R "${REV_PORT}:127.0.0.1:${PHONE_SSHD_PORT}" \
             "${LAPTOP_USER}@${LAPTOP_IP}"
