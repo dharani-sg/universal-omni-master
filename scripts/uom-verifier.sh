@@ -9,6 +9,16 @@
 set -u
 
 UOM_DIR="${UOM_DIR:-$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)}"
+
+# Source state library for lease/ownership checks
+if [ -f "${UOM_DIR}/tools/uom-state-lib.sh" ]; then
+    . "${UOM_DIR}/tools/uom-state-lib.sh"
+    uom_state_init 2>/dev/null || true
+    _HAS_STATE_LIB=1
+else
+    _HAS_STATE_LIB=0
+fi
+
 QUEUE_FILE="${UOM_DIR}/.uom-agent/queue.json"
 GEN_DIR="${UOM_DIR}/.uom-agent/generated"
 VERIFIED_DIR="${UOM_DIR}/.uom-agent/verified"

@@ -17,6 +17,16 @@
 set -u
 
 UOM_DIR="${UOM_DIR:-$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)}"
+
+# Source state library for lease/ownership checks
+if [ -f "${UOM_DIR}/tools/uom-state-lib.sh" ]; then
+    . "${UOM_DIR}/tools/uom-state-lib.sh"
+    uom_state_init 2>/dev/null || true
+    _HAS_STATE_LIB=1
+else
+    _HAS_STATE_LIB=0
+fi
+
 QUEUE_FILE="${UOM_DIR}/.uom-agent/queue.json"
 GEN_DIR="${UOM_DIR}/.uom-agent/generated"
 LOG_DIR="${UOM_DIR}/.uom-agent/logs"
@@ -154,6 +164,19 @@ _read_pending_task() {
         _task_ctx=$(cat "${UOM_DIR}/${_ctx_file}" 2>/dev/null | head -100)
     fi
 
+    # Check for feedback from previous failures
+    _fb_file="${UOM_DIR}/.uom-agent/feedback/${_task_id}.json"
+    if [ -f "$_fb_file" ]; then
+        _fb_issues=$(jq -r '.issues // empty' "$_fb_file" 2>/dev/null || echo "")
+        _fb_suggestion=$(jq -r '.suggestion // empty' "$_fb_file" 2>/dev/null || echo "")
+        if [ -n "$_fb_issues" ] || [ -n "$_fb_suggestion" ]; then
+            _task_ctx="${_task_ctx}
+PREVIOUS FEEDBACK (retry):
+  Issues: ${_fb_issues:-none}
+  Suggestion: ${_fb_suggestion:-none}"
+        fi
+    fi
+
     return 0
 }
 
@@ -182,6 +205,7 @@ _call_llm_cloud() {
     _model="${LLM_MODEL:-opencode/deepseek-v4-flash-free}"
     _max_retries=3
     _retry=0
+    _llm_timeout=120
 
     _use_local=0
     if command -v opencode >/dev/null 2>&1; then
@@ -196,7 +220,7 @@ _call_llm_cloud() {
         _log "opencode run (local) → ${_model}"
         while [ "$_retry" -lt "$_max_retries" ]; do
             _log "Attempt $((_retry + 1))..."
-            printf '%s\n' "$_prompt" | opencode run --model "$_model" > "$_output" 2>>"$LOG_FILE"
+            printf '%s\n' "$_prompt" | timeout "$_llm_timeout" opencode run --model "$_model" > "$_output" 2>>"$LOG_FILE"
 
             if [ -s "$_output" ]; then
                 sed -i '/^```/d' "$_output" 2>/dev/null
@@ -215,7 +239,7 @@ _call_llm_cloud() {
         _log "opencode (remote via laptop) → ${_model}"
         while [ "$_retry" -lt "$_max_retries" ]; do
             _log "Attempt $((_retry + 1))..."
-            printf '%s\n' "$_prompt" | sh "$_remote_script" "$_model" > "$_output" 2>>"$LOG_FILE"
+            printf '%s\n' "$_prompt" | timeout "$_llm_timeout" sh "$_remote_script" "$_model" > "$_output" 2>>"$LOG_FILE"
 
             if [ -s "$_output" ]; then
                 sed -i '/^```/d' "$_output" 2>/dev/null
@@ -328,8 +352,22 @@ main() {
 
         _log "━━━ Task ${_task_id}: ${_task_desc}"
 
-        # Mark in_progress
-        _mark_task "$_task_id" "in_progress" "generator-picked-up"
+        # Check state lease before claiming task
+        _may_write=0
+        if [ "$_HAS_STATE_LIB" -eq 1 ]; then
+            if uom_state_can_write phone 2>/dev/null; then
+                _may_write=1
+            fi
+        else
+            # No state lib — allow (backward compat)
+            _may_write=1
+        fi
+
+        if [ "$_may_write" -eq 1 ]; then
+            _mark_task "$_task_id" "in_progress" "generator-picked-up"
+        else
+            _log "WARNING: no write lease (writer_role=$(uom_state_get writer_role 2>/dev/null || echo unknown)) — processing without queue mutation"
+        fi
 
         # Build prompt
         _prompt=$(_build_prompt "$_task_id" "$_task_desc" "$_task_ctx")
@@ -359,12 +397,12 @@ READYEOF
                 _log "✓ Generated ${_lines} lines in ${_elapsed}s — ready for verifier"
             else
                 _log "✗ LLM produced empty output for ${_task_id}"
-                _mark_task "$_task_id" "pending" "llm-empty-output"
+                [ "$_may_write" -eq 1 ] && _mark_task "$_task_id" "pending" "llm-empty-output"
                 rm -f "$_output_file" 2>/dev/null || true
             fi
         else
             _log "✗ LLM call failed for ${_task_id}"
-            _mark_task "$_task_id" "pending" "llm-call-failed"
+            [ "$_may_write" -eq 1 ] && _mark_task "$_task_id" "pending" "llm-call-failed"
             rm -f "$_output_file" 2>/dev/null || true
         fi
 

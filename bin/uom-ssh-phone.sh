@@ -76,7 +76,7 @@ _discover_phone_ip() {
     _gw=$(ip route 2>/dev/null | awk '/^default/{print $3; exit}')
     if [ -n "$_gw" ]; then
         case "$_gw" in
-            192.168.43.1|10.42.*.1)
+            192.168.43.*|192.168.40.*|10.42.*)
                 # Phone hotspot gateway — phone IS the gateway
                 if ssh -o ConnectTimeout=3 -o BatchMode=yes \
                     -i "${HOME}/.ssh/id_ed25519_phone" \
