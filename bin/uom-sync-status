@@ -1,0 +1,22 @@
+#!/bin/sh
+# uom-sync-status — Quick sync status check (no lock, no mutation)
+# Shows local/remote/GitHub SHA comparison.
+# POSIX sh.
+
+set -u
+
+UOM_DIR="${OMNI_ROOT:-$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)}"
+BRANCH="refactor/structure-audit-2026-07-17"
+
+_local=$(cd "$UOM_DIR" && git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+_github=$(cd "$UOM_DIR" && git ls-remote --heads origin "$BRANCH" 2>/dev/null | awk '{print $1}' | head -c 7 || echo "unknown")
+_dirty=$(cd "$UOM_DIR" && git status --porcelain 2>/dev/null | wc -l)
+
+if [ "$_local" = "$_github" ] 2>/dev/null; then
+    _status="IN SYNC"
+else
+    _status="OUT OF SYNC"
+fi
+
+printf 'Branch: %s\nLocal:  %s\nGitHub: %s\nDirty:  %s\nStatus: %s\n' \
+    "$BRANCH" "$_local" "$_github" "$_dirty" "$_status"

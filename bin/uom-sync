@@ -1,0 +1,129 @@
+#!/bin/sh
+# uom-sync — Git sync tool for UOM phone/laptop/GitHub
+# Usage: uom-sync {status|fetch|pull|push|verify}
+# POSIX sh. Fast-forward only. No auto-conflict resolution.
+# Requires: git, SSH access to GitHub.
+
+set -u
+
+UOM_DIR="${OMNI_ROOT:-$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)}"
+BRANCH="refactor/structure-audit-2026-07-17"
+LOCK_FILE="${UOM_DIR}/.uom-sync.lock"
+
+_ts() { date +"%Y-%m-%dT%H:%M:%S" 2>/dev/null || echo "unknown"; }
+_log() { printf '[%s] [uom-sync] %s\n' "$(_ts)" "$*"; }
+
+# ── Singleton lock ──────────────────────────────────────────────────────
+_acquire_lock() {
+    if [ -f "$LOCK_FILE" ]; then
+        _pid=$(cat "$LOCK_FILE" 2>/dev/null)
+        if kill -0 "$_pid" 2>/dev/null; then
+            _log "ERROR: Another uom-sync is running (pid=$_pid)"
+            exit 1
+        fi
+        _log "WARN: Stale lock (pid=$_pid not running). Cleaning."
+        rm -f "$LOCK_FILE"
+    fi
+    echo $$ > "$LOCK_FILE"
+}
+
+_release_lock() { rm -f "$LOCK_FILE" 2>/dev/null || true; }
+trap _release_lock EXIT
+
+# ── Commands ────────────────────────────────────────────────────────────
+cmd_status() {
+    echo "=== UOM Git Sync Status ==="
+    echo "Dir:     $UOM_DIR"
+    echo "Branch:  $BRANCH"
+    echo "HEAD:    $(cd "$UOM_DIR" && git rev-parse --short HEAD 2>/dev/null || echo unknown)"
+    echo "Remote:  $(cd "$UOM_DIR" && git remote get-url origin 2>/dev/null || echo none)"
+    echo ""
+
+    _local=$(cd "$UOM_DIR" && git rev-parse HEAD 2>/dev/null || echo "unknown")
+    _remote=$(cd "$UOM_DIR" && git rev-parse "origin/$BRANCH" 2>/dev/null || echo "unknown")
+    _github=$(cd "$UOM_DIR" && git ls-remote --heads origin "$BRANCH" 2>/dev/null | awk '{print $1}' || echo "unknown")
+
+    echo "Local SHA:    $_local"
+    echo "Remote SHA:   $_remote"
+    echo "GitHub SHA:   $_github"
+    echo ""
+
+    if [ "$_local" = "$_github" ] 2>/dev/null; then
+        echo "Sync:         IN SYNC (local == GitHub)"
+    elif [ "$_local" = "$_remote" ] 2>/dev/null; then
+        echo "Sync:         IN SYNC (local == remote tracking)"
+    else
+        echo "Sync:         OUT OF SYNC"
+    fi
+    echo ""
+
+    _dirty=$(cd "$UOM_DIR" && git status --porcelain 2>/dev/null | wc -l)
+    echo "Dirty files:  $_dirty"
+    if [ "$_dirty" -gt 0 ]; then
+        cd "$UOM_DIR" && git status --short 2>/dev/null
+    fi
+}
+
+cmd_fetch() {
+    _log "Fetching from origin..."
+    cd "$UOM_DIR" && git fetch origin 2>&1
+    _log "Fetch complete."
+}
+
+cmd_pull() {
+    _log "Pulling (fast-forward only)..."
+    cmd_fetch
+    cd "$UOM_DIR" && git pull --ff-only origin "$BRANCH" 2>&1
+    _log "Pull complete."
+}
+
+cmd_push() {
+    _log "Pushing to origin..."
+
+    # Check for uncommitted changes
+    _dirty=$(cd "$UOM_DIR" && git status --porcelain 2>/dev/null | wc -l)
+    if [ "$_dirty" -gt 0 ]; then
+        _log "ERROR: Cannot push — $_dirty uncommitted files"
+        cd "$UOM_DIR" && git status --short 2>/dev/null
+        exit 1
+    fi
+
+    cd "$UOM_DIR" && git push origin "$BRANCH" 2>&1
+    _log "Push complete."
+}
+
+cmd_verify() {
+    echo "=== UOM Sync Verify ==="
+    _local=$(cd "$UOM_DIR" && git rev-parse HEAD 2>/dev/null || echo "unknown")
+    _github=$(cd "$UOM_DIR" && git ls-remote --heads origin "$BRANCH" 2>/dev/null | awk '{print $1}' || echo "unknown")
+
+    echo "Local:  $_local"
+    echo "GitHub: $_github"
+
+    if [ "$_local" = "$_github" ] 2>/dev/null; then
+        echo "Result: PASS (local == GitHub)"
+        return 0
+    else
+        echo "Result: FAIL (local != GitHub)"
+        return 1
+    fi
+}
+
+# ── Main dispatch ───────────────────────────────────────────────────────
+case "${1:-help}" in
+    status)  _acquire_lock; cmd_status ;;
+    fetch)   _acquire_lock; cmd_fetch ;;
+    pull)    _acquire_lock; cmd_pull ;;
+    push)    _acquire_lock; cmd_push ;;
+    verify)  cmd_verify ;;
+    *)
+        echo "Usage: $0 {status|fetch|pull|push|verify}"
+        echo ""
+        echo "  status   Show sync state (local, remote, GitHub)"
+        echo "  fetch    Fetch from origin"
+        echo "  pull     Fetch + fast-forward only"
+        echo "  push     Push to origin (requires clean tree)"
+        echo "  verify   Check local == GitHub SHA"
+        exit 1
+        ;;
+esac
