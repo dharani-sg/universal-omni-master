@@ -1,3 +1,262 @@
 #!/bin/sh
-# bin/uom-port-guardian.sh — Thin wrapper to orchestrators/uom-port-guardian.sh
-exec "$(cd "$(dirname "$0")/.." && pwd)/orchestrators/uom-port-guardian.sh" "$@"
+# orchestrators/uom-port-guardian.sh — Network drift daemon
+# Detects topology changes (hotspot↔LAN↔external), re-points SSH config,
+# updates .uom-agent/*.host hints, signals drift to other components.
+# POSIX sh. No bashisms. No hardcoded IPs.
+#
+# Subcommands: start (default), stop, status, role, rewrite, dryrun
+
+set -eu
+
+# ── Source port watch primitives first (before set -eu can interfere) ──
+_SELF_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
+_UOM_DIR="$(cd "$_SELF_DIR/.." 2>/dev/null && pwd)"
+. "${_UOM_DIR}/tools/uom-port-watch.sh"
+
+# ── Role detection ─────────────────────────────────────────────────────
+_detect_role() {
+    case "$(uname -o 2>/dev/null)" in
+        Android) echo "phone" ;;
+        *)       echo "laptop" ;;
+    esac
+}
+
+# ── Configuration ──────────────────────────────────────────────────────
+UOM_GUARDIAN_ROLE="${UOM_GUARDIAN_ROLE:-$(_detect_role)}"
+UOM_GUARDIAN_INTERVAL="${UOM_GUARDIAN_INTERVAL:-20}"
+UOM_STATE_DIR="${UOM_STATE_DIR:-${_UOM_DIR}/.uom-agent}"
+UOM_LOCK_DIR="${UOM_LOCK_DIR:-${UOM_STATE_DIR}/locks}"
+UOM_RUNTIME_DIR="${UOM_RUNTIME_DIR:-${UOM_STATE_DIR}/runtime}"
+UOM_LOG_DIR="${UOM_LOG_DIR:-${UOM_STATE_DIR}/logs}"
+UOM_LOG="${UOM_LOG_DIR}/portguard.log"
+UOM_PID_FILE="${UOM_RUNTIME_DIR}/portguard.pid"
+UOM_FP_FILE="${UOM_RUNTIME_DIR}/net-fingerprint"
+
+# SSH config paths
+UOM_SSH_CONFIG="${HOME}/.ssh/config"
+UOM_PHONE_USER="${UOM_PHONE_USER:-u0_a608}"
+
+# ── Logging ────────────────────────────────────────────────────────────
+_pglog() {
+    _ts="$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date -u)"
+    printf '[portguard] %s %s\n' "$_ts" "$*" >> "$UOM_LOG" 2>/dev/null || true
+}
+
+# ── Lock management ────────────────────────────────────────────────────
+_LOCK_DIR="${UOM_LOCK_DIR}/port-guardian"
+
+_acquire_lock() {
+    if ! mkdir "$_LOCK_DIR" 2>/dev/null; then
+        if [ -f "${_LOCK_DIR}/pid" ]; then
+            _old=$(cat "${_LOCK_DIR}/pid" 2>/dev/null || echo "")
+            if [ -n "$_old" ] && kill -0 "$_old" 2>/dev/null; then
+                printf '[portguard] already running (PID %s)\n' "$_old" >&2
+                exit 1
+            fi
+        fi
+        rm -rf "$_LOCK_DIR" 2>/dev/null || true
+        mkdir "$_LOCK_DIR" 2>/dev/null || { echo "Cannot acquire lock"; exit 1; }
+    fi
+    echo $$ > "${_LOCK_DIR}/pid"
+}
+
+_release_lock() {
+    rm -f "${_LOCK_DIR}/pid" 2>/dev/null || true
+    rmdir "${_LOCK_DIR}" 2>/dev/null || true
+}
+
+# ── Network fingerprint ────────────────────────────────────────────────
+_net_fingerprint() {
+    _gw=$(uom_pw_gateway 2>/dev/null || echo "")
+    _my=$(uom_pw_my_ip 2>/dev/null || echo "")
+    _hotspot=$(uom_pw_on_phone_hotspot 2>/dev/null && echo "1" || echo "0")
+    _mode="external"
+    if [ "$_hotspot" = "1" ]; then
+        _mode="hotspot"
+    elif [ -n "$_gw" ] && [ -n "$_my" ]; then
+        _mode="lan"
+    fi
+    printf '%s:%s:%s:%s' "$_gw" "$_my" "$_hotspot" "$_mode"
+}
+
+# ── Read stored fingerprint ────────────────────────────────────────────
+_stored_fp() {
+    if [ -f "$UOM_FP_FILE" ]; then
+        cat "$UOM_FP_FILE" 2>/dev/null || echo ""
+    else
+        echo ""
+    fi
+}
+
+# ── Save fingerprint ───────────────────────────────────────────────────
+_save_fp() {
+    printf '%s\n' "$1" > "${UOM_FP_FILE}.tmp" 2>/dev/null && \
+        mv "${UOM_FP_FILE}.tmp" "$UOM_FP_FILE" 2>/dev/null
+}
+
+# ── SSH config rewrite (idempotent, atomic) ────────────────────────────
+rewrite_ssh_config() {
+    _target="$1"
+    _host=$(printf '%s' "$_target" | sed 's/:.*//')
+    _port=$(printf '%s' "$_target" | sed 's/.*://')
+    [ -z "$_port" ] && _port=8022
+
+    mkdir -p "$(dirname "$UOM_SSH_CONFIG")" 2>/dev/null || true
+
+    # Remove existing managed block (if any)
+    if [ -f "$UOM_SSH_CONFIG" ]; then
+        sed '/^# UOM-MANAGED BEGIN/,/^# UOM-MANAGED END/d' "$UOM_SSH_CONFIG" \
+            > "${UOM_SSH_CONFIG}.tmp" 2>/dev/null
+        mv "${UOM_SSH_CONFIG}.tmp" "$UOM_SSH_CONFIG" 2>/dev/null || true
+    fi
+
+    # Append new managed block
+    cat >> "$UOM_SSH_CONFIG" 2>/dev/null <<SSHEOF
+
+# UOM-MANAGED BEGIN — auto-generated by port-guardian, do not edit
+Host uom-phone-rev
+    HostName ${_host}
+    Port ${_port}
+    User ${UOM_PHONE_USER}
+    StrictHostKeyChecking accept-new
+    UserKnownHostsFile ${HOME}/.config/uom/phone_known_hosts
+    ServerAliveInterval 30
+    ServerAliveCountMax 3
+    ConnectTimeout 10
+    BatchMode yes
+# UOM-MANAGED END
+SSHEOF
+
+    # Write hint
+    uom_pw_write_hint "phone.host" "$_target" 2>/dev/null || true
+    _pglog "SSH config rewritten: uom-phone-rev -> $_target"
+}
+
+# ── Role subcommand ────────────────────────────────────────────────────
+_cmd_role() {
+    echo "$UOM_GUARDIAN_ROLE"
+}
+
+# ── Dryrun subcommand ──────────────────────────────────────────────────
+_cmd_dryrun() {
+    _my=$(uom_pw_my_ip 2>/dev/null || echo "?")
+    _gw=$(uom_pw_gateway 2>/dev/null || echo "?")
+    _hotspot=$(uom_pw_on_phone_hotspot 2>/dev/null && echo "yes" || echo "no")
+    printf 'role=%s my_ip=%s gateway=%s hotspot=%s\n' \
+        "$UOM_GUARDIAN_ROLE" "$_my" "$_gw" "$_hotspot"
+
+    _fp=$(_net_fingerprint)
+    _sfp=$(_stored_fp)
+    printf 'fingerprint=%s stored=%s changed=%s\n' \
+        "${_fp:-<none>}" "${_sfp:-<none>}" \
+        "$([ "$_fp" != "$_sfp" ] && echo yes || echo no)"
+
+    _phone=$(uom_pw_discover_phone 2>/dev/null || echo "?")
+    _laptop=$(uom_pw_discover_laptop 2>/dev/null || echo "?")
+    printf 'phone=%s laptop=%s\n' "${_phone:-<none>}" "${_laptop:-<none>}"
+}
+
+# ── Rewrite subcommand ─────────────────────────────────────────────────
+_cmd_rewrite() {
+    _target="${1:-}"
+    if [ -z "$_target" ]; then
+        echo "Usage: $0 rewrite host:port" >&2
+        exit 1
+    fi
+    rewrite_ssh_config "$_target"
+}
+
+# ── Status subcommand ──────────────────────────────────────────────────
+_cmd_status() {
+    if [ -f "$UOM_PID_FILE" ]; then
+        _pid=$(cat "$UOM_PID_FILE" 2>/dev/null || echo "")
+        if [ -n "$_pid" ] && kill -0 "$_pid" 2>/dev/null; then
+            echo "RUNNING (PID $_pid) role=$UOM_GUARDIAN_ROLE"
+            return 0
+        fi
+    fi
+    echo "NOT RUNNING role=$UOM_GUARDIAN_ROLE"
+    return 1
+}
+
+# ── Stop subcommand ────────────────────────────────────────────────────
+_cmd_stop() {
+    if [ ! -f "$UOM_PID_FILE" ]; then
+        _pglog "stop: not running"
+        return 0
+    fi
+    _pid=$(cat "$UOM_PID_FILE" 2>/dev/null || echo "")
+    if [ -n "$_pid" ] && kill -0 "$_pid" 2>/dev/null; then
+        kill "$_pid" 2>/dev/null || true
+        _w=0
+        while [ "$_w" -lt 5 ] && kill -0 "$_pid" 2>/dev/null; do
+            sleep 1; _w=$((_w + 1))
+        done
+        if kill -0 "$_pid" 2>/dev/null; then
+            kill -9 "$_pid" 2>/dev/null || true
+        fi
+        _pglog "stopped PID $_pid"
+    fi
+    rm -f "$UOM_PID_FILE"
+    _release_lock 2>/dev/null || true
+}
+
+# ── Start subcommand (daemon loop) ─────────────────────────────────────
+_cmd_start() {
+    mkdir -p "$UOM_STATE_DIR" "$UOM_LOCK_DIR" "$UOM_RUNTIME_DIR" "$UOM_LOG_DIR"
+
+    _acquire_lock
+    trap '_release_lock; rm -f "$UOM_PID_FILE"; exit 0' INT TERM
+    echo $$ > "$UOM_PID_FILE"
+
+    _pglog "starting (role=$UOM_GUARDIAN_ROLE, interval=${UOM_GUARDIAN_INTERVAL}s)"
+    printf '[portguard] starting (role=%s, interval=%ss)\n' "$UOM_GUARDIAN_ROLE" "$UOM_GUARDIAN_INTERVAL"
+
+    # Initial fingerprint
+    _fp=$(_net_fingerprint)
+    _save_fp "$_fp"
+    _pglog "initial fingerprint: $_fp"
+
+    while true; do
+        _cur_fp=$(_net_fingerprint)
+        _old_fp=$(_stored_fp)
+
+        if [ "$_cur_fp" != "$_old_fp" ]; then
+            _pglog "TOPOLOGY CHANGE detected: $_old_fp -> $_cur_fp"
+            printf '[portguard] topology change: %s -> %s\n' "$_old_fp" "$_cur_fp"
+            _save_fp "$_cur_fp"
+
+            # Extract mode from fingerprint
+            _new_mode=$(printf '%s' "$_cur_fp" | sed 's/.*://')
+            _pglog "network mode: $_new_mode"
+
+            # Discover phone and rewrite SSH config
+            _phone=$(uom_pw_discover_phone 2>/dev/null || echo "")
+            if [ -n "$_phone" ]; then
+                rewrite_ssh_config "$_phone"
+                # Signal drift to reconcile
+                touch "${UOM_RUNTIME_DIR}/portguard.network_changed" 2>/dev/null || true
+                _pglog "signaled network change to reconcile"
+            else
+                _pglog "WARNING: topology changed but phone unreachable"
+            fi
+        fi
+
+        sleep "$UOM_GUARDIAN_INTERVAL"
+    done
+}
+
+# ── Main ───────────────────────────────────────────────────────────────
+_cmd="${1:-start}"
+case "$_cmd" in
+    start)    _cmd_start ;;
+    stop)     _cmd_stop ;;
+    status)   _cmd_status ;;
+    role)     _cmd_role ;;
+    rewrite)  shift; _cmd_rewrite "${1:-}" ;;
+    dryrun)   _cmd_dryrun ;;
+    *)
+        echo "Usage: $0 {start|stop|status|role|rewrite|dryrun}" >&2
+        exit 1
+        ;;
+esac

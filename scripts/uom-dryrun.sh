@@ -758,11 +758,16 @@ test_port_guardian() {
         fail "bootstrap-termux.sh does not start port-guardian at boot"
     fi
 
-    # 7j. hybrid orchestrator ensures guardian
-    if grep -q '_ensure_guardian' "${UOM_ROOT}/bin/uom-hybrid.sh" 2>/dev/null; then
-        pass "uom-hybrid.sh wires in port-guardian (_ensure_guardian)"
+    # 7j. port-guardian.sh subcommands (role, dryrun)
+    if [ "$(UOM_GUARDIAN_ROLE=laptop sh "$_guard" role 2>/dev/null)" = "laptop" ]; then
+        pass "port-guardian.sh role subcommand works"
     else
-        fail "uom-hybrid.sh does not wire port-guardian"
+        fail "port-guardian.sh role subcommand broken"
+    fi
+    if sh "$_guard" dryrun >/dev/null 2>&1; then
+        pass "port-guardian.sh dryrun subcommand works"
+    else
+        fail "port-guardian.sh dryrun subcommand broken"
     fi
 }
 

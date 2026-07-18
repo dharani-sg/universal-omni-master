@@ -267,6 +267,16 @@ _cmd_start() {
     _fwd=$(_build_forward_arg)
     _target="${UOM_LAPTOP_USER}@${LAPTOP_HOST}"
 
+    # Pre-flight: verify laptop is reachable before tunnel attempt
+    _log "Pre-flight: checking laptop reachability at ${LAPTOP_HOST}:${UOM_LAPTOP_SSH_PORT}..."
+    if ! ssh -o ConnectTimeout=5 -o BatchMode=yes \
+        -p "${UOM_LAPTOP_SSH_PORT}" \
+        ${_target} true 2>/dev/null; then
+        _log "WARNING: Laptop not reachable at ${LAPTOP_HOST}:${UOM_LAPTOP_SSH_PORT} — tunnel may fail"
+    else
+        _log "Pre-flight: laptop reachable"
+    fi
+
     _log "Starting reverse tunnel: laptop:${UOM_TUNNEL_PORT} -> phone:${UOM_PHONE_SSH_PORT}"
     _log "Target: ${_target} (SSH port ${UOM_LAPTOP_SSH_PORT})"
     _log "Forward: ${_fwd}"

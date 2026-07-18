@@ -52,6 +52,44 @@ _is_phone() {
 
 # ── Discover phone IP (multi-method) ────────────────────────────────────
 _discover_phone_ip() {
+    # Method 0: Phone-announce file (freshest, phone writes its own IP)
+    _announce="${UOM_DIR}/.uom-agent/phone.ip"
+    if [ -f "$_announce" ]; then
+        _ann_ip=$(cat "$_announce" 2>/dev/null | tr -d '[:space:]')
+        if [ -n "$_ann_ip" ]; then
+            # Check if it's a host:port or bare IP
+            _ann_host=$(printf '%s' "$_ann_ip" | sed 's/:.*//')
+            _ann_port=$(printf '%s' "$_ann_ip" | sed 's/.*://')
+            [ "$_ann_host" = "$_ann_port" ] && _ann_port="${UOM_PHONE_SSH_PORT:-8022}"
+            if ssh -o ConnectTimeout=3 -o BatchMode=yes \
+                -i "${HOME}/.ssh/id_ed25519_phone" \
+                -o UserKnownHostsFile="${UOM_PHONE_KNOWN_HOSTS}" \
+                -p "$_ann_port" "${UOM_PHONE_USER}@${_ann_host}" \
+                'echo UOM_ANNOUNCE_OK' 2>/dev/null | grep -q "UOM_ANNOUNCE_OK"; then
+                echo "$_ann_ip"
+                return 0
+            fi
+        fi
+    fi
+
+    # Method 0b: Hotspot mode — gateway IS the phone
+    _gw=$(ip route 2>/dev/null | awk '/^default/{print $3; exit}')
+    if [ -n "$_gw" ]; then
+        case "$_gw" in
+            192.168.43.1|10.42.*.1)
+                # Phone hotspot gateway — phone IS the gateway
+                if ssh -o ConnectTimeout=3 -o BatchMode=yes \
+                    -i "${HOME}/.ssh/id_ed25519_phone" \
+                    -o UserKnownHostsFile="${UOM_PHONE_KNOWN_HOSTS}" \
+                    -p "${UOM_PHONE_SSH_PORT:-8022}" "${UOM_PHONE_USER}@${_gw}" \
+                    'echo UOM_HOTSPOT_OK' 2>/dev/null | grep -q "UOM_HOTSPOT_OK"; then
+                    echo "$_gw"
+                    return 0
+                fi
+                ;;
+        esac
+    fi
+
     # Try cached IP first (fast, most reliable after first discovery)
     if [ -f "${UOM_LAST_IP_FILE}" ]; then
         _cached=$(cat "${UOM_LAST_IP_FILE}" 2>/dev/null | tr -d '[:space:]')
