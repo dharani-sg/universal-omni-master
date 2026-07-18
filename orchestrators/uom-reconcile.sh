@@ -121,9 +121,17 @@ check_lock() {
 
 test_model() {
   _model_name="$1"
-  printf 'echo POSIX sh function name\n' \
-    | timeout 10 opencode --model "$_model_name" 2>&1 \
-    | head -20
+  # Use the model rotation script for consistent probing
+  _rotate="${UOM_DIR}/tools/uom-model-rotate.sh"
+  if [ -x "$_rotate" ]; then
+    # Temporarily set the model to test
+    _result=$(sh "$_rotate" verify 2>&1 || true)
+    printf '%s' "$_result"
+  else
+    printf 'echo POSIX sh function name\n' \
+      | timeout 10 opencode --model "$_model_name" 2>&1 \
+      | head -20
+  fi
 }
 
 allocate_tunnel_port() {

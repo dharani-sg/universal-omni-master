@@ -15,7 +15,14 @@ set -u
 UOM_DIR="${UOM_DIR:-$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)}"
 LAPTOP_USER="${UOM_LAPTOP_USER:-alpine}"
 LAPTOP_DIR="${UOM_LAPTOP_DIR:-/home/alpine/src/universal-omni-master}"
-MODEL="${1:-opencode/deepseek-v4-flash-free}"
+
+# Use model rotation to get current model
+_ROTATE="${UOM_DIR}/tools/uom-model-rotate.sh"
+if [ -x "$_ROTATE" ]; then
+    MODEL="${1:-$(sh "$_ROTATE" current 2>/dev/null || echo "opencode/deepseek-v4-flash-free")}"
+else
+    MODEL="${1:-opencode/deepseek-v4-flash-free}"
+fi
 SSH_TIMEOUT=10
 LLM_TIMEOUT=120
 
