@@ -1,0 +1,73 @@
+#!/bin/sh
+# 50-UOM-Logs — Show UOM logs (tail, not -f)
+# Widget shortcut: displays launcher, serial, boot, and guest logs.
+# Redacts credentials. Accepts optional line count as $1 (default 30).
+# POSIX sh.
+
+set -u
+
+UOM_LOG_DIR="${HOME}/uom-vm/logs"
+VM_NAME="uom-phone"
+GUEST_PORT="2222"
+GUEST_USER="uom"
+GUEST_SSH_OPTS="-p ${GUEST_PORT} -o ConnectTimeout=5 -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null"
+GUEST_SSH="ssh ${GUEST_SSH_OPTS} ${GUEST_USER}@127.0.0.1"
+LINES="${1:-30}"
+
+_redact() {
+    sed -E \
+        -e 's/(password|passwd|secret|key|token|auth)[=: ]+[^ ]*/\1=<REDACTED>/gi' \
+        -e 's/([A-Za-z0-9+/]{40,})/<REDACTED_BLOB>/g'
+}
+
+echo "=========================================="
+echo " UOM Logs (last ${LINES} lines each)"
+echo "=========================================="
+echo ""
+
+echo "--- Launcher Log ---"
+if [ -f "${UOM_LOG_DIR}/${VM_NAME}-launcher.log" ]; then
+    tail -"${LINES}" "${UOM_LOG_DIR}/${VM_NAME}-launcher.log" 2>/dev/null | _redact
+else
+    echo "(no launcher log)"
+fi
+echo ""
+
+echo "--- Console/Serial Log ---"
+if [ -f "${UOM_LOG_DIR}/${VM_NAME}-console.log" ]; then
+    tail -"${LINES}" "${UOM_LOG_DIR}/${VM_NAME}-console.log" 2>/dev/null | _redact
+else
+    echo "(no console log)"
+fi
+echo ""
+
+echo "--- QEMU Log ---"
+if [ -f "${UOM_LOG_DIR}/${VM_NAME}-qemu.log" ]; then
+    tail -"${LINES}" "${UOM_LOG_DIR}/${VM_NAME}-qemu.log" 2>/dev/null | _redact
+else
+    echo "(no qemu log)"
+fi
+echo ""
+
+echo "--- Boot Log ---"
+if [ -f "${UOM_LOG_DIR}/boot.log" ]; then
+    tail -"${LINES}" "${UOM_LOG_DIR}/boot.log" 2>/dev/null | _redact
+elif [ -f "${HOME}/uom-vm/boot.log" ]; then
+    tail -"${LINES}" "${HOME}/uom-vm/boot.log" 2>/dev/null | _redact
+else
+    echo "(no boot log)"
+fi
+echo ""
+
+echo "--- Guest UOM Logs ---"
+${GUEST_SSH} "
+    _r() { sed -E -e 's/(password|passwd|secret|key|token|auth)[=: ]+[^ ]*/\1=<REDACTED>/gi' -e 's/([A-Za-z0-9+/]{40,})/<REDACTED_BLOB>/g'; }
+    if ls ~/src/universal-omni-master/.uom-agent/logs/*.log 2>/dev/null; then
+        tail -${LINES} ~/src/universal-omni-master/.uom-agent/logs/*.log 2>/dev/null | _r
+    else
+        echo '(no guest UOM logs)'
+    fi
+" 2>/dev/null || echo "(guest not reachable)"
+echo ""
+
+echo "=========================================="

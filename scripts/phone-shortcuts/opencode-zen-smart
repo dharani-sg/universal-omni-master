@@ -1,0 +1,279 @@
+#!/bin/sh
+# opencode-zen-smart — hardened anti-exhaustion wrapper
+# Usage: opencode-zen-smart [--mode code|general] [--model MODEL] "prompt"
+# POSIX sh. Singleton lock. Dynamic metadata. Zero-cost validation.
+# NEVER rotates to evade 429. Honors Retry-After. Exponential backoff.
+#
+# Environment (from ~/.config/uom/zen.env):
+#   UOM_ZEN_AUTH_POLICY, ZEN_MODEL_STATUS, UOM_OPENCODE_MODEL_GOOD,
+#   UOM_OPENCODE_MODEL_NORMAL, UOM_RUNTIME, UOM_AGENT_MODE
+
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH
+set -eu
+
+# ── Configuration ───────────────────────────────────────────────────────
+ZEN_API="https://opencode.ai/zen/v1/chat/completions"
+ZEN_MODELS_API="https://opencode.ai/zen/v1/models"
+ZEN_DIR="$HOME/.config/uom"
+ZEN_LOCK="$ZEN_DIR/zen-smart.lock"
+ZEN_STATE="$ZEN_DIR/zen-smart-state"
+ZEN_COOLDOWN="$ZEN_DIR/zen-smart-cooldown"
+ZEN_USAGE_LOG="$ZEN_DIR/zen-usage.log"
+ZEN_LOG="$ZEN_DIR/zen-smart.log"
+
+REQUEST_TIMEOUT=90
+MAX_RETRIES=3
+LOCK_FD=200
+
+# Task-fit pools: code/reasoning vs general/doc
+CODE_MODELS="deepseek-v4-flash-free north-mini-code-free nemotron-3-ultra-free"
+GENERAL_MODELS="big-pickle mimo-v2.5-free"
+
+# ── Logging ─────────────────────────────────────────────────────────────
+_ts() { date +"%Y-%m-%dT%H:%M:%S" 2>/dev/null || echo "unknown"; }
+_log() { printf '[%s] [zen-smart] %s\n' "$(_ts)" "$*" >&2; }
+_logfile() { printf '[%s] [zen-smart] %s\n' "$(_ts)" "$*" >> "$ZEN_LOG" 2>/dev/null || true; }
+_log_redact() {
+    _msg=$(echo "$*" | sed -E \
+        -e 's/(password|passwd|secret|key|token|auth)[=: ]+[^ ]*/\1=<REDACTED>/gi' \
+        -e 's/prompt[=: ]+["\x27]?[^"\x27 ]{0,50}/prompt=<REDACTED>/gi')
+    printf '[%s] [zen-smart] %s\n' "$(_ts)" "$_msg" >&2
+}
+
+# ── Singleton lock ──────────────────────────────────────────────────────
+_acquire_lock() {
+    mkdir -p "$ZEN_DIR"
+    eval "exec ${LOCK_FD}>\"${ZEN_LOCK}\""
+    if ! flock -n "${LOCK_FD}" 2>/dev/null; then
+        _log "ERROR: Another zen-smart instance is running (lock held)"
+        exit 1
+    fi
+    echo $$ > "${ZEN_LOCK}.pid"
+}
+
+_release_lock() {
+    rm -f "${ZEN_LOCK}.pid" 2>/dev/null || true
+    flock -u "${LOCK_FD}" 2>/dev/null || true
+}
+trap _release_lock EXIT
+
+# ── Cooldown check ──────────────────────────────────────────────────────
+_check_cooldown() {
+    if [ -f "$ZEN_COOLDOWN" ]; then
+        _cooldown_until=$(cat "$ZEN_COOLDOWN" 2>/dev/null || echo 0)
+        _now=$(date +%s 2>/dev/null || echo 0)
+        if [ "$_now" -lt "$_cooldown_until" ]; then
+            _remaining=$((_cooldown_until - _now))
+            _log "Global cooldown active (${_remaining}s remaining)"
+            return 1
+        fi
+        rm -f "$ZEN_COOLDOWN"
+    fi
+    return 0
+}
+
+_enter_cooldown() {
+    _duration="${1:-60}"
+    _now=$(date +%s 2>/dev/null || echo 0)
+    echo $((_now + _duration)) > "$ZEN_COOLDOWN"
+    _log "Entering global cooldown for ${_duration}s"
+    _logfile "COOLDOWN ${_duration}s"
+}
+
+# ── Dynamic model metadata fetch ────────────────────────────────────────
+_fetch_free_models() {
+    _resp=$(curl -4 -sS --max-time 15 "$ZEN_MODELS_API" 2>/dev/null) || {
+        _log "WARN: Could not fetch model metadata, using static list"
+        echo "$CODE_MODELS $GENERAL_MODELS"
+        return
+    }
+    # Extract model IDs from JSON (jq required)
+    echo "$_resp" | jq -r '.data[].id' 2>/dev/null || {
+        _log "WARN: Could not parse model metadata, using static list"
+        echo "$CODE_MODELS $GENERAL_MODELS"
+    }
+}
+
+# ── Cost validation (must be zero) ──────────────────────────────────────
+_validate_zero_cost() {
+    _usage="$1"
+    # Check prompt cost, completion cost, cached cost — all must be 0 or absent
+    _prompt_cost=$(echo "$_usage" | jq -r '.prompt_tokens_cost // 0' 2>/dev/null || echo "0")
+    _completion_cost=$(echo "$_usage" | jq -r '.completion_tokens_cost // 0' 2>/dev/null || echo "0")
+    _cached_cost=$(echo "$_usage" | jq -r '.cached_tokens_cost // 0' 2>/dev/null || echo "0")
+    _total_cost=$(echo "$_usage" | jq -r '.total_cost // 0' 2>/dev/null || echo "0")
+
+    # All costs must be 0 or not present (free tier)
+    for _c in "$_prompt_cost" "$_completion_cost" "$_cached_cost" "$_total_cost"; do
+        if [ "$_c" != "0" ] && [ "$_c" != "null" ] && [ "$_c" != "" ]; then
+            _log "WARN: Non-zero cost detected: $_c"
+            return 1
+        fi
+    done
+    return 0
+}
+
+# ── UOM_ZEN_READY probe ────────────────────────────────────────────────
+_zen_ready_probe() {
+    _probe_model="${1:-big-pickle}"
+    _payload=$(jq -nc \
+        --arg model "$_probe_model" \
+        '{model: $model, messages: [{role:"user",content:"Reply with exactly: UOM_ZEN_READY"}], temperature: 0, max_tokens: 10}')
+
+    _resp=$(curl -4 -sS --max-time 30 \
+        -H "Content-Type: application/json" \
+        --data "$_payload" \
+        "$ZEN_API" 2>/dev/null) || return 1
+
+    _content=$(echo "$_resp" | jq -r '.choices[0].message.content // empty' 2>/dev/null) || return 1
+    echo "$_content" | grep -q "UOM_ZEN_READY" && return 0
+    return 1
+}
+
+# ── Parse args ──────────────────────────────────────────────────────────
+MODE="code"
+MODEL=""
+PROMPT=""
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --mode) MODE="$2"; shift 2 ;;
+        --model|-m) MODEL="$2"; shift 2 ;;
+        -*) _log "Unknown option: $1"; exit 1 ;;
+        *) PROMPT="$1"; shift ;;
+    esac
+done
+
+if [ -z "$PROMPT" ]; then
+    _log "Usage: opencode-zen-smart [--mode code|general] [--model MODEL] \"prompt\""
+    exit 1
+fi
+
+# ── Main ────────────────────────────────────────────────────────────────
+_acquire_lock
+
+# Check cooldown
+if ! _check_cooldown; then
+    exit 1
+fi
+
+# Auto-select model if not specified
+if [ -z "$MODEL" ]; then
+    if [ "$MODE" = "code" ]; then
+        POOL="$CODE_MODELS"
+    else
+        POOL="$GENERAL_MODELS"
+    fi
+
+    COUNTER=$(cat "$ZEN_STATE" 2>/dev/null || echo 0)
+    POOL_SIZE=$(echo "$POOL" | wc -w)
+    IDX=$(( COUNTER % POOL_SIZE ))
+    MODEL=$(echo "$POOL" | awk -v i=$((IDX + 1)) '{print $i}')
+
+    # Rotate every 10 prompts
+    if [ $(( (COUNTER + 1) % 10 )) -eq 0 ]; then
+        echo $(( (IDX + 1) % POOL_SIZE )) > "$ZEN_STATE"
+        _log "Rotation: switched to next model in $MODE pool"
+    else
+        echo $((COUNTER + 1)) > "$ZEN_STATE"
+    fi
+fi
+
+_log_redact "Request: mode=$MODE model=$MODEL prompt_len=${#PROMPT}"
+
+# Build payload
+PAYLOAD=$(jq -nc \
+    --arg model "$MODEL" \
+    --arg prompt "$PROMPT" \
+    '{model: $model, messages: [{role:"user",content:$prompt}], temperature: 0.3, max_tokens: 4096}')
+
+# Exponential backoff loop
+_BACKOFF=1
+for RETRY in 1 2 3; do
+    HTTP_CODE=$(curl -4 -sS -o /tmp/zen-resp-$$ -w "%{http_code}" \
+        --max-time "$REQUEST_TIMEOUT" \
+        -H "Content-Type: application/json" \
+        --data "$PAYLOAD" \
+        "$ZEN_API" 2>/dev/null) || HTTP_CODE="000"
+
+    RESP=$(cat /tmp/zen-resp-$$ 2>/dev/null || echo '{}')
+    rm -f /tmp/zen-resp-$$ 2>/dev/null || true
+
+    # ── HTTP 200 success ────────────────────────────────────────────────
+    if [ "$HTTP_CODE" = "200" ]; then
+        # Validate response structure
+        CONTENT=$(echo "$RESP" | jq -r '.choices[0].message.content // empty' 2>/dev/null)
+        FINISH=$(echo "$RESP" | jq -r '.choices[0].finish_reason // "unknown"' 2>/dev/null)
+        USAGE=$(echo "$RESP" | jq -c '.usage // {}' 2>/dev/null)
+
+        if [ -z "$CONTENT" ]; then
+            _log "ERROR: HTTP 200 but empty content (finish=$FINISH)"
+            _logfile "ERROR empty_content model=$MODEL finish=$FINISH"
+            exit 1
+        fi
+
+        # Validate zero cost
+        if ! _validate_zero_cost "$USAGE"; then
+            _log "ERROR: Non-zero cost in response — refusing to use paid model"
+            _logfile "ERROR non_zero_cost model=$MODEL usage=$USAGE"
+            _enter_cooldown 300
+            exit 1
+        fi
+
+        # Success
+        echo "$CONTENT"
+        _logfile "OK model=$MODEL mode=$MODE finish=$FINISH usage=$USAGE prompt_len=${#PROMPT}"
+        exit 0
+    fi
+
+    # ── HTTP 429 rate limit ─────────────────────────────────────────────
+    if [ "$HTTP_CODE" = "429" ]; then
+        RETRY_AFTER=$(echo "$RESP" | jq -r '.error.headers["retry-after"] // 60' 2>/dev/null || echo "60")
+        _log "HTTP 429: rate limited. Retry-After=${RETRY_AFTER}s. Entering global cooldown."
+        _logfile "429 model=$MODEL retry-after=$RETRY_AFTER"
+        _enter_cooldown "$RETRY_AFTER"
+        exit 1
+    fi
+
+    # ── HTTP 401/403 auth errors ────────────────────────────────────────
+    if [ "$HTTP_CODE" = "401" ] || [ "$HTTP_CODE" = "403" ]; then
+        _log "HTTP $HTTP_CODE: auth error — this endpoint should be anonymous"
+        _logfile "ERROR auth model=$MODEL http=$HTTP_CODE"
+        exit 1
+    fi
+
+    # ── HTTP 404 model not found ────────────────────────────────────────
+    if [ "$HTTP_CODE" = "404" ]; then
+        _log "HTTP 404: model $MODEL not found"
+        _logfile "ERROR 404 model=$MODEL"
+        exit 1
+    fi
+
+    # ── HTTP 5xx server error — retry with backoff ──────────────────────
+    if [ "$HTTP_CODE" -ge 500 ] 2>/dev/null; then
+        _log "HTTP $HTTP_CODE: server error (retry $RETRY/$MAX_RETRIES, backoff=${_BACKOFF}s)"
+        _logfile "5XX model=$MODEL http=$HTTP_CODE retry=$RETRY"
+        sleep "$_BACKOFF"
+        _BACKOFF=$((_BACKOFF * 2))
+        continue
+    fi
+
+    # ── Network/DNS failure — retry with backoff ────────────────────────
+    if [ "$HTTP_CODE" = "000" ]; then
+        _log "Network error (retry $RETRY/$MAX_RETRIES, backoff=${_BACKOFF}s)"
+        _logfile "NET model=$MODEL retry=$RETRY"
+        sleep "$_BACKOFF"
+        _BACKOFF=$((_BACKOFF * 2))
+        continue
+    fi
+
+    # ── Other HTTP errors ───────────────────────────────────────────────
+    ERR_MSG=$(echo "$RESP" | jq -r '.error.message // .error // "unknown"' 2>/dev/null || echo "unknown")
+    _log "HTTP $HTTP_CODE: $ERR_MSG"
+    _logfile "ERROR model=$MODEL http=$HTTP_CODE err=$ERR_MSG"
+    exit 1
+done
+
+_log "All $MAX_RETRIES retries exhausted"
+_logfile "EXHAUSTED model=$MODEL"
+exit 1

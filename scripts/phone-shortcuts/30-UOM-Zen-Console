@@ -1,0 +1,51 @@
+#!/bin/sh
+# 30-UOM-Zen-Console — Open Zen Loop console in guest Alpine
+# Widget shortcut: tap to SSH into guest and attach to zen tmux session
+# POSIX sh. Idempotent. Never creates a duplicate orchestrator.
+# Requires: ~/bin/uom-qemu-phone, guest SSH on port 2222.
+
+set -u
+
+QEMU_LAUNCHER="${HOME}/bin/uom-qemu-phone"
+GUEST_PORT="2222"
+GUEST_USER="uom"
+GUEST_SSH_OPTS="-p ${GUEST_PORT} -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null -o BatchMode=yes"
+GUEST_SSH="ssh ${GUEST_SSH_OPTS} ${GUEST_USER}@127.0.0.1"
+GUEST_SSH_TT="ssh -tt ${GUEST_SSH_OPTS} ${GUEST_USER}@127.0.0.1"
+ZEN_TMUX_SESSION="uom-zen-phone"
+BOOT_TIMEOUT=120
+
+_ts() { date +"%Y-%m-%dT%H:%M:%S" 2>/dev/null || echo "unknown"; }
+_log() { printf '[%s] [zen-console] %s\n' "$(_ts)" "$*" >&2; }
+
+# ── Ensure QEMU is running ─────────────────────────────────────────────
+if ! "${QEMU_LAUNCHER}" status 2>/dev/null | grep -q "RUNNING"; then
+    _log "QEMU not running. Starting..."
+    "${QEMU_LAUNCHER}" start || {
+        _log "ERROR: Failed to start QEMU"
+        exit 1
+    }
+fi
+
+# ── Wait for guest SSH (bounded) ───────────────────────────────────────
+_log "Waiting for guest SSH (timeout=${BOOT_TIMEOUT}s)..."
+_count=0
+while [ "${_count}" -lt "${BOOT_TIMEOUT}" ]; do
+    if ${GUEST_SSH} 'echo OK' 2>/dev/null | grep -q "OK"; then
+        _log "Guest SSH ready after ${_count}s"
+        break
+    fi
+    sleep 3
+    _count=$((_count + 3))
+done
+if [ "${_count}" -ge "${BOOT_TIMEOUT}" ]; then
+    _log "ERROR: Guest SSH timeout after ${BOOT_TIMEOUT}s"
+    _log "Check QEMU console: ${QEMU_LAUNCHER} console"
+    exit 1
+fi
+
+# ── Attach to zen session in guest (idempotent) ────────────────────────
+# Does NOT start orchestrator — that is the orchestrator's job.
+# If orchestrator is not running, the session will be empty (user can start manually).
+_log "Attaching to zen session in guest..."
+exec ${GUEST_SSH_TT} "tmux new-session -A -s ${ZEN_TMUX_SESSION}"

@@ -1,0 +1,79 @@
+#!/bin/sh
+# 90-UOM-Stop — Clean shutdown of guest + QEMU
+# Widget shortcut: requires user to TYPE exactly "STOP" to proceed.
+# POSIX sh. Foreground. NEVER deletes disks.
+
+set -u
+
+QEMU_LAUNCHER="${HOME}/bin/uom-qemu-phone"
+GUEST_PORT="2222"
+GUEST_USER="uom"
+GUEST_SSH_OPTS="-p ${GUEST_PORT} -o ConnectTimeout=5 -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null"
+GUEST_SSH="ssh ${GUEST_SSH_OPTS} ${GUEST_USER}@127.0.0.1"
+SHUTDOWN_TIMEOUT=30
+
+echo "=========================================="
+echo " UOM STOP"
+echo "=========================================="
+echo ""
+
+# Check if VM is running
+if ! "${QEMU_LAUNCHER}" status 2>/dev/null | grep -q "RUNNING"; then
+    echo "VM is not running. Nothing to stop."
+    exit 0
+fi
+
+echo "This will shut down the Alpine guest and stop QEMU."
+echo "Type STOP to confirm (anything else cancels):"
+echo -n "> "
+read -r _confirm </dev/tty 2>/dev/null || read -r _confirm
+
+if [ "${_confirm}" != "STOP" ]; then
+    echo "Cancelled."
+    exit 0
+fi
+
+echo ""
+echo "--- Step 1: Clean guest shutdown ---"
+
+# Try SSH poweroff first
+if ${GUEST_SSH} 'doas poweroff' 2>/dev/null; then
+    echo "Guest poweroff command sent."
+elif ${GUEST_SSH} 'sudo poweroff' 2>/dev/null; then
+    echo "Guest poweroff command sent (sudo)."
+else
+    echo "Could not SSH guest for clean shutdown."
+    echo "Guest may already be down or unreachable."
+fi
+
+# Wait for guest to shut down (bounded)
+echo "Waiting for guest to shut down (timeout=${SHUTDOWN_TIMEOUT}s)..."
+_count=0
+while [ "${_count}" -lt "${SHUTDOWN_TIMEOUT}" ]; do
+    if ! ${GUEST_SSH} 'echo OK' 2>/dev/null | grep -q "OK"; then
+        echo "Guest shut down after ${_count}s."
+        break
+    fi
+    sleep 2
+    _count=$((_count + 2))
+done
+
+if [ "${_count}" -ge "${SHUTDOWN_TIMEOUT}" ]; then
+    echo "Guest still responding after ${SHUTDOWN_TIMEOUT}s."
+    echo "Proceeding with QEMU stop..."
+fi
+
+echo ""
+echo "--- Step 2: Stop QEMU (bounded forced-stop) ---"
+"${QEMU_LAUNCHER}" stop
+
+echo ""
+echo "--- Step 3: Verify ---"
+if ! "${QEMU_LAUNCHER}" status 2>/dev/null | grep -q "RUNNING"; then
+    echo "VM stopped successfully."
+else
+    echo "WARNING: VM may still be running. Check manually."
+fi
+
+echo ""
+echo "Done."

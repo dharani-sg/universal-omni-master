@@ -1,0 +1,38 @@
+#!/bin/sh
+# 20-UOM-Guest-Shell — SSH into the Alpine guest
+# Widget shortcut: drops into an interactive shell in the guest.
+# POSIX sh. Idempotent. Preserves Ctrl-b d detach if tmux is used.
+
+set -u
+
+GUEST_PORT="2222"
+GUEST_USER="uom"
+GUEST_SSH_OPTS="-p ${GUEST_PORT} -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null"
+QEMU_LAUNCHER="${HOME}/bin/uom-qemu-phone"
+
+# Ensure QEMU is running
+if ! "${QEMU_LAUNCHER}" status 2>/dev/null | grep -q "RUNNING"; then
+    echo "[guest-shell] QEMU not running. Starting..."
+    "${QEMU_LAUNCHER}" start || {
+        echo "[guest-shell] ERROR: Failed to start QEMU"
+        exit 1
+    }
+fi
+
+# Wait for SSH (bounded)
+echo "[guest-shell] Waiting for guest SSH..."
+_count=0
+while [ "${_count}" -lt 120 ]; do
+    if ssh ${GUEST_SSH_OPTS} ${GUEST_USER}@127.0.0.1 'echo OK' 2>/dev/null | grep -q "OK"; then
+        break
+    fi
+    sleep 3
+    _count=$((_count + 3))
+done
+if [ "${_count}" -ge 120 ]; then
+    echo "[guest-shell] ERROR: Guest SSH timeout"
+    exit 1
+fi
+
+# Interactive SSH shell
+exec ssh -tt ${GUEST_SSH_OPTS} ${GUEST_USER}@127.0.0.1

@@ -1,0 +1,20 @@
+#!/bin/sh
+# 40-UOM-Host-Console — Attach to host QEMU console tmux session
+# Widget shortcut: attaches to uom-qemu-host, preserves Ctrl-b d detach.
+# POSIX sh. Idempotent.
+
+set -u
+
+QEMU_TMUX_SESSION="uom-qemu-host"
+QEMU_LAUNCHER="${HOME}/bin/uom-qemu-phone"
+
+if ! tmux has-session -t "${QEMU_TMUX_SESSION}" 2>/dev/null; then
+    echo "[host-console] No QEMU tmux session found."
+    echo "[host-console] Starting QEMU..."
+    "${QEMU_LAUNCHER}" start || {
+        echo "[host-console] ERROR: Failed to start QEMU"
+        exit 1
+    }
+fi
+
+exec tmux attach -t "${QEMU_TMUX_SESSION}"
