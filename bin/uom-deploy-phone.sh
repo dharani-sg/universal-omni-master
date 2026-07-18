@@ -32,12 +32,29 @@ fi
 # ── 1. Create ~/bin/ scripts on phone ──────────────────────────────────
 _log "=== Deploying ~/bin/ scripts ==="
 
-for _script in omni-project-start.sh uom-tmux-watchdog.sh uom-status.sh uom-reverse-ssh.sh; do
+for _script in omni-project-start.sh uom-tmux-watchdog.sh uom-status.sh uom-reverse-ssh.sh uom-ssh-phone.sh; do
     if [ -f "${UOM_DIR}/bin/${_script}" ]; then
         $DRY_RUN || $PHONE_SSH "mkdir -p ~/bin"
         _log "  Copying ${_script} to phone ~/bin/"
         $DRY_RUN || scp -F ~/.ssh/config "${UOM_DIR}/bin/${_script}" uom-phone-rev:~/bin/ 2>/dev/null
         $DRY_RUN || $PHONE_SSH "chmod +x ~/bin/${_script}"
+    fi
+done
+
+# ── 1b. Create ~/bin/ scripts from tools/ and scripts/ ────────────────
+_log "=== Deploying tools/ and scripts/ ==="
+
+for _script in uom-model-rotate.sh uom-state-lib.sh; do
+    if [ -f "${UOM_DIR}/tools/${_script}" ]; then
+        $DRY_RUN || scp -F ~/.ssh/config "${UOM_DIR}/tools/${_script}" "uom-phone-rev:~/bin/" 2>/dev/null && \
+            _log "  Synced tools/${_script}"
+    fi
+done
+
+for _script in uom-qemu-watchdog.sh uom-lib.sh uom-dryrun.sh; do
+    if [ -f "${UOM_DIR}/scripts/${_script}" ]; then
+        $DRY_RUN || scp -F ~/.ssh/config "${UOM_DIR}/scripts/${_script}" "uom-phone-rev:~/bin/" 2>/dev/null && \
+            _log "  Synced scripts/${_script}"
     fi
 done
 
@@ -136,3 +153,8 @@ _log ""
 _log "Termux:Boot auto-starts: SSH, tunnel, tmux watchdog, orchestrator"
 _log ""
 _log "Run 'source ~/.bashrc' on phone to activate aliases"
+_log ""
+_log "Deployed to phone ~/bin/:"
+_log "  bin/: omni-project-start.sh, uom-tmux-watchdog.sh, uom-status.sh, uom-reverse-ssh.sh, uom-ssh-phone.sh"
+_log "  tools/: uom-model-rotate.sh, uom-state-lib.sh"
+_log "  scripts/: uom-qemu-watchdog.sh, uom-lib.sh, uom-dryrun.sh"
