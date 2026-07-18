@@ -237,7 +237,8 @@ _preflight() {
 _build_ssh_opts() {
     _opts="-N -T -o ServerAliveInterval=${UOM_SERVER_ALIVE_INTERVAL}"
     _opts="${_opts} -o ServerAliveCountMax=${UOM_SERVER_ALIVE_COUNT_MAX}"
-    _opts="${_opts} -o ExitOnForwardFailure=yes"
+    # NOTE: Do NOT use ExitOnForwardFailure=yes — OpenSSH 10.x on Alpine/Termux
+    # produces false-positive "remote port forwarding failed" errors with it.
     _opts="${_opts} -o StrictHostKeyChecking=accept-new"
     _opts="${_opts} -o ConnectTimeout=15"
     _opts="${_opts} -o BatchMode=yes"
