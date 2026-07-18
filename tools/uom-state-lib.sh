@@ -37,14 +37,14 @@ _uom_resolve_root() {
 UOM_REPO_ROOT="${OMNI_ROOT:-$(_uom_resolve_root)}"
 export OMNI_ROOT="$UOM_REPO_ROOT"
 
-# ── Derived paths ──────────────────────────────────────────────────────────
-UOM_STATE_DIR="${UOM_REPO_ROOT}/.uom-agent"
-UOM_STATE_FILE="${UOM_STATE_DIR}/state.json"
-UOM_QUEUE_FILE="${UOM_STATE_DIR}/queue.json"
-UOM_DONE_FILE="${UOM_STATE_DIR}/done.json"
-UOM_RUNTIME_DIR="${UOM_STATE_DIR}/runtime"
-UOM_LOG_DIR="${UOM_STATE_DIR}/logs"
-UOM_RECOVERY_DIR="${UOM_STATE_DIR}/recovery"
+# ── Derived paths (env overrides respected) ────────────────────────────────
+UOM_STATE_DIR="${UOM_STATE_DIR:-${UOM_REPO_ROOT}/.uom-agent}"
+UOM_STATE_FILE="${UOM_STATE_FILE:-${UOM_STATE_DIR}/state.json}"
+UOM_QUEUE_FILE="${UOM_QUEUE_FILE:-${UOM_STATE_DIR}/queue.json}"
+UOM_DONE_FILE="${UOM_DONE_FILE:-${UOM_STATE_DIR}/done.json}"
+UOM_RUNTIME_DIR="${UOM_RUNTIME_DIR:-${UOM_STATE_DIR}/runtime}"
+UOM_LOG_DIR="${UOM_LOG_DIR:-${UOM_STATE_DIR}/logs}"
+UOM_RECOVERY_DIR="${UOM_RECOVERY_DIR:-${UOM_STATE_DIR}/recovery}"
 
 # ── Helpers ────────────────────────────────────────────────────────────────
 
