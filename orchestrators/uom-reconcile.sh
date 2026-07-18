@@ -49,7 +49,7 @@ LOG_FILE="${LOG_DIR}/reconcile.log"
 RUNTIME_DIR="${UOM_DIR}/.uom-agent/runtime"
 SESSION_NAME="uom-hybrid"
 
-MODEL_POOL="opencode/deepseek-v4-flash-free opencode/big-pickle opencode/mimo-v2.5-free opencode/nemotron-3-ultra-free opencode/glm-4.7-free opencode/north-mini-code-free"
+MODEL_POOL="opencode/deepseek-v4-flash-free opencode/nemotron-3-ultra-free opencode/north-mini-code-free opencode/big-pickle"
 MODEL_CACHE_TTL=300
 TUNNEL_PORT_START=31400
 TUNNEL_PORT_END=31499

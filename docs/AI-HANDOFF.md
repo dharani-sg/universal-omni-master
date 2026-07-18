@@ -377,6 +377,43 @@ synced on next Void boot via `git pull` (this commit is pushed to `origin/main`)
 
 ---
 
+### 2026-07-18: Deep Phone Audit + Package Upgrade + QEMU Resolution
+
+**Session:** opencode (big-pickle) via laptop SSH — 10-phase systematic audit
+**Scope:** Full Termux host + Debian proot + QEMU VM audit and repair
+
+#### Key Results
+1. **Foreign PGP keys concern: UNFOUNDED** — system was already clean. No Arch/Alpine/Debian
+   keys in Termux apt trust path. `pacman` is a legitimate Termux package (Termux-pacman fork).
+2. **dpkg/apt state: CLEAN** on both Termux host and Debian proot — no broken packages, no
+   stale locks, no interrupted installs.
+3. **QEMU: FIXED** — previous "silent/no output" caused by missing `earlycon=pl011,mmio,0x09000000`
+   kernel parameter, wrong serial device configs, and insufficient timeouts.
+4. **Package upgrade: 114 packages updated** — openssh 10.3p1→10.4p1 killed sshd (manual restart
+   required), all other packages upgraded cleanly.
+5. **opencode: WORKING** on both Termux host (v1.2.13) and Debian proot (v1.18.3).
+6. **Quarantine:** 9-byte corrupt opencode pkg + 111MB old opencode tarballs (114MB total freed).
+
+#### Previous Session Failure Analysis
+- Phone watchdog failures (M30-termux-native, M30-reverse-tunnel-auto): queue.json corruption
+  (`jq: parse error`), opencode not yet installed, no working LLM pipeline on phone
+- opencode install attempts: 5 different methods tried (curl installer, zip extraction, pacman -U,
+  npm install opencode@latest [404], npm install opencode-ai [correct])
+- QEMU previous verdict "needs PTY" was incorrect — real fix was earlycon parameter
+- Tunnel port 18022 failures: old port reference, should be 31415
+
+#### New Files
+- `docs/SESSION-RESUME-2026-07-18.md` — Complete session resume with merged history
+- Phone: `~/uom-repair/scripts/phone-opencode.sh` — opencode launcher
+- Phone: `~/uom-repair/scripts/run-qemu-best.sh` — working QEMU command
+- Phone: `~/uom-repair/README-phone-native.md` — quick reference
+
+#### Bug #19 (New)
+19. QEMU aarch64 serial silent without `earlycon=pl011,mmio,0x09000000` in kernel cmdline on
+    Android/Termux host (PL011 UART requires earlycon for pre-ttyAMA0 output)
+
+---
+
 ## Recovery Prompt
 Read this file, then run:
   git status --short

@@ -1,12 +1,13 @@
 # Zen Loop Cloud Code Pipeline
 
-Reference: HEAD f34b633, tag v0.31.0-2026-07-17. Date: 2026-07-17.
+Reference: HEAD 2117f8c, tag v0.32.0-2026-07-18. Date: 2026-07-18.
+Updated: 2026-07-18 — phone-native opencode verified working (Termux v1.2.13 + Debian proot v1.18.3).
 
 ## Overview
 
 The Zen Loop is a cloud-only code generation pipeline that replaces local LLM
 inference with pure cloud models. No ollama, no sudo, no local inference binaries.
-Every request goes through `opencode --model opencode/deepseek-v4-flash-free`
+Every request goes through `opencode --model opencode/big-pickle`
 via stdin pipe.
 
 ## Architecture
@@ -50,7 +51,7 @@ from crashed processes are recycled.
 ## Generator Behavior
 
 - Polls `queue.json` for `pending` tasks every 5 seconds
-- Calls `opencode --model opencode/deepseek-v4-flash-free` via stdin pipe
+- Calls `opencode --model opencode/big-pickle` via stdin pipe
 - 3 retries with 10s backoff on failure
 - Stub generation fallback when cloud API is unreachable
 - Atomic output: writes to temp file, renames after successful generation
@@ -91,7 +92,7 @@ scripts/uom-verifier.sh path/to/file.sh
 
 ## Cloud Model Policy
 
-- Model: `opencode/deepseek-v4-flash-free` (free tier)
+- Model: `opencode/big-pickle` (free tier)
 - No API key required
 - No authentication-dependent provider
 - No local LLM (Ollama removed in M30.5)

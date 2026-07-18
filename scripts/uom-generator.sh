@@ -27,10 +27,40 @@ SETUP_META="${UOM_DIR}/.uom-agent/setup-env.json"
 POLL_INTERVAL="${POLL_INTERVAL:-5}"
 
 # ── Resolve LLM model from setup metadata or default ────────────────────
-if [ -z "${LLM_MODEL:-}" ]; then
-    if [ -f "$SETUP_META" ]; then
-        LLM_MODEL=$(jq -r '.llm_model // empty' "$SETUP_META" 2>/dev/null || true)
+MODEL_POOL="opencode/deepseek-v4-flash-free opencode/nemotron-3-ultra-free opencode/north-mini-code-free opencode/big-pickle"
+MODEL_ROTATION_SECS=1800
+MODEL_FILE="${UOM_DIR}/.uom-agent/runtime/selected_model"
+mkdir -p "$(dirname "$MODEL_FILE")"
+
+_rotate_model() {
+    _now=$(date +%s 2>/dev/null || echo 0)
+    _last_ts=0
+    if [ -f "$MODEL_FILE" ]; then
+        _last_ts=$(stat -c %Y "$MODEL_FILE" 2>/dev/null || echo 0)
     fi
+    _age=$((_now - _last_ts))
+    if [ "$_age" -lt "$MODEL_ROTATION_SECS" ] && [ -s "$MODEL_FILE" ]; then
+        cat "$MODEL_FILE"
+        return 0
+    fi
+    _count=0
+    for _m in $MODEL_POOL; do _count=$((_count + 1)); done
+    _idx=$((_now / MODEL_ROTATION_SECS % _count))
+    _i=0
+    for _m in $MODEL_POOL; do
+        if [ "$_i" -eq "$_idx" ]; then
+            printf '%s' "$_m" > "$MODEL_FILE"
+            printf '%s' "$_m"
+            return 0
+        fi
+        _i=$((_i + 1))
+    done
+    printf '%s' "opencode/deepseek-v4-flash-free" > "$MODEL_FILE"
+    printf '%s' "opencode/deepseek-v4-flash-free"
+}
+
+if [ -z "${LLM_MODEL:-}" ]; then
+    LLM_MODEL=$(_rotate_model)
 fi
 LLM_MODEL="${LLM_MODEL:-opencode/deepseek-v4-flash-free}"
 
@@ -153,27 +183,50 @@ _call_llm_cloud() {
     _max_retries=3
     _retry=0
 
-    if ! command -v opencode >/dev/null 2>&1; then
-        _log "opencode CLI not found — generating stub"
-        _generate_stub "$_prompt" "$_output"
-        return 0
+    _use_local=0
+    if command -v opencode >/dev/null 2>&1; then
+        if [ -d /system ] 2>/dev/null || [ -f /data/data/com.termux/files/usr/bin/opencode ] 2>/dev/null; then
+            _log "Android/Termux detected — skipping local opencode, using remote"
+        else
+            _use_local=1
+        fi
     fi
 
-    _log "opencode → ${_model}"
-    while [ "$_retry" -lt "$_max_retries" ]; do
-        _log "Attempt $((_retry + 1))..."
-        printf '%s\n' "$_prompt" | opencode --model "$_model" > "$_output" 2>>"$LOG_FILE"
+    if [ "$_use_local" -eq 1 ]; then
+        _log "opencode run (local) → ${_model}"
+        while [ "$_retry" -lt "$_max_retries" ]; do
+            _log "Attempt $((_retry + 1))..."
+            printf '%s\n' "$_prompt" | opencode run --model "$_model" > "$_output" 2>>"$LOG_FILE"
 
-        if [ -s "$_output" ]; then
-            # Strip markdown code fences
-            sed -i '/^```/d' "$_output" 2>/dev/null
-            _log "Generated $(wc -l < "$_output") lines"
-            return 0
-        fi
+            if [ -s "$_output" ]; then
+                sed -i '/^```/d' "$_output" 2>/dev/null
+                _log "Generated $(wc -l < "$_output") lines"
+                return 0
+            fi
 
-        _retry=$((_retry + 1))
-        [ "$_retry" -lt "$_max_retries" ] && { _log "Retry ${_retry}/${_max_retries} in 10s"; sleep 10; }
-    done
+            _retry=$((_retry + 1))
+            [ "$_retry" -lt "$_max_retries" ] && { _log "Retry ${_retry}/${_max_retries} in 10s"; sleep 10; }
+        done
+    fi
+
+    _retry=0
+    _remote_script="${UOM_DIR}/scripts/uom-llm-remote.sh"
+    if [ -f "$_remote_script" ]; then
+        _log "opencode (remote via laptop) → ${_model}"
+        while [ "$_retry" -lt "$_max_retries" ]; do
+            _log "Attempt $((_retry + 1))..."
+            printf '%s\n' "$_prompt" | sh "$_remote_script" "$_model" > "$_output" 2>>"$LOG_FILE"
+
+            if [ -s "$_output" ]; then
+                sed -i '/^```/d' "$_output" 2>/dev/null
+                _log "Generated $(wc -l < "$_output") lines (remote)"
+                return 0
+            fi
+
+            _retry=$((_retry + 1))
+            [ "$_retry" -lt "$_max_retries" ] && { _log "Retry ${_retry}/${_max_retries} in 10s"; sleep 10; }
+        done
+    fi
 
     _log "All attempts failed — stub fallback"
     _generate_stub "$_prompt" "$_output"
