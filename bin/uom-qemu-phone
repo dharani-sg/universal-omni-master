@@ -153,7 +153,7 @@ _remove_pid() {
 }
 
 _wait_for_stopped() {
-    _timeout=60
+    _timeout=30
     _count=0
     while [ "$_count" -lt "$_timeout" ]; do
         if ! is_qemu_running; then
@@ -161,6 +161,11 @@ _wait_for_stopped() {
         fi
         sleep 2
         _count=$((_count + 2))
+        # At 10s, try QEMU monitor quit as a harder fallback
+        if [ "$_count" -eq 10 ] && tmux has-session -t "$UOM_TMUX_SESSION" 2>/dev/null; then
+            _log "Guest still up after 10s. Sending QEMU monitor quit..."
+            tmux send-keys -t "$UOM_TMUX_SESSION" "quit" Enter 2>/dev/null
+        fi
     done
     _log "Force killing after ${_timeout}s timeout"
     pkill -9 -f "qemu-system-aarch64.*${VM_NAME}.qcow2" 2>/dev/null || true
@@ -259,8 +264,14 @@ cmd_stop() {
         -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
         uom@127.0.0.1 'doas poweroff 2>/dev/null || sudo poweroff 2>/dev/null || poweroff' 2>/dev/null || true
 
+    # Step 1b: QEMU monitor ACPI shutdown fallback (sends ACPI power button)
+    if is_qemu_running && tmux has-session -t "$UOM_TMUX_SESSION" 2>/dev/null; then
+        _log "Sending ACPI shutdown via QEMU monitor..."
+        tmux send-keys -t "$UOM_TMUX_SESSION" "system_powerdown" Enter 2>/dev/null
+    fi
+
     # Wait for guest to shut down
-    _log "Waiting for guest shutdown (timeout=60s)..."
+    _log "Waiting for guest shutdown (timeout=30s)..."
     _wait_for_stopped
 
     # Step 2: Kill tmux session

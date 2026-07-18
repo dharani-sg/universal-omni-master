@@ -38,12 +38,16 @@ if [ ! -f "${DISK}" ]; then
     _log_start "Run: ~/bin/uom-qemu-phone install"
     exit 1
 fi
-if ! qemu-img info "${DISK}" >/dev/null 2>&1; then
-    _log_start "ERROR: Disk image corrupted: ${DISK}"
-    exit 1
+if ! uom_qemu_running 2>/dev/null; then
+    if ! qemu-img info "${DISK}" >/dev/null 2>&1; then
+        _log_start "ERROR: Disk image corrupted: ${DISK}"
+        exit 1
+    fi
+    _qsize=$(qemu-img info "${DISK}" 2>/dev/null | grep "disk size" | awk '{print $3, $4}')
+    _log_start "Disk OK: ${DISK} (${_qsize})"
+else
+    _log_start "QEMU running — skipping disk validation (image locked)"
 fi
-_qsize=$(qemu-img info "${DISK}" 2>/dev/null | grep "disk size" | awk '{print $3, $4}')
-_log_start "Disk OK: ${DISK} (${_qsize})"
 
 # ── Start QEMU (idempotent — launcher handles already-running) ─────────
 _log_start "Calling QEMU launcher start..."

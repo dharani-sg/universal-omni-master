@@ -38,14 +38,35 @@ fi
 echo ""
 echo "--- Step 1: Clean guest shutdown ---"
 
-# Try SSH poweroff first
+_guest_powered_off=false
+
+# Try SSH poweroff (tries multiple privilege escalation methods)
 if uom_guest_ssh 'doas poweroff' 2>/dev/null; then
-    echo "Guest poweroff command sent."
+    echo "Guest poweroff command sent (doas)."
+    _guest_powered_off=true
 elif uom_guest_ssh 'sudo poweroff' 2>/dev/null; then
     echo "Guest poweroff command sent (sudo)."
-else
-    echo "Could not SSH guest for clean shutdown."
-    echo "Guest may already be down or unreachable."
+    _guest_powered_off=true
+elif uom_guest_ssh 'poweroff' 2>/dev/null; then
+    echo "Guest poweroff command sent (direct)."
+    _guest_powered_off=true
+fi
+
+# Fallback: QEMU monitor ACPI shutdown via tmux
+if [ "${_guest_powered_off}" = "false" ]; then
+    _qemu_tmux="uom-qemu-host"
+    if tmux has-session -t "${_qemu_tmux}" 2>/dev/null; then
+        echo "Sending ACPI shutdown via QEMU monitor..."
+        tmux send-keys -t "${_qemu_tmux}" "system_powerdown" Enter 2>/dev/null
+        _guest_powered_off=true
+    else
+        echo "No QEMU tmux session for monitor fallback."
+    fi
+fi
+
+if [ "${_guest_powered_off}" = "false" ]; then
+    echo "Could not gracefully shut down guest."
+    echo "Proceeding with QEMU stop..."
 fi
 
 # Wait for guest to shut down (bounded)
