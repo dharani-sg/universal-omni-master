@@ -24,7 +24,7 @@ uom_pw_probe_ssh() {
     # Fallback: try a no-op ssh connection test (BatchMode, no command)
     SSH_AUTH_TIMEOUT="$_to" ssh -o ConnectTimeout="$_to" -o BatchMode=yes \
         -o StrictHostKeyChecking=accept-new -p "$_port" \
-        "u0_a608@${_host}" true >/dev/null 2>&1 && return 0
+        "${UOM_PHONE_USER:-u0_a608}@${_host}" true >/dev/null 2>&1 && return 0
     return 1
 }
 

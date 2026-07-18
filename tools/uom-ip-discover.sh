@@ -88,7 +88,7 @@ discover_phone_ip() {
     _try_reverse_tunnel && return 0
 
     # Method 2: mDNS
-    _try_mdns_host "mi8.local" && return 0
+    _try_mdns_host "${UOM_PHONE_MDNS:-mi8.local}" && return 0
 
     # Method 3: last-known IP
     _try_last_known "${OMNI_ROOT:-.}/.uom-agent/phone.ip" && return 0
@@ -116,7 +116,7 @@ discover_laptop_ip() {
     _try_last_known "${OMNI_ROOT:-.}/.uom-agent/laptop.ip" && return 0
 
     # Method 2: mDNS
-    _try_mdns_host "hp-pavilion.local" && return 0
+    _try_mdns_host "${UOM_LAPTOP_MDNS:-hp-pavilion.local}" && return 0
 
     # Method 3: SSH config
     _try_ssh_config "uom-phone-rev" && return 0

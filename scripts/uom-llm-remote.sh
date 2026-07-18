@@ -13,12 +13,28 @@
 set -u
 
 UOM_DIR="${UOM_DIR:-$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)}"
-LAPTOP_HOST="${UOM_LAPTOP_HOST:-192.168.40.90}"
 LAPTOP_USER="${UOM_LAPTOP_USER:-alpine}"
 LAPTOP_DIR="${UOM_LAPTOP_DIR:-/home/alpine/src/universal-omni-master}"
 MODEL="${1:-opencode/deepseek-v4-flash-free}"
 SSH_TIMEOUT=10
 LLM_TIMEOUT=120
+
+# ── Dynamic laptop IP discovery ────────────────────────────────────────
+_DISCOVER_LIB="${UOM_DIR}/tools/uom-ip-discover.sh"
+if [ -f "$_DISCOVER_LIB" ]; then
+    . "$_DISCOVER_LIB" 2>/dev/null || true
+fi
+
+LAPTOP_HOST="${UOM_LAPTOP_HOST:-}"
+if [ -z "$LAPTOP_HOST" ]; then
+    if command -v discover_laptop_ip >/dev/null 2>&1; then
+        LAPTOP_HOST="$(discover_laptop_ip 2>/dev/null || echo "")"
+    fi
+    if [ -z "$LAPTOP_HOST" ] && [ -f "${UOM_DIR}/.uom-agent/laptop.ip" ]; then
+        LAPTOP_HOST="$(cat "${UOM_DIR}/.uom-agent/laptop.ip" 2>/dev/null || echo "")"
+    fi
+    LAPTOP_HOST="${LAPTOP_HOST:-127.0.0.1}"
+fi
 
 _log() {
     _ts=$(date '+%Y-%m-%dT%H:%M:%S' 2>/dev/null || date)

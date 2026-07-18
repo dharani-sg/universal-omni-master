@@ -171,7 +171,18 @@ action_detach() {
 
     # Try to disable laptop orchestrator via direct SSH
     _log "Stopping laptop orchestrator remotely..."
-    _lip="${UOM_LAPTOP_IP:-192.168.40.90}"
+    _lip="${UOM_LAPTOP_IP:-}"
+    if [ -z "$_lip" ]; then
+        # Dynamic discovery: check hint file first
+        if [ -f "${UOM_DIR}/.uom-agent/laptop.ip" ]; then
+            _lip="$(cat "${UOM_DIR}/.uom-agent/laptop.ip" 2>/dev/null || echo "")"
+        fi
+        # Fallback: try uom-ssh-phone.sh discovery
+        if [ -z "$_lip" ] && [ -f "${UOM_DIR}/bin/uom-ssh-phone.sh" ]; then
+            _lip="$(UOM_SSH_PHONE_DISCOVER_ONLY=1 sh "${UOM_DIR}/bin/uom-ssh-phone.sh" --discover-ip 2>/dev/null || echo "")"
+        fi
+        _lip="${_lip:-127.0.0.1}"
+    fi
     ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new \
         "${UOM_LAPTOP_USER:-alpine}@${_lip}" \
         "pkill -f uom-orch-laptop 2>/dev/null; echo 'laptop orch stopped'" \

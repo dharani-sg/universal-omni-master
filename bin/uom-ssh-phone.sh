@@ -29,9 +29,9 @@ UOM_SSH_OPTS="-o ConnectTimeout=10 \
 -o ServerAliveInterval=30 \
 -o ServerAliveCountMax=3 \
 -i ${HOME}/.ssh/id_ed25519_phone \
--p 8022"
+-p ${UOM_PHONE_SSH_PORT:-8022}"
 
-UOM_PHONE_USER="u0_a608"
+UOM_PHONE_USER="${UOM_PHONE_USER:-u0_a608}"
 
 # ── Identity constants (for verification) ────────────────────────────────
 UOM_PHONE_HOST_KEY_HASH="SHA256:dBPM+vGSkHXdv91rN0ZLubvP/Oqul+N/malqz5Ph/JY"
@@ -59,7 +59,7 @@ _discover_phone_ip() {
             if ssh -o ConnectTimeout=3 -o BatchMode=yes \
                 -i "${HOME}/.ssh/id_ed25519_phone" \
                 -o UserKnownHostsFile="${UOM_PHONE_KNOWN_HOSTS}" \
-                -p 8022 "${UOM_PHONE_USER}@${_cached}" \
+                -p ${UOM_PHONE_SSH_PORT:-8022} "${UOM_PHONE_USER}@${_cached}" \
                 'echo UOM_PROBE_OK' 2>/dev/null | grep -q "UOM_PROBE_OK"; then
                 echo "$_cached"
                 return 0
@@ -69,7 +69,7 @@ _discover_phone_ip() {
     fi
 
     # Try reverse tunnel (phone→laptop reverse SSH on port 31415)
-    if ssh -o ConnectTimeout=2 -o BatchMode=yes -p 31415 127.0.0.1 \
+    if ssh -o ConnectTimeout=2 -o BatchMode=yes -p ${UOM_TUNNEL_PORT:-31415} 127.0.0.1 \
         'echo UOM_TUNNEL_OK' 2>/dev/null | grep -q "UOM_TUNNEL_OK"; then
         # Tunnel is up — but we want the direct phone IP too for cache
         # Use tunnel for now
