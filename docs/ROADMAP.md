@@ -1,18 +1,18 @@
-# UOM Roadmap (v0.30.0 — 2026-07-17)
+# UOM Roadmap (v0.33.0-rc1 — 2026-07-18)
 
 ## Current Status
 
-- **HEAD:** `4be3aec` (~v0.30.0 — M30-termux-native)
-- **Active agent:** laptop (current session)
-- **Phone:** watchdog running, tunnel UP — dual-agent alive
-- **Current task:** M30 — omni-project-start menu completed. Next: M31 network stress test
-- **Takeover count:** 1 (phone solo mode, resolved)
-- **Kernel:** 7.2.0-rc3_1
-- **Boot:** GRUB TELA theme, EFI stubs, initramfs all intact
-- **Dynamic IP discovery:** Working (6-method cascade)
-- **Reverse tunnel (31415→phone:8022):** UP and stable (autossh, no ExitOnForwardFailure)
-- **Disk:** sda4=85% (Alpine), sda3 (Void Btrfs) synced via git reset
-- **SATA CRC:** 5361 (degraded cable — avoid large writes to primary disk)
+- **HEAD:** `b4b4ed2` (v0.33.0-rc1 — Phase 12 complete, R1-R6 overhaul)
+- **Tag:** `uom-stable-phase12-20260718`
+- **Active agent:** laptop
+- **Branch:** `refactor/structure-audit-2026-07-17`
+- **Current task:** PHASE13-ssh-remote-llm (pending, next to execute)
+- **Pipeline queue:** PHASE13-PHASE17 (all pending)
+- **Phone:** Xiaomi Mi 8, Termux, aarch64 Android
+- **Laptop:** Alpine Linux 3.21, aarch64
+- **Dynamic IP discovery:** Working (5-method cascade)
+- **Reverse tunnel (31415→phone:8022):** UP and stable
+- **Model rotation:** 4-model free pool (deepseek-v4-flash-free, nemotron-3-ultra-free, north-mini-code-free, big-pickle)
 
 ---
 
@@ -70,15 +70,22 @@
 
 | Milestone | Tag | Status |
 |-----------|-----|--------|
-| M1-M6 | v0.1.0-v0.6.0 | ✅ Sealed |
-| M7-M12 | v0.7.2-v0.12.0 | ✅ Sealed |
-| M13-M15 | v0.13.0-v0.15.0 | ✅ Sealed |
-| M16-M20 | v0.16.0-v0.20.0 | ✅ Sealed |
-| M21-M26 | v0.21.0-v0.26.0 | ✅ Sealed |
-| M27 | v0.27.0-v0.27.4 | ✅ Sealed |
-| M28 (Dual-Agent Phase 1) | v0.28.0 | ✅ Sealed |
-| **M29 (Bootstrap+Solo+Security)** | **v0.29.0** | **✅ Sealed** |
-| **M30 (Termux-Native Tools)** | **v0.30.0** | **✅ Sealed** |
-| **M31 (Network Switching Stress Test)** | **v0.31.0** | **⏳ Next** |
+| M1-M6 | v0.1.0-v0.6.0 | Sealed |
+| M7-M12 | v0.7.2-v0.12.0 | Sealed |
+| M13-M15 | v0.13.0-v0.15.0 | Sealed |
+| M16-M20 | v0.16.0-v0.20.0 | Sealed |
+| M21-M26 | v0.21.0-v0.26.0 | Sealed |
+| M27 | v0.27.0-v0.27.4 | Sealed |
+| M28 (Dual-Agent Phase 1) | v0.28.0 | Sealed |
+| M29 (Bootstrap+Solo+Security) | v0.29.0 | Sealed |
+| M30 (Termux-Native Tools) | v0.30.0 | Sealed |
+| M31 (Dynamic Model+Port) | v0.32.0 | Sealed |
+| Phase 9 (Network Auto-Switch) | uom-phone-qemu-phase9-20260718 | Sealed |
+| Phase 10 (Model Rotation) | — | Sealed |
+| Phase 11 (Integration Verify) | — | Sealed |
+| Phase 12 (Documentation) | uom-stable-phase12-20260718 | Sealed |
+| PHASE13-PHASE17 (Pipeline) | — | Pending |
+| M33-M43 (Future Horizon) | — | Unscheduled |
+| M44-M51 (Commercialization) | — | Unscheduled |
 
-<!-- last-sync: 2026-07-17T18:00:00Z -->
+<!-- last-sync: 2026-07-18T23:45:00+05:30 -->
