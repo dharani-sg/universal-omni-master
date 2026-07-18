@@ -242,16 +242,61 @@ uom_ensure_qemu() {
     return 1
 }
 
-# ── Public: uom_network_discover (Step 3 stub) ─────────────────────────
+# ── Public: uom_network_discover ────────────────────────────────────────
 # Detect current phone IP. Returns IP on stdout, 1 on failure.
-# TODO: Implement in Step 3 — dynamic network discovery
+# If running on phone (Android), returns nothing (local mode).
+# Sources uom-ip-discover.sh for full multi-method discovery.
 uom_network_discover() {
-    # Stub: return last known IP or fail
+    # If on phone, no discovery needed
+    if [ "$(uname -o 2>/dev/null)" = "Android" ]; then
+        return 1
+    fi
+
+    # Try cached IP first (fast path)
     _last_ip_file="${HOME}/.config/uom/last-phone-ip.txt"
     if [ -f "$_last_ip_file" ]; then
-        cat "$_last_ip_file" 2>/dev/null
-        return 0
+        _cached=$(cat "$_last_ip_file" 2>/dev/null | tr -d '[:space:]')
+        if [ -n "$_cached" ]; then
+            if ssh -o ConnectTimeout=3 -o BatchMode=yes \
+                -p "${UOM_PHONE_SSH_PORT:-8022}" "${UOM_PHONE_USER:-u0_a608}@${_cached}" \
+                'echo OK' 2>/dev/null | grep -q OK; then
+                echo "$_cached"
+                return 0
+            fi
+        fi
     fi
+
+    # Full discovery via library
+    _lib="${HOME}/src/universal-omni-master/tools/uom-ip-discover.sh"
+    if [ -f "$_lib" ]; then
+        . "$_lib" 2>/dev/null
+        _ip=$(discover_phone_ip 2>/dev/null) && {
+            mkdir -p "$(dirname "$_last_ip_file")" 2>/dev/null || true
+            echo "$_ip" > "$_last_ip_file"
+            echo "$_ip"
+            return 0
+        }
+    fi
+
+    # Last resort: subnet scan for port 8022
+    _my_ip=$(ip route get 8.8.8.8 2>/dev/null | awk '/src/{print $7; exit}')
+    if [ -n "$_my_ip" ]; then
+        _subnet=$(echo "$_my_ip" | sed 's/\.[0-9]*$//')
+        for _i in $(seq 1 254); do
+            _test="${_subnet}.${_i}"
+            [ "$_test" = "$_my_ip" ] && continue
+            if ssh -o ConnectTimeout=1 -o BatchMode=yes \
+                -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+                -p "${UOM_PHONE_SSH_PORT:-8022}" "${UOM_PHONE_USER:-u0_a608}@${_test}" \
+                'echo OK' 2>/dev/null | grep -q OK; then
+                mkdir -p "$(dirname "$_last_ip_file")" 2>/dev/null || true
+                echo "$_test" > "$_last_ip_file"
+                echo "$_test"
+                return 0
+            fi
+        done 2>/dev/null
+    fi
+
     return 1
 }
 
