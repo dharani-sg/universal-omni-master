@@ -1,36 +1,36 @@
 [
   {
-    "id": "M33-ssh-remote-llm",
+    "id": "PHASE13-ssh-remote-llm",
     "desc": "Verify SSH-based remote LLM pipeline from phone to laptop opencode",
-    "context_file": ".uom-agent/context/M33-ssh-remote-llm.md",
+    "context_file": ".uom-agent/context/PHASE13-ssh-remote-llm.md",
     "priority": 1,
     "status": "pending"
   },
   {
-    "id": "M34-phone-generator-loop",
+    "id": "PHASE14-phone-generator-loop",
     "desc": "Verify phone generator agent can pick up pending tasks and call remote LLM",
-    "context_file": ".uom-agent/context/M34-phone-generator-loop.md",
+    "context_file": ".uom-agent/context/PHASE14-phone-generator-loop.md",
     "priority": 2,
     "status": "pending"
   },
   {
-    "id": "M35-bidirectional-sync",
+    "id": "PHASE15-bidirectional-sync",
     "desc": "Verify bidirectional sync of generated/verified state between phone and laptop",
-    "context_file": ".uom-agent/context/M35-bidirectional-sync.md",
+    "context_file": ".uom-agent/context/PHASE15-bidirectional-sync.md",
     "priority": 3,
     "status": "pending"
   },
   {
-    "id": "M36-verifier-feedback-loop",
+    "id": "PHASE16-verifier-feedback-loop",
     "desc": "Verify verifier on laptop can process phone-generated code and write feedback",
-    "context_file": ".uom-agent/context/M36-verifier-feedback-loop.md",
+    "context_file": ".uom-agent/context/PHASE16-verifier-feedback-loop.md",
     "priority": 4,
     "status": "pending"
   },
   {
-    "id": "M37-zen-loop-e2e",
+    "id": "PHASE17-zen-loop-e2e",
     "desc": "End-to-end zen loop test: phone generates, laptop verifies, phone receives feedback and regenerates",
-    "context_file": ".uom-agent/context/M37-zen-loop-e2e.md",
+    "context_file": ".uom-agent/context/PHASE17-zen-loop-e2e.md",
     "priority": 5,
     "status": "pending"
   }

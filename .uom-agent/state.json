@@ -3,8 +3,8 @@
   "active_agent": "laptop",
   "laptop_heartbeat": "2026-07-17T17:38:46+05:30",
   "phone_heartbeat": "2026-07-17T15:57:44+05:30",
-  "current_task_id": "M30-termux-native",
-  "task_status": "pending",
+  "current_task_id": "",
+  "task_status": "idle",
   "last_commit": "",
   "session_id": "",
   "takeover_count": "0",
@@ -16,6 +16,6 @@
   "lease_expires_epoch": 0,
   "current_task_desc": "",
   "checkpoint_ref": "",
-  "last_transition": "",
-  "last_transition_at": ""
+  "last_transition": "M30-termux-native->completed",
+  "last_transition_at": "2026-07-18T23:30:00+05:30"
 }
