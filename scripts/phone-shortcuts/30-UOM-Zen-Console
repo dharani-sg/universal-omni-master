@@ -1,51 +1,49 @@
 #!/bin/sh
-# 30-UOM-Zen-Console — Open Zen Loop console in guest Alpine
-# Widget shortcut: tap to SSH into guest and attach to zen tmux session
-# POSIX sh. Idempotent. Never creates a duplicate orchestrator.
-# Requires: ~/bin/uom-qemu-phone, guest SSH on port 2222.
+# NAME: 30-UOM-Zen-Console
+# PURPOSE: Open Zen Loop console in guest Alpine via tmux
+# VERSION: 2.1.0
+# DEPENDS: uom-lib.sh, uom-qemu-phone, ssh, tmux
+# SAFE: modifies-state (starts QEMU if needed, creates tmux session)
+# TESTED: PASS 2026-07-18
+#
+# Widget shortcut: SSH into guest and attach to zen tmux session.
 
 set -u
+. "${HOME}/bin/uom-widget-lib.sh"
 
-QEMU_LAUNCHER="${HOME}/bin/uom-qemu-phone"
-GUEST_PORT="2222"
-GUEST_USER="uom"
-GUEST_SSH_OPTS="-p ${GUEST_PORT} -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null -o BatchMode=yes"
-GUEST_SSH="ssh ${GUEST_SSH_OPTS} ${GUEST_USER}@127.0.0.1"
-GUEST_SSH_TT="ssh -tt ${GUEST_SSH_OPTS} ${GUEST_USER}@127.0.0.1"
-ZEN_TMUX_SESSION="uom-zen-phone"
-BOOT_TIMEOUT=120
+ZEN_SESSION="uom-zen-phone"
 
-_ts() { date +"%Y-%m-%dT%H:%M:%S" 2>/dev/null || echo "unknown"; }
-_log() { printf '[%s] [zen-console] %s\n' "$(_ts)" "$*" >&2; }
-
-# ── Ensure QEMU is running ─────────────────────────────────────────────
-if ! "${QEMU_LAUNCHER}" status 2>/dev/null | grep -q "RUNNING"; then
-    _log "QEMU not running. Starting..."
-    "${QEMU_LAUNCHER}" start || {
-        _log "ERROR: Failed to start QEMU"
-        exit 1
-    }
+# Ensure QEMU is running
+if ! uom_ensure_qemu; then
+    echo "[zen-console] ERROR: QEMU not available"
+    exit 1
 fi
 
-# ── Wait for guest SSH (bounded) ───────────────────────────────────────
-_log "Waiting for guest SSH (timeout=${BOOT_TIMEOUT}s)..."
+# Wait for SSH (bounded)
+echo "[zen-console] Waiting for guest SSH..."
 _count=0
-while [ "${_count}" -lt "${BOOT_TIMEOUT}" ]; do
-    if ${GUEST_SSH} 'echo OK' 2>/dev/null | grep -q "OK"; then
-        _log "Guest SSH ready after ${_count}s"
+while [ "${_count}" -lt 60 ]; do
+    if uom_guest_ssh 'echo OK' 2>/dev/null | grep -q "OK"; then
         break
     fi
     sleep 3
     _count=$((_count + 3))
 done
-if [ "${_count}" -ge "${BOOT_TIMEOUT}" ]; then
-    _log "ERROR: Guest SSH timeout after ${BOOT_TIMEOUT}s"
-    _log "Check QEMU console: ${QEMU_LAUNCHER} console"
+if [ "${_count}" -ge 60 ]; then
+    echo "[zen-console] ERROR: Guest SSH timeout"
     exit 1
 fi
 
-# ── Attach to zen session in guest (idempotent) ────────────────────────
-# Does NOT start orchestrator — that is the orchestrator's job.
-# If orchestrator is not running, the session will be empty (user can start manually).
-_log "Attaching to zen session in guest..."
-exec ${GUEST_SSH_TT} "tmux new-session -A -s ${ZEN_TMUX_SESSION}"
+# Check if zen session exists in guest
+if uom_guest_ssh "tmux has-session -t ${ZEN_SESSION} 2>/dev/null"; then
+    echo "[zen-console] Attaching to existing zen session..."
+else
+    echo "[zen-console] Zen session not found. Creating..."
+    # Create tmux session in background in the guest
+    uom_guest_ssh "tmux new-session -d -s ${ZEN_SESSION} -n status 'echo Zen Loop session; cd ~/src/universal-omni-master && exec sh'" 2>/dev/null || true
+    sleep 2
+fi
+
+# Interactive SSH into guest, attach to zen tmux
+exec ssh -tt ${UOM_SSH_OPTS} ${UOM_GUEST_USER}@127.0.0.1 \
+    "tmux attach -t ${ZEN_SESSION} 2>/dev/null || tmux new-session -s ${ZEN_SESSION}"

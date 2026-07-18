@@ -1,5 +1,11 @@
 #!/bin/sh
-# uom-phone-bootstrap.sh — One-shot QEMU bootstrap for Android 13+
+# NAME: uom-phone-bootstrap
+# PURPOSE: One-shot QEMU bootstrap, doctor, and resume for Android/Termux
+# VERSION: 2.0.0
+# DEPENDS: uom-lib.sh, qemu-system-aarch64, ssh, tmux
+# SAFE: modifies-state (creates dirs, copies firmware, installs packages)
+# TESTED: PASS 2026-07-18
+#
 # Usage: uom-phone-bootstrap.sh {doctor|plan|install|resume|verify|status}
 # POSIX sh. Idempotent. No root. No auto-APK. No eval.
 # Tested on: Xiaomi Mi 8, crDroid Android 15, Termux Google Play.
@@ -21,6 +27,13 @@ _ts() { date +"%Y-%m-%dT%H:%M:%S" 2>/dev/null || echo "unknown"; }
 _log() { printf '[%s] [bootstrap] %s\n' "$(_ts)" "$*"; }
 _ok() { printf '[%s] [bootstrap] OK: %s\n' "$(_ts)" "$*"; }
 _fail() { printf '[%s] [bootstrap] FAIL: %s\n' "$(_ts)" "$*" >&2; }
+
+# Source consolidated library if available
+_UOM_LIB="${HOME}/bin/uom-lib.sh"
+if [ -f "$_UOM_LIB" ]; then
+    . "$_UOM_LIB"
+    UOM_LOG_TAG="bootstrap"
+fi
 
 # ── Doctor: check prerequisites ─────────────────────────────────────────
 cmd_doctor() {
@@ -45,12 +58,13 @@ cmd_doctor() {
         _failures=$((_failures + 1))
     fi
 
-    # Disk space >= 10 GiB
-    _avail=$(df -BG /data/data/com.termux/files/home 2>/dev/null | awk 'NR==2{print $4}' | tr -d 'G' || echo "0")
-    if [ "$_avail" -ge 10 ] 2>/dev/null; then
-        _ok "Storage: ${_avail}G available"
+    # Disk space >= 10 GiB (df -B not available on all Termux builds)
+    _avail_kb=$(df /data/data/com.termux/files/home 2>/dev/null | awk 'NR==2{print $4}' || echo "0")
+    _avail_gb=$((_avail_kb / 1048576))
+    if [ "$_avail_gb" -ge 10 ] 2>/dev/null; then
+        _ok "Storage: ${_avail_gb}G available"
     else
-        _fail "Storage: ${_avail}G (< 10G required)"
+        _fail "Storage: ${_avail_gb}G (< 10G required)"
         _failures=$((_failures + 1))
     fi
 
@@ -249,7 +263,13 @@ cmd_resume() {
         _log "tmux: no session"
     fi
 
-    if ssh -p 2222 -o ConnectTimeout=3 -o BatchMode=yes \
+    if command -v uom_guest_ssh_test >/dev/null 2>&1; then
+        if uom_guest_ssh_test 1 5; then
+            _ok "Guest SSH: reachable"
+        else
+            _log "Guest SSH: not reachable"
+        fi
+    elif ssh -p 2222 -o ConnectTimeout=3 -o BatchMode=yes \
         -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
         uom@127.0.0.1 'echo OK' 2>/dev/null | grep -q OK; then
         _ok "Guest SSH: reachable"
@@ -265,10 +285,13 @@ cmd_resume() {
 cmd_verify() {
     _log "=== Verify ==="
 
-    # Disk integrity
+    # Disk integrity (skip if QEMU holds the lock)
     if [ -f "$UOM_DISK" ]; then
-        if qemu-img info "$UOM_DISK" >/dev/null 2>&1; then
+        _info=$(qemu-img info --force-share "$UOM_DISK" 2>&1 || true)
+        if echo "$_info" | grep -q "virtual size"; then
             _ok "Disk: valid"
+        elif echo "$_info" | grep -q "lock"; then
+            _ok "Disk: locked by QEMU (running)"
         else
             _fail "Disk: corrupted"
         fi
@@ -277,14 +300,26 @@ cmd_verify() {
     fi
 
     # QEMU process
-    if ps -A 2>/dev/null | grep -q '[q]emu-system-aarch64'; then
+    if command -v uom_qemu_running >/dev/null 2>&1; then
+        if uom_qemu_running; then
+            _ok "QEMU: running (pid=$UOM_QEMU_PID)"
+        else
+            _log "QEMU: not running"
+        fi
+    elif ps -A 2>/dev/null | grep -q '[q]emu-system-aarch64'; then
         _ok "QEMU: running"
     else
         _log "QEMU: not running"
     fi
 
     # Guest SSH
-    if ssh -p 2222 -o ConnectTimeout=5 -o BatchMode=yes \
+    if command -v uom_guest_ssh_test >/dev/null 2>&1; then
+        if uom_guest_ssh_test 1 5; then
+            _ok "Guest SSH: reachable"
+        else
+            _fail "Guest SSH: unreachable"
+        fi
+    elif ssh -p 2222 -o ConnectTimeout=5 -o BatchMode=yes \
         -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
         uom@127.0.0.1 'echo OK' 2>/dev/null | grep -q OK; then
         _ok "Guest SSH: reachable"
@@ -297,6 +332,20 @@ cmd_verify() {
         _ok "Launcher: executable"
     else
         _fail "Launcher: not found or not executable"
+    fi
+
+    # Watchdog
+    if [ -x "${HOME}/bin/uom-qemu-watchdog.sh" ]; then
+        _ok "Watchdog: present"
+    else
+        _fail "Watchdog: missing"
+    fi
+
+    # Consolidated lib
+    if [ -x "${HOME}/bin/uom-lib.sh" ]; then
+        _ok "Shared lib: present"
+    else
+        _fail "Shared lib: missing"
     fi
 }
 

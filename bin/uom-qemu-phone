@@ -1,0 +1,423 @@
+#!/bin/sh
+# uom-qemu-phone — Rootless QEMU launcher for UOM phone-only Zen Loop
+# Runs as the ordinary Termux UID. No root required.
+# POSIX sh compatible. No bashisms. No eval.
+#
+# v2.1: 3-tier detection, PID adoption, self-match-safe pgrep, idempotent start
+
+set -u
+
+# ── Configuration ───────────────────────────────────────────────────────
+UOM_VM_DIR="${HOME}/uom-vm"
+UOM_IMAGES_DIR="${UOM_VM_DIR}/images"
+UOM_LOG_DIR="${UOM_VM_DIR}/logs"
+UOM_PID_FILE="${UOM_VM_DIR}/uom-qemu.pid"
+UOM_LOCK_FILE="${UOM_VM_DIR}/uom-qemu.lock"
+UOM_TMUX_SESSION="uom-qemu-host"
+UOM_TMUX_CONSOLE_WINDOW="console"
+
+VM_NAME="uom-phone"
+DISK="${UOM_IMAGES_DIR}/${VM_NAME}.qcow2"
+FIRMWARE_CODE="${UOM_VM_DIR}/edk2-aarch64-code.fd"
+FIRMWARE_VARS="${UOM_VM_DIR}/edk2-aarch64-vars.fd"
+
+VM_RAM="2048"
+VM_SMP="2"
+VM_SSH_FWD="2222"
+VM_CONSOLE_LOG="${UOM_LOG_DIR}/${VM_NAME}-console.log"
+VM_QEMU_LOG="${UOM_LOG_DIR}/${VM_NAME}-qemu.log"
+
+QEMU_BIN="qemu-system-aarch64"
+
+# ── Logging ─────────────────────────────────────────────────────────────
+_log() {
+    _ts=$(date +"%Y-%m-%dT%H:%M:%S" 2>/dev/null || echo "unknown")
+    printf '[%s] [uom-qemu-phone] %s\n' "$_ts" "$*" >&2
+}
+
+_logf() {
+    _ts=$(date +"%Y-%m-%dT%H:%M:%S" 2>/dev/null || echo "unknown")
+    printf '[%s] [uom-qemu-phone] %s\n' "$_ts" "$*" >> "${UOM_LOG_DIR}/${VM_NAME}-launcher.log" 2>/dev/null || true
+}
+
+# ── Helpers ─────────────────────────────────────────────────────────────
+_ensure_dirs() {
+    mkdir -p "$UOM_IMAGES_DIR" "$UOM_LOG_DIR" "$UOM_VM_DIR/shared" 2>/dev/null || true
+}
+
+# ── Find the actual QEMU PID (self-match-safe) ─────────────────────────
+# Uses ps -ef + awk (not pgrep, which is broken in env -i on Android/Termux).
+# Matches only the actual qemu-system-aarch64 process (not tmux/bash wrappers).
+# In ps -ef, field 8 is the command name; wrappers have "bash" or "tmux".
+_find_qemu_pid() {
+    _pid=$(ps -ef 2>/dev/null \
+        | awk '$8 == "qemu-system-aarch64" && $0 ~ /uom-phone.qcow2/ && !/awk|grep/ { print $2; exit }')
+    if [ -n "$_pid" ] && [ "$_pid" != "$$" ] && [ "$_pid" != "$PPID" ]; then
+        echo "$_pid"
+        return 0
+    fi
+    return 1
+}
+
+_ssh_guest_probe() {
+    ssh -p "$VM_SSH_FWD" -o ConnectTimeout=3 -o BatchMode=yes \
+        -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+        uom@127.0.0.1 'echo UOM_PROBE_OK' 2>/dev/null | grep -q "UOM_PROBE_OK"
+}
+
+# ── 3-tier QEMU state detection ────────────────────────────────────────
+# Returns: 0=running, 1=stopped
+# Sets globals: _qemu_pid, _qemu_tier, _qemu_adopted
+
+_qemu_pid=""
+_qemu_tier=""
+_qemu_adopted="no"
+
+is_qemu_running() {
+    _qemu_pid=""
+    _qemu_tier=""
+    _qemu_adopted="no"
+
+    # Tier A: PID file — process alive and has our qcow2 in cmdline
+    # NOTE: On Android, /proc/PID/comm shows "linker64", so we check cmdline directly.
+    if [ -f "$UOM_PID_FILE" ]; then
+        _fp_pid=$(cat "$UOM_PID_FILE" 2>/dev/null || echo "")
+        if [ -n "$_fp_pid" ] && [ "$_fp_pid" != "$$" ]; then
+            if kill -0 "$_fp_pid" 2>/dev/null; then
+                _cmdline=$(tr '\0' ' ' < /proc/"$_fp_pid"/cmdline 2>/dev/null || true)
+                case "$_cmdline" in
+                    *qemu-system*"${VM_NAME}.qcow2"*)
+                        _qemu_pid="$_fp_pid"
+                        _qemu_tier="pid-file"
+                        return 0
+                        ;;
+                esac
+            fi
+            _log "Tier A: PID file $_fp_pid stale. Cleaning."
+            rm -f "$UOM_PID_FILE" "$UOM_LOCK_FILE" 2>/dev/null || true
+        else
+            rm -f "$UOM_PID_FILE" "$UOM_LOCK_FILE" 2>/dev/null || true
+        fi
+    fi
+
+    # Tier B: Find actual QEMU process via /proc scan (self-match-safe)
+    _found_pid=$(_find_qemu_pid 2>/dev/null || true)
+    if [ -n "$_found_pid" ]; then
+        _qemu_pid="$_found_pid"
+        _qemu_tier="pgrep"
+        _qemu_adopted="yes"
+        echo "$_found_pid" > "$UOM_PID_FILE" 2>/dev/null || true
+        _log "Tier B: adopted running QEMU pid=$_found_pid"
+        _logf "ADOPT pid=$_found_pid"
+        return 0
+    fi
+
+    # Tier C: SSH probe (process not found but port may be live)
+    if _ssh_guest_probe; then
+        _qemu_tier="ssh-probe"
+        _qemu_adopted="no"
+        _log "Tier C: SSH probe OK but no process found"
+        return 0
+    fi
+
+    # Tier D: stopped
+    _qemu_tier="none"
+    return 1
+}
+
+# ── Stale lock recovery ────────────────────────────────────────────────
+_acquire_lock() {
+    if [ -f "$UOM_LOCK_FILE" ]; then
+        _lock_pid=$(cat "$UOM_LOCK_FILE" 2>/dev/null || echo "")
+        if [ -n "$_lock_pid" ] && [ "$_lock_pid" != "$$" ] && kill -0 "$_lock_pid" 2>/dev/null; then
+            _log "Lock held by pid=$_lock_pid. Waiting..."
+            return 1
+        fi
+        _log "Stale lock. Removing."
+        rm -f "$UOM_LOCK_FILE" 2>/dev/null || true
+    fi
+    echo "$$" > "$UOM_LOCK_FILE" 2>/dev/null || true
+    return 0
+}
+
+_release_lock() {
+    rm -f "$UOM_LOCK_FILE" 2>/dev/null || true
+}
+
+_write_pid() {
+    echo "$$" > "$UOM_PID_FILE" 2>/dev/null || true
+}
+
+_remove_pid() {
+    rm -f "$UOM_PID_FILE" "$UOM_LOCK_FILE" 2>/dev/null || true
+}
+
+_wait_for_stopped() {
+    _timeout=60
+    _count=0
+    while [ "$_count" -lt "$_timeout" ]; do
+        if ! is_qemu_running; then
+            return 0
+        fi
+        sleep 2
+        _count=$((_count + 2))
+    done
+    _log "Force killing after ${_timeout}s timeout"
+    pkill -9 -f "qemu-system-aarch64.*${VM_NAME}.qcow2" 2>/dev/null || true
+    sleep 2
+    _remove_pid
+    return 0
+}
+
+# ── Commands ────────────────────────────────────────────────────────────
+cmd_start() {
+    _ensure_dirs
+
+    # Idempotent: if already running, report and exit 0
+    if is_qemu_running; then
+        _msg="already running (pid=$_qemu_pid, tier=$_qemu_tier"
+        if [ "$_qemu_adopted" = "yes" ]; then
+            _msg="${_msg}, adopted"
+        fi
+        _msg="${_msg})"
+        _log "$_msg"
+        echo "$_msg"
+        return 0
+    fi
+
+    if [ ! -f "$DISK" ]; then
+        _log "No disk. Run '$0 install' first."
+        return 1
+    fi
+
+    # Ensure port 2222 is free
+    if _ssh_guest_probe; then
+        _log "Port 2222 responds but no QEMU process found. Foreign process?"
+        _log "Cannot start: port conflict."
+        return 1
+    fi
+
+    if ! _acquire_lock; then
+        _log "Another start is in progress."
+        return 1
+    fi
+
+    _log "=== START: Booting from disk ==="
+    _logf "START start"
+
+    # Prepare EFI vars
+    _vars_work="${UOM_VM_DIR}/${VM_NAME}-vars.fd"
+    rm -f "$_vars_work" 2>/dev/null || true
+    cp "$FIRMWARE_VARS" "$_vars_work"
+
+    # Launch QEMU in tmux
+    tmux new-session -d -s "$UOM_TMUX_SESSION" -n "$UOM_TMUX_CONSOLE_WINDOW" \
+        "cd '$UOM_VM_DIR' && \
+         $QEMU_BIN -M virt -cpu cortex-a72 -m $VM_RAM -smp $VM_SMP \
+         -L ${HOME}/../usr/share/qemu \
+         -drive file=${FIRMWARE_CODE},if=pflash,format=raw,readonly=on \
+         -drive file=${_vars_work},if=pflash,format=raw \
+         -drive file=${DISK},if=virtio,format=qcow2 \
+         -nographic \
+         -netdev user,id=net0,hostfwd=tcp:127.0.0.1:${VM_SSH_FWD}-:22 \
+         -device virtio-net-pci,netdev=net0 \
+         -serial file:${VM_CONSOLE_LOG} \
+         2>${VM_QEMU_LOG}; \
+         echo 'QEMU exited' >> '${UOM_LOG_DIR}/${VM_NAME}-launcher.log'"
+
+    # Wait for process to appear, then write PID
+    sleep 3
+    _new_pid=$(_find_qemu_pid 2>/dev/null || true)
+    if [ -n "$_new_pid" ]; then
+        echo "$_new_pid" > "$UOM_PID_FILE" 2>/dev/null || true
+        _log "QEMU started (pid=$_new_pid) in tmux: ${UOM_TMUX_SESSION}"
+    else
+        _log "QEMU started but PID not yet visible (TCG slow spawn)"
+        _tmux_pid=$(tmux list-panes -t "${UOM_TMUX_SESSION}" -F '#{pane_pid}' 2>/dev/null | head -1 || echo "")
+        if [ -n "$_tmux_pid" ]; then
+            echo "$_tmux_pid" > "$UOM_PID_FILE" 2>/dev/null || true
+            _log "Using tmux pane PID as fallback: $_tmux_pid"
+        fi
+    fi
+
+    _release_lock
+    _logf "START done"
+}
+
+cmd_stop() {
+    if ! is_qemu_running; then
+        _log "VM not running. Nothing to stop."
+        echo "VM not running."
+        return 0
+    fi
+
+    _log "=== STOP: Shutting down (pid=$_qemu_pid, tier=$_qemu_tier) ==="
+    _logf "STOP start (pid=$_qemu_pid, tier=$_qemu_tier)"
+
+    # Step 1: Clean guest shutdown via SSH
+    ssh -p "$VM_SSH_FWD" -o ConnectTimeout=5 -o BatchMode=yes \
+        -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+        uom@127.0.0.1 'doas poweroff 2>/dev/null || sudo poweroff 2>/dev/null || poweroff' 2>/dev/null || true
+
+    # Wait for guest to shut down
+    _log "Waiting for guest shutdown (timeout=60s)..."
+    _wait_for_stopped
+
+    # Step 2: Kill tmux session
+    tmux kill-session -t "$UOM_TMUX_SESSION" 2>/dev/null || true
+
+    # Step 3: Cleanup
+    _remove_pid
+    _log "VM stopped."
+    _logf "STOP done"
+}
+
+cmd_status() {
+    echo "=== UOM QEMU Phone Status ==="
+
+    if is_qemu_running; then
+        echo "VM:     RUNNING (pid=$_qemu_pid, tier=$_qemu_tier)"
+        if [ "$_qemu_adopted" = "yes" ]; then
+            echo "Adopted: YES (was untracked, now tracked)"
+        fi
+        if [ -n "$_qemu_pid" ]; then
+            ps -p "$_qemu_pid" 2>/dev/null | head -5 || true
+        fi
+    else
+        echo "VM:     STOPPED"
+    fi
+
+    echo ""
+    echo "Disk:   ${DISK}"
+    if [ -f "$DISK" ]; then
+        qemu-img info "$DISK" 2>/dev/null | grep -E "virtual|disk size" || echo "  (locked by QEMU or unavailable)"
+    else
+        echo "  (not created)"
+    fi
+    echo ""
+    echo "tmux:   ${UOM_TMUX_SESSION}"
+    tmux list-sessions 2>/dev/null | grep "$UOM_TMUX_SESSION" || echo "  (no session)"
+    echo ""
+    echo "SSH:    ssh -p ${VM_SSH_FWD} uom@127.0.0.1"
+}
+
+cmd_adopt() {
+    _log "=== ADOPT: Looking for untracked QEMU ==="
+    _found_pid=$(_find_qemu_pid 2>/dev/null || true)
+    if [ -n "$_found_pid" ]; then
+        echo "$_found_pid" > "$UOM_PID_FILE" 2>/dev/null || true
+        _log "Adopted QEMU pid=$_found_pid"
+        _logf "ADOPT-Manual pid=$_found_pid"
+        echo "Adopted pid=$_found_pid"
+        return 0
+    fi
+    if _ssh_guest_probe; then
+        _log "SSH probe OK but can't find QEMU PID"
+        return 1
+    fi
+    _log "No QEMU running."
+    return 1
+}
+
+cmd_console() {
+    tmux attach -t "${UOM_TMUX_SESSION}:${UOM_TMUX_CONSOLE_WINDOW}" 2>/dev/null || \
+        _log "No tmux session. Start with: $0 start"
+}
+
+cmd_ssh() {
+    ssh -p "$VM_SSH_FWD" -o ConnectTimeout=10 \
+        -o StrictHostKeyChecking=accept-new \
+        -o UserKnownHostsFile=/dev/null \
+        uom@127.0.0.1 "$@"
+}
+
+cmd_verify() {
+    echo "=== VERIFY ==="
+    echo -n "State:  "
+    if is_qemu_running; then
+        echo "RUNNING (pid=$_qemu_pid, tier=$_qemu_tier, adopted=$_qemu_adopted)"
+    else
+        echo "STOPPED"
+    fi
+    echo -n "SSH:    "
+    if _ssh_guest_probe; then echo "OK"; else echo "FAIL"; fi
+    echo -n "Guest:  "
+    ssh -p "$VM_SSH_FWD" -o ConnectTimeout=5 -o BatchMode=yes \
+        -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+        uom@127.0.0.1 'id; uname -a' 2>/dev/null || echo "FAIL"
+    echo ""
+}
+
+cmd_logs() {
+    _lines="${1:-50}"
+    echo "=== Console Log (last $_lines lines) ==="
+    tail -"$_lines" "$VM_CONSOLE_LOG" 2>/dev/null || echo "(no console log)"
+    echo ""
+    echo "=== Launcher Log (last $_lines lines) ==="
+    tail -"$_lines" "${UOM_LOG_DIR}/${VM_NAME}-launcher.log" 2>/dev/null || echo "(no launcher log)"
+}
+
+cmd_install() {
+    _ensure_dirs
+    _log "=== INSTALL: Creating fresh VM disk ==="
+    if [ -f "$DISK" ]; then
+        _log "Existing disk found. Not overwriting."
+        return 1
+    fi
+    qemu-img create -f qcow2 "$DISK" 12G
+    _log "Created: $DISK (12G qcow2)"
+    _log "Run: $0 boot-install"
+}
+
+cmd_boot_install() {
+    _ensure_dirs
+    if is_qemu_running; then
+        _log "VM already running (pid=$_qemu_pid)"
+        return 1
+    fi
+    if [ ! -f "$DISK" ]; then
+        _log "No disk. Run '$0 install' first."
+        return 1
+    fi
+    _ISO="${UOM_VM_DIR}/alpine-virt-3.21.3-aarch64.iso"
+    if [ ! -f "$_ISO" ]; then
+        _log "No ISO at $_ISO"
+        return 1
+    fi
+    _logf "BOOT-INSTALL start"
+    _write_pid
+    tmux new-session -d -s "$UOM_TMUX_SESSION" -n "$UOM_TMUX_CONSOLE_WINDOW" \
+        "cd '$UOM_VM_DIR' && \
+         $QEMU_BIN -M virt -cpu cortex-a72 -m $VM_RAM -smp $VM_SMP \
+         -L ${HOME}/../usr/share/qemu \
+         -drive file=${FIRMWARE_CODE},if=pflash,format=raw,readonly=on \
+         -drive file=${FIRMWARE_VARS},if=pflash,format=raw \
+         -drive file=${DISK},if=virtio,format=qcow2 \
+         -cdrom ${_ISO} -boot d \
+         -nographic \
+         -netdev user,id=net0,hostfwd=tcp:127.0.0.1:${VM_SSH_FWD}-:22 \
+         -device virtio-net-pci,netdev=net0 \
+         -serial file:${VM_CONSOLE_LOG} \
+         2>${VM_QEMU_LOG}; \
+         echo 'QEMU exited' >> '${UOM_LOG_DIR}/${VM_NAME}-launcher.log'"
+    _log "Boot-install started in tmux: ${UOM_TMUX_SESSION}"
+}
+
+# ── Main dispatch ───────────────────────────────────────────────────────
+case "${1:-help}" in
+    install)        cmd_install ;;
+    boot-install)   cmd_boot_install ;;
+    start)          cmd_start ;;
+    stop)           cmd_stop ;;
+    restart)        cmd_stop; sleep 1; cmd_start ;;
+    status)         cmd_status ;;
+    adopt)          cmd_adopt ;;
+    console)        cmd_console ;;
+    ssh)            shift; cmd_ssh "$@" ;;
+    verify)         cmd_verify ;;
+    logs)           shift; cmd_logs "$@" ;;
+    *)
+        echo "Usage: $0 {install|boot-install|start|stop|restart|status|adopt|console|ssh|verify|logs}"
+        exit 1
+        ;;
+esac

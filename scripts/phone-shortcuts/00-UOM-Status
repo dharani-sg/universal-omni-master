@@ -1,32 +1,32 @@
 #!/bin/sh
-# 00-UOM-Status — Quick UOM system status check
-# Widget shortcut: shows QEMU, guest, tmux, and zen status at a glance.
-# POSIX sh. Read-only (no mutations). Idempotent.
+# NAME: 00-UOM-Status
+# PURPOSE: Quick UOM system status check — shows QEMU, guest, tmux at a glance
+# VERSION: 2.1.0
+# DEPENDS: uom-lib.sh, uom-qemu-phone
+# SAFE: read-only
+# TESTED: PASS 2026-07-18
+#
+# Widget shortcut: tap to see system status. Read-only, idempotent.
 
 set -u
-
-QEMU_LAUNCHER="${HOME}/bin/uom-qemu-phone"
-GUEST_PORT="2222"
-GUEST_USER="uom"
-GUEST_SSH_OPTS="-p ${GUEST_PORT} -o ConnectTimeout=5 -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null"
-GUEST_SSH="ssh ${GUEST_SSH_OPTS} ${GUEST_USER}@127.0.0.1"
+. "${HOME}/bin/uom-widget-lib.sh"
 
 echo "=========================================="
 echo " UOM Status"
-echo " $(date '+%Y-%m-%d %H:%M:%S')"
+echo " $(_uom_ts)"
 echo "=========================================="
 echo ""
 
-# QEMU status
+# QEMU status (via launcher 3-tier detection)
 echo "--- QEMU ---"
-"${QEMU_LAUNCHER}" status 2>/dev/null || echo "Status check failed"
+"${UOM_QEMU_LAUNCHER}" status 2>/dev/null || echo "Status check failed"
 echo ""
 
 # Guest SSH
 echo "--- Guest SSH ---"
-if ${GUEST_SSH} 'echo OK' 2>/dev/null | grep -q "OK"; then
+if uom_guest_ssh 'echo OK' 2>/dev/null | grep -q "OK"; then
     echo "SSH:    OK"
-    _info=$(${GUEST_SSH} "hostname; id; uptime" 2>/dev/null || echo "info unavailable")
+    _info=$(uom_guest_ssh "hostname; id; uptime" 2>/dev/null || echo "info unavailable")
     echo "${_info}"
 else
     echo "SSH:    UNREACHABLE"
@@ -35,7 +35,7 @@ echo ""
 
 # Guest tmux
 echo "--- Guest tmux ---"
-${GUEST_SSH} "tmux ls 2>&1" 2>/dev/null || echo "(no tmux or guest unreachable)"
+uom_guest_ssh "tmux ls 2>&1" 2>/dev/null || echo "(no tmux or guest unreachable)"
 echo ""
 
 # Host tmux

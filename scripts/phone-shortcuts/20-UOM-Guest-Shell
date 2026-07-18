@@ -1,29 +1,27 @@
 #!/bin/sh
-# 20-UOM-Guest-Shell — SSH into the Alpine guest
-# Widget shortcut: drops into an interactive shell in the guest.
-# POSIX sh. Idempotent. Preserves Ctrl-b d detach if tmux is used.
+# NAME: 20-UOM-Guest-Shell
+# PURPOSE: SSH into the Alpine guest — drops into interactive shell
+# VERSION: 2.1.0
+# DEPENDS: uom-lib.sh, uom-qemu-phone, ssh
+# SAFE: modifies-state (starts QEMU if needed)
+# TESTED: PASS 2026-07-18
+#
+# Widget shortcut: tap to enter guest shell. Preserves Ctrl-b d detach.
 
 set -u
+. "${HOME}/bin/uom-widget-lib.sh"
 
-GUEST_PORT="2222"
-GUEST_USER="uom"
-GUEST_SSH_OPTS="-p ${GUEST_PORT} -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null"
-QEMU_LAUNCHER="${HOME}/bin/uom-qemu-phone"
-
-# Ensure QEMU is running
-if ! "${QEMU_LAUNCHER}" status 2>/dev/null | grep -q "RUNNING"; then
-    echo "[guest-shell] QEMU not running. Starting..."
-    "${QEMU_LAUNCHER}" start || {
-        echo "[guest-shell] ERROR: Failed to start QEMU"
-        exit 1
-    }
+# Ensure QEMU is running (starts if needed)
+if ! uom_ensure_qemu; then
+    echo "[guest-shell] ERROR: QEMU not available"
+    exit 1
 fi
 
 # Wait for SSH (bounded)
 echo "[guest-shell] Waiting for guest SSH..."
 _count=0
 while [ "${_count}" -lt 120 ]; do
-    if ssh ${GUEST_SSH_OPTS} ${GUEST_USER}@127.0.0.1 'echo OK' 2>/dev/null | grep -q "OK"; then
+    if uom_guest_ssh 'echo OK' 2>/dev/null | grep -q "OK"; then
         break
     fi
     sleep 3
@@ -35,4 +33,4 @@ if [ "${_count}" -ge 120 ]; then
 fi
 
 # Interactive SSH shell
-exec ssh -tt ${GUEST_SSH_OPTS} ${GUEST_USER}@127.0.0.1
+exec ssh -tt ${UOM_SSH_OPTS} ${UOM_GUEST_USER}@127.0.0.1

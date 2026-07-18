@@ -1,103 +1,97 @@
 #!/bin/sh
-# 10-UOM-Start — Background startup of QEMU + guest + zen session
+# NAME: 10-UOM-Start
+# PURPOSE: Background startup of QEMU + guest verification
+# VERSION: 2.1.0
+# DEPENDS: uom-lib.sh, uom-qemu-phone, qemu-img, ssh
+# SAFE: modifies-state (starts QEMU)
+# TESTED: PASS 2026-07-18
+#
 # Termux:Widget background task. Runs on tap or Termux:Boot.
-# POSIX sh. Idempotent. Bounded retries. No root.
-# Logs to ~/uom-vm/logs/widget-start-*.log.
+# Idempotent. Bounded retries. No root. Logs to ~/uom-vm/logs/widget-start-*.log.
 
 set -u
+. "${HOME}/bin/uom-widget-lib.sh"
 
-QEMU_LAUNCHER="${HOME}/bin/uom-qemu-phone"
 UOM_DIR="${HOME}/src/universal-omni-master"
 UOM_LOG_DIR="${HOME}/uom-vm/logs"
-GUEST_PORT="2222"
-GUEST_USER="uom"
-GUEST_SSH_OPTS="-p ${GUEST_PORT} -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null -o BatchMode=yes"
-GUEST_SSH="ssh ${GUEST_SSH_OPTS} ${GUEST_USER}@127.0.0.1"
 ZEN_TMUX_SESSION="uom-zen-phone"
-BOOT_TIMEOUT=120
 SSH_READY_TIMEOUT=120
 
 # ── Log file ───────────────────────────────────────────────────────────
 mkdir -p "${UOM_LOG_DIR}"
-_ts() { date +"%Y-%m-%dT%H:%M:%S" 2>/dev/null || echo "unknown"; }
-_LOGFILE="${UOM_LOG_DIR}/widget-start-$(_ts | tr ':' '-').log"
-_log() { printf '[%s] [widget-start] %s\n' "$(_ts)" "$*" | tee -a "${_LOGFILE}"; }
+_LOGFILE="${UOM_LOG_DIR}/widget-start-$(_uom_ts | tr ':' '-').log"
+_log_start() { printf '[%s] [widget-start] %s\n' "$(_uom_ts)" "$*" | tee -a "${_LOGFILE}"; }
 
-_log "=== Widget Start Begin ==="
+_log_start "=== Widget Start Begin ==="
 
 # ── Acquire wake lock (best-effort) ────────────────────────────────────
 if command -v termux-wake-lock >/dev/null 2>&1; then
-    termux-wake-lock 2>/dev/null && _log "Wake lock acquired" || _log "Wake lock failed (non-fatal)"
+    termux-wake-lock 2>/dev/null && _log_start "Wake lock acquired" || _log_start "Wake lock failed (non-fatal)"
 else
-    _log "termux-wake-lock not available (non-fatal)"
+    _log_start "termux-wake-lock not available (non-fatal)"
 fi
 
 # ── Validate disk ──────────────────────────────────────────────────────
 DISK="${HOME}/uom-vm/images/uom-phone.qcow2"
 if [ ! -f "${DISK}" ]; then
-    _log "ERROR: No disk image at ${DISK}"
-    _log "Run: ~/bin/uom-qemu-phone install"
+    _log_start "ERROR: No disk image at ${DISK}"
+    _log_start "Run: ~/bin/uom-qemu-phone install"
     exit 1
 fi
 if ! qemu-img info "${DISK}" >/dev/null 2>&1; then
-    _log "ERROR: Disk image corrupted: ${DISK}"
+    _log_start "ERROR: Disk image corrupted: ${DISK}"
     exit 1
 fi
 _qsize=$(qemu-img info "${DISK}" 2>/dev/null | grep "disk size" | awk '{print $3, $4}')
-_log "Disk OK: ${DISK} (${_qsize})"
+_log_start "Disk OK: ${DISK} (${_qsize})"
 
-# ── Avoid duplicate QEMU ───────────────────────────────────────────────
-if "${QEMU_LAUNCHER}" status 2>/dev/null | grep -q "RUNNING"; then
-    _log "QEMU already running. Skipping start."
-else
-    _log "Starting QEMU..."
-    "${QEMU_LAUNCHER}" start >> "${_LOGFILE}" 2>&1
-    if [ $? -ne 0 ]; then
-        _log "ERROR: QEMU start failed"
-        exit 1
-    fi
-    _log "QEMU start command issued."
+# ── Start QEMU (idempotent — launcher handles already-running) ─────────
+_log_start "Calling QEMU launcher start..."
+"${UOM_QEMU_LAUNCHER}" start >> "${_LOGFILE}" 2>&1
+_start_rc=$?
+if [ "$_start_rc" -ne 0 ]; then
+    _log_start "ERROR: QEMU launcher start returned rc=$_start_rc"
+    exit 1
 fi
+_log_start "QEMU start command completed."
 
 # ── Wait for guest SSH (bounded retries) ───────────────────────────────
-_log "Waiting for guest SSH (timeout=${SSH_READY_TIMEOUT}s)..."
+_log_start "Waiting for guest SSH (timeout=${SSH_READY_TIMEOUT}s)..."
 _count=0
 while [ "${_count}" -lt "${SSH_READY_TIMEOUT}" ]; do
-    if ${GUEST_SSH} 'echo OK' 2>/dev/null | grep -q "OK"; then
-        _log "Guest SSH ready after ${_count}s"
+    if uom_guest_ssh 'echo OK' 2>/dev/null | grep -q "OK"; then
+        _log_start "Guest SSH ready after ${_count}s"
         break
     fi
     sleep 3
     _count=$((_count + 3))
 done
 if [ "${_count}" -ge "${SSH_READY_TIMEOUT}" ]; then
-    _log "ERROR: Guest SSH timeout after ${SSH_READY_TIMEOUT}s"
-    _log "Check: ~/bin/uom-qemu-phone console"
+    _log_start "ERROR: Guest SSH timeout after ${SSH_READY_TIMEOUT}s"
+    _log_start "Check: ~/bin/uom-qemu-phone console"
     exit 1
 fi
 
 # ── Verify guest repo ──────────────────────────────────────────────────
-if ${GUEST_SSH} "test -d ${UOM_DIR}/.git" 2>/dev/null; then
-    _sha=$(${GUEST_SSH} "cd ${UOM_DIR} && git rev-parse --short HEAD" 2>/dev/null || echo "unknown")
-    _log "Guest repo OK (HEAD=${_sha})"
+if uom_guest_ssh "test -d ${UOM_DIR}/.git" 2>/dev/null; then
+    _sha=$(uom_guest_ssh "cd ${UOM_DIR} && git rev-parse --short HEAD" 2>/dev/null || echo "unknown")
+    _log_start "Guest repo OK (HEAD=${_sha})"
 else
-    _log "WARNING: Guest repo not found at ${UOM_DIR}"
+    _log_start "WARNING: Guest repo not found at ${UOM_DIR}"
 fi
 
 # ── Verify guest tmux ──────────────────────────────────────────────────
-_guest_tmux=$(${GUEST_SSH} "tmux ls 2>&1" 2>/dev/null || echo "none")
-_log "Guest tmux: ${_guest_tmux}"
+_guest_tmux=$(uom_guest_ssh "tmux ls 2>&1" 2>/dev/null || echo "none")
+_log_start "Guest tmux: ${_guest_tmux}"
 
 # ── Zen session status ─────────────────────────────────────────────────
-# PRE-Phase-10: only report; POST-Phase-10: recover/start orchestrator.
 if echo "${_guest_tmux}" | grep -q "${ZEN_TMUX_SESSION}"; then
-    _log "Zen session '${ZEN_TMUX_SESSION}' already exists in guest."
+    _log_start "Zen session '${ZEN_TMUX_SESSION}' already exists in guest."
 else
-    _log "Zen session not started (PRE-Phase-10)."
-    _log "POST-Phase-10: orchestrator will recover/start ${ZEN_TMUX_SESSION}."
+    _log_start "Zen session not started (PRE-Phase-10)."
 fi
 
 # ── Summary ────────────────────────────────────────────────────────────
-_log "=== Widget Start Complete ==="
-_log "QEMU: running | Guest: SSH OK | Repo: verified"
-_log "Log: ${_LOGFILE}"
+_log_start "=== Widget Start Complete ==="
+_log_start "QEMU: running | Guest: SSH OK | Repo: verified"
+_log_start "Log: ${_LOGFILE}"
