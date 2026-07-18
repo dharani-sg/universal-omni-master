@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "active_agent": "laptop",
+  "active_agent": "dual",
   "writer_role": "laptop",
   "ownership_epoch": 0,
   "lease_id": "",
