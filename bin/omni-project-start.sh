@@ -33,7 +33,11 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m'
 
-if [ -f "${UOM_DIR}/tools/uom-orch-state.sh" ]; then
+# Source state library (canonical, schema v2) instead of orch-state (schema v1)
+if [ -f "${UOM_DIR}/tools/uom-state-lib.sh" ]; then
+    . "${UOM_DIR}/tools/uom-state-lib.sh"
+    uom_state_init 2>/dev/null || true
+elif [ -f "${UOM_DIR}/tools/uom-orch-state.sh" ]; then
     . "${UOM_DIR}/tools/uom-orch-state.sh"
 fi
 if [ -f "${UOM_DIR}/tools/uom-ip-discover.sh" ]; then
@@ -188,12 +192,25 @@ action_detach() {
         "pkill -f uom-orch-laptop 2>/dev/null; echo 'laptop orch stopped'" \
         2>/dev/null || true
 
-    # Set state to phone primary
-    state_set "active_agent" "phone"
-    state_set "task_status" "idle"
-    state_set "current_task_id" ""
+    # Set state to phone-solo (valid mode in state machine)
+    _cur_epoch=$(uom_state_get "ownership_epoch" 2>/dev/null || echo "0")
+    _lease="lease-$(date +%s)-$$"
+    if command -v uom_state_compare_and_update >/dev/null 2>&1; then
+        uom_state_compare_and_update "$(_cur_active)" "$_cur_epoch" \
+            ".active_agent = \"phone-solo\" |
+             .writer_role = \"phone\" |
+             .task_status = \"idle\" |
+             .current_task_id = \"\" |
+             .lease_id = \"${_lease}\" |
+             .last_transition = \"manual-detach\" |
+             .last_transition_at = \"$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null)\"" 2>/dev/null || true
+    else
+        state_set "active_agent" "phone-solo"
+        state_set "task_status" "idle"
+        state_set "current_task_id" ""
+    fi
     state_git_sync "detach: phone takeover forced"
-    _log "State set to phone primary."
+    _log "State set to phone-solo."
 
     # Start phone orchestrator in active mode if not running
     if ! ps -ef 2>/dev/null | grep -v grep | grep -q uom-orch-phone; then
@@ -213,20 +230,32 @@ action_detach() {
 # ═══════════════════════════════════════════════════════════════════════
 
 action_phone() {
-    _log "Switching primary agent to phone..."
+    _log "Switching primary agent to phone-solo..."
     
     if [ ! -f "$STATE_FILE" ]; then
         _log "ERROR: State file not found at $STATE_FILE"
         return 1
     fi
 
-    state_set "active_agent" "phone"
-    state_git_sync "switch: phone primary"
-    _log "Active agent set to phone."
+    _cur_epoch=$(uom_state_get "ownership_epoch" 2>/dev/null || echo "0")
+    _cur_active=$(uom_state_get "active_agent" 2>/dev/null || echo "none")
+    _lease="lease-$(date +%s)-$$"
+    if command -v uom_state_compare_and_update >/dev/null 2>&1; then
+        uom_state_compare_and_update "$_cur_active" "$_cur_epoch" \
+            ".active_agent = \"phone-solo\" |
+             .writer_role = \"phone\" |
+             .lease_id = \"${_lease}\" |
+             .last_transition = \"manual-switch-phone\" |
+             .last_transition_at = \"$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null)\"" 2>/dev/null || true
+    else
+        state_set "active_agent" "phone-solo"
+    fi
+    state_git_sync "switch: phone-solo"
+    _log "Active agent set to phone-solo."
     _log ""
     _log "Laptop orchestrator will defer on next heartbeat."
     _log "If phone is not running orchestrator, start it:"
-    _log "  ssh u0_a608@192.168.40.207 'cd ~/src/universal-omni-master && sh tools/uom-orch-phone.sh'"
+    _log "  sh tools/uom-orch-phone.sh"
     return 0
 }
 
@@ -235,20 +264,34 @@ action_phone() {
 # ═══════════════════════════════════════════════════════════════════════
 
 action_laptop() {
-    _log "Switching primary agent to laptop..."
+    _log "Switching primary agent to dual (laptop writes)..."
     
     if [ ! -f "$STATE_FILE" ]; then
         _log "ERROR: State file not found"
         return 1
     fi
 
-    state_set "active_agent" "laptop"
-    state_git_sync "switch: laptop primary"
-    _log "Active agent set to laptop."
+    _cur_epoch=$(uom_state_get "ownership_epoch" 2>/dev/null || echo "0")
+    _cur_active=$(uom_state_get "active_agent" 2>/dev/null || echo "none")
+    _lease="lease-$(date +%s)-$$"
+    _lease_expiry=$(( $(date +%s) + 3600 ))
+    if command -v uom_state_compare_and_update >/dev/null 2>&1; then
+        uom_state_compare_and_update "$_cur_active" "$_cur_epoch" \
+            ".active_agent = \"dual\" |
+             .writer_role = \"laptop\" |
+             .lease_id = \"${_lease}\" |
+             .lease_expires_epoch = ${_lease_expiry} |
+             .last_transition = \"manual-switch-laptop\" |
+             .last_transition_at = \"$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null)\"" 2>/dev/null || true
+    else
+        state_set "active_agent" "dual"
+    fi
+    state_git_sync "switch: dual (laptop writes)"
+    _log "Active agent set to dual (laptop writes)."
     _log ""
     _log "Phone will detect heartbeat and return to watchdog mode."
     _log "If laptop orchestrator is not running, start it:"
-    _log "  cd ~/src/universal-omni-master && sh tools/uom-orch-laptop.sh"
+    _log "  sh tools/uom-orch-laptop.sh"
     return 0
 }
 

@@ -767,7 +767,7 @@ _pass "Degraded mode:      $([ "$DEGRADED_MODE" -eq 1 ] && echo yes || echo no)"
 # State file
 if [ -f "$STATE_FILE" ] && jq -e '.' "$STATE_FILE" >/dev/null 2>&1; then
   _agent=$(jq -r '.active_agent // "unknown"' "$STATE_FILE")
-  _mode=$(jq -r '.hybrid_mode // "dual"' "$STATE_FILE")
+  _mode=$(jq -r '.active_agent // "dual"' "$STATE_FILE")
   _pass "state.json: agent=${_agent} mode=${_mode}"
 else
   _fail "state.json missing or invalid"

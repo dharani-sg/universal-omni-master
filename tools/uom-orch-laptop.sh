@@ -192,7 +192,31 @@ startup_recovery() {
     _active_agent=$(uom_state_get "active_agent")
     _writer_role=$(uom_state_get "writer_role")
     _lease_expires=$(uom_state_get "lease_expires_epoch")
+    _ownership_epoch=$(uom_state_get "ownership_epoch")
     _now=$(uom_now_epoch)
+
+    # Handle dual-pending: laptop confirms transition back to dual
+    if [ "$_active_agent" = "dual-pending" ]; then
+        _log "dual-pending detected — confirming transition to dual (epoch=$((_ownership_epoch + 1)))"
+        _lease_id="lease-$(uom_now_epoch)-$(od -An -tu4 -N4 /dev/urandom 2>/dev/null | tr -d ' ' || echo $$)"
+        _lease_expiry=$((_now + 3600))
+        if uom_state_compare_and_update "dual-pending" "$_ownership_epoch" \
+            ".active_agent = \"dual\" |
+             .writer_role = \"laptop\" |
+             .lease_id = \"${_lease_id}\" |
+             .lease_expires_epoch = ${_lease_expiry} |
+             .last_transition = \"laptop-confirmed-dual\" |
+             .last_transition_at = \"$(uom_now_utc)\"" 2>/dev/null; then
+            _log "Transition to dual confirmed (lease=$_lease_id, expires=$_lease_expiry)"
+            # Re-read after transition
+            _active_agent="dual"
+            _writer_role="laptop"
+        else
+            _log "dual-pending transition failed (concurrent change?) — read-only"
+            _RECOVERY_MODE=1
+            return 0
+        fi
+    fi
 
     if [ "$_active_agent" != "dual" ] || [ "$_writer_role" != "laptop" ]; then
         if [ "$_phone_reachable" -eq 0 ]; then

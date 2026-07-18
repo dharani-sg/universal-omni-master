@@ -21,7 +21,7 @@ _status_summary() {
 
     if [ -f "${STATE_FILE}" ]; then
         _state=$(cat "${STATE_FILE}")
-        _mode=$(echo "${_state}" | jq -r '.hybrid_mode // "dual"' 2>/dev/null || echo "dual")
+        _mode=$(echo "${_state}" | jq -r '.active_agent // "dual"' 2>/dev/null || echo "dual")
         _active_agent=$(echo "${_state}" | jq -r '.active_agent // "unknown"' 2>/dev/null || echo "unknown")
         _task_status=$(echo "${_state}" | jq -r '.task_status // "idle"' 2>/dev/null || echo "idle")
         _task_id=$(echo "${_state}" | jq -r '.current_task_id // "none"' 2>/dev/null || echo "none")
@@ -134,7 +134,7 @@ case "${1:-}" in
         ;;
     current|--current|--c)
         if [ -f "${STATE_FILE}" ]; then
-            _mode=$(jq -r '.hybrid_mode // "dual"' "${STATE_FILE}" 2>/dev/null)
+            _mode=$(jq -r '.active_agent // "dual"' "${STATE_FILE}" 2>/dev/null)
             _active=$(jq -r '.active_agent // "unknown"' "${STATE_FILE}" 2>/dev/null)
             _task=$(jq -r '.current_task_id // "none"' "${STATE_FILE}" 2>/dev/null)
             echo "Current Mode: ${_mode}"
