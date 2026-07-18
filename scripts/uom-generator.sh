@@ -27,13 +27,20 @@ else
     _HAS_STATE_LIB=0
 fi
 
-QUEUE_FILE="${UOM_DIR}/.uom-agent/queue.json"
-GEN_DIR="${UOM_DIR}/.uom-agent/generated"
-LOG_DIR="${UOM_DIR}/.uom-agent/logs"
+# Environment overrides for sandbox/burn-in mode
+UOM_STATE_DIR="${UOM_STATE_DIR:-${UOM_DIR}/.uom-agent}"
+UOM_QUEUE_FILE="${UOM_QUEUE_FILE:-${UOM_STATE_DIR}/queue.json}"
+UOM_GEN_DIR="${UOM_GEN_DIR:-${UOM_STATE_DIR}/generated}"
+UOM_LOG_DIR="${UOM_LOG_DIR:-${UOM_STATE_DIR}/logs}"
+UOM_RUNTIME_DIR="${UOM_RUNTIME_DIR:-${UOM_STATE_DIR}/runtime}"
+
+QUEUE_FILE="${UOM_QUEUE_FILE}"
+GEN_DIR="${UOM_GEN_DIR}"
+LOG_DIR="${UOM_LOG_DIR}"
 LOG_FILE="${LOG_DIR}/generator.log"
-LOCK_FILE="${UOM_DIR}/.uom-agent/runtime/gen.lock"
-PID_FILE="${UOM_DIR}/.uom-agent/runtime/gen.pid"
-SETUP_META="${UOM_DIR}/.uom-agent/setup-env.json"
+LOCK_FILE="${UOM_RUNTIME_DIR}/gen.lock"
+PID_FILE="${UOM_RUNTIME_DIR}/gen.pid"
+SETUP_META="${UOM_STATE_DIR}/setup-env.json"
 POLL_INTERVAL="${POLL_INTERVAL:-5}"
 
 # ── Resolve LLM model from setup metadata or default ────────────────────

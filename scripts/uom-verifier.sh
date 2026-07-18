@@ -19,13 +19,21 @@ else
     _HAS_STATE_LIB=0
 fi
 
-QUEUE_FILE="${UOM_DIR}/.uom-agent/queue.json"
-GEN_DIR="${UOM_DIR}/.uom-agent/generated"
-VERIFIED_DIR="${UOM_DIR}/.uom-agent/verified"
-LOG_DIR="${UOM_DIR}/.uom-agent/logs"
+# Environment overrides for sandbox/burn-in mode
+UOM_STATE_DIR="${UOM_STATE_DIR:-${UOM_DIR}/.uom-agent}"
+UOM_QUEUE_FILE="${UOM_QUEUE_FILE:-${UOM_STATE_DIR}/queue.json}"
+UOM_GEN_DIR="${UOM_GEN_DIR:-${UOM_STATE_DIR}/generated}"
+UOM_VERIFIED_DIR="${UOM_VERIFIED_DIR:-${UOM_STATE_DIR}/verified}"
+UOM_LOG_DIR="${UOM_LOG_DIR:-${UOM_STATE_DIR}/logs}"
+UOM_RUNTIME_DIR="${UOM_RUNTIME_DIR:-${UOM_STATE_DIR}/runtime}"
+
+QUEUE_FILE="${UOM_QUEUE_FILE}"
+GEN_DIR="${UOM_GEN_DIR}"
+VERIFIED_DIR="${UOM_VERIFIED_DIR}"
+LOG_DIR="${UOM_LOG_DIR}"
 LOG_FILE="${LOG_DIR}/verifier.log"
-LOCK_FILE="${UOM_DIR}/.uom-agent/runtime/ver.lock"
-PID_FILE="${UOM_DIR}/.uom-agent/runtime/ver.pid"
+LOCK_FILE="${UOM_RUNTIME_DIR}/ver.lock"
+PID_FILE="${UOM_RUNTIME_DIR}/ver.pid"
 POLL_INTERVAL="${POLL_INTERVAL:-5}"
 
 mkdir -p "$LOG_DIR" "$GEN_DIR" "$VERIFIED_DIR" "$(dirname "$LOCK_FILE")"
