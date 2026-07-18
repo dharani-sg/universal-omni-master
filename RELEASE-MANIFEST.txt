@@ -1,0 +1,49 @@
+RELEASE MANIFEST — uom-phone-qemu-phase9-20260718
+================================================
+
+Branch: refactor/structure-audit-2026-07-17
+Commit: 4576cc2 (docs(phase-9.5d): README update, ops docs, Android 13+ bootstrap)
+Previous: b0c654c (docs+fix: v0.32.0 session merge)
+Tag: uom-phone-qemu-phase9-20260718
+
+Tested Configuration:
+  Phone: Xiaomi Mi 8 (dipper), crDroid Android 15, SDK 35, aarch64
+  Termux: Google Play build 2026.06.21
+  QEMU: 10.2.1, rootless TCG (no KVM), 2 vCPU, 2GB RAM
+  Alpine: 3.21.3 aarch64 (musl/OpenRC), hostname uom-phone-qemu
+  OpenCode: 1.18.3 (guest), native BLOCKED (IPv6 hang)
+  Transport: anonymous-api-fallback (curl wrapper primary)
+
+Free Models Verified:
+  big-pickle (xiaomi/mimo-v2.5) — $0, no auth
+  deepseek-v4-flash-free — $0, no auth
+  mimo-v2.5-free — $0, no auth
+  north-mini-code-free — $0, no auth
+  nemotron-3-ultra-free — $0, no auth
+  hy3-free — present but not cost-verified
+
+Installer:
+  scripts/uom-phone-bootstrap.sh
+  SHA-256: (compute after tagging)
+
+Known Limitations:
+  1. Native OpenCode blocked in QEMU guest (IPv6 hang)
+  2. TCG emulation only (~0.1x native speed)
+  3. No KVM on phone hardware
+  4. Termux:Widget not yet installed (manual)
+  5. No GitHub push auth from phone (read-only)
+  6. hy3-free model not cost-verified
+
+Remaining Phases:
+  Phase 10: Adapt + start Zen Loop in guest
+  Phase 11: Verify laptop-independent operation
+  Phase 12: Persist across Termux restart / phone boot
+  Phase 13: Revoke Termux root safely
+
+Security:
+  QEMU: ordinary Termux UID (not root)
+  SSH: localhost only (127.0.0.1:2222)
+  Network: user-mode (no TAP/bridge)
+  Storage: Termux private storage
+  TLS: never disabled
+  No secrets committed
