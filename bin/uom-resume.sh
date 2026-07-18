@@ -28,7 +28,7 @@ _get_state() {
 }
 
 _check_tmux_session() {
-    tmux has-session -t uom-hybrid 2>/dev/null || tmux has-session -t uom 2>/dev/null
+    tmux has-session -t uom 2>/dev/null || tmux has-session -t uom-orch 2>/dev/null
 }
 
 main() {
@@ -50,11 +50,9 @@ main() {
     echo ""
 
     if _check_tmux_session 2>/dev/null; then
-        echo " Tmux session 'uom-hybrid' exists."
-        echo " Attach: tmux attach -t uom-hybrid"
-        echo ""
-        echo " Or kill and restart:"
-        echo "   tmux kill-session -t uom-hybrid && sh bin/uom-hybrid.sh --daemon"
+        echo " Tmux sessions available:"
+        tmux has-session -t uom 2>/dev/null && echo "   uom (project): tmux attach -t uom"
+        tmux has-session -t uom-orch 2>/dev/null && echo "   uom-orch:      tmux attach -t uom-orch"
         echo ""
     fi
 
@@ -70,26 +68,23 @@ main() {
         if [ "${_active_agent}" = "phone-solo" ]; then
             echo ""
             echo " >>> Laptop recovered from solo mode. <<<"
-            echo " Run: sh -c 'jq \".active_agent=\\\"dual-pending\\\"\" .uom-agent/state.json > \"\${TMPDIR:-/tmp}/uom-s.json\" && mv \"\${TMPDIR:-/tmp}/uom-s.json\" .uom-agent/state.json'"
-            echo " Then: tmux kill-session -t uom-hybrid && sh bin/uom-hybrid.sh --daemon"
+            echo " The watchdog will auto-transition to dual-pending."
+            echo " The laptop orchestrator will confirm dual on next startup."
+            echo " Start laptop orchestrator: sh tools/uom-orch-laptop.sh"
         fi
     else
         echo " Laptop: UNREACHABLE"
         echo " Mode: solo (phone-only)"
-        echo ""
-        echo " To start solo mode: cd ~/src/universal-omni-master && sh bin/uom-hybrid.sh"
     fi
 
     echo ""
     echo " Quick commands:"
-    echo "   tmux attach -t uom-hybrid        # Attach to running session"
-    echo "   sh bin/uom-hybrid.sh              # Start hybrid orchestrator"
-    echo "   sh bin/uom-reverse-ssh.sh        # Start reverse tunnel"
-    echo "   sh scripts/uom-reconcile.sh      # 6-step: preflight -> tmux -> boot -> tunnel -> guardian -> zen"
-    echo "   sh scripts/uom-generator.sh ...  # Cloud code generator (opencode stdin)"
-    echo "   sh scripts/uom-verifier.sh ...   # Syntax/policy verifier"
-    echo "   cat .uom-agent/state.json        # Check current state"
-    echo "   cat .uom-agent/queue.json        # Check pending tasks"
+    echo "   tmux attach -t uom              # Attach to project session"
+    echo "   sh tools/uom-orch-laptop.sh     # Start laptop orchestrator"
+    echo "   sh bin/uom-reverse-ssh.sh       # Start reverse tunnel"
+    echo "   sh orchestrators/uom-reconcile.sh # Full reconciliation"
+    echo "   cat .uom-agent/state.json       # Check current state"
+    echo "   cat .uom-agent/queue.json       # Check pending tasks"
     echo "=========================================="
 }
 

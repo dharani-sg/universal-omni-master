@@ -94,7 +94,7 @@ _status_dashboard() {
     _orch_laptop=$(ps -ef 2>/dev/null | grep -v grep | grep -q 'uom-orch-laptop' && echo "${GREEN}✓${NC}" || echo "${RED}✗${NC}")
     _orch_phone=$(ps -ef 2>/dev/null | grep -v grep | grep -q 'uom-orch-phone' && echo "${GREEN}✓${NC}" || echo "${RED}✗${NC}")
     _tmux_uom=$(tmux has-session -t uom 2>/dev/null && echo "${GREEN}✓${NC}" || echo "${RED}✗${NC}")
-    _tmux_hybrid=$(tmux has-session -t uom-hybrid 2>/dev/null && echo "${GREEN}✓${NC}" || echo "${RED}✗${NC}")
+    _tmux_hybrid=$(tmux has-session -t uom-orch 2>/dev/null && echo "${GREEN}✓${NC}" || echo "${RED}✗${NC}")
 
     # ── Next task ──────────────────────────────────────────────────
     _next_id=$(jq -r '[.[] | select(.status=="pending")] | first | .id // empty' "$QUEUE_FILE" 2>/dev/null)
@@ -302,24 +302,26 @@ action_laptop() {
 action_hybrid() {
     _log "Starting Hybrid Auto-Orchestrator Mode..."
 
-    _hybrid_script="${UOM_DIR}/bin/uom-hybrid.sh"
-    if [ ! -f "$_hybrid_script" ]; then
-        _log "ERROR: $_hybrid_script not found"
+    # The old hybrid orchestrator has been replaced by the watchdog + reconciler pattern.
+    # Run full reconciliation (tmux setup, model selection, health checks)
+    _reconcile_script="${UOM_DIR}/orchestrators/uom-reconcile.sh"
+    if [ ! -f "$_reconcile_script" ]; then
+        _log "ERROR: $_reconcile_script not found"
         return 1
     fi
 
     # Check if already running in tmux
-    if tmux has-session -t uom-hybrid 2>/dev/null; then
-        _log "Hybrid session already exists. Attaching..."
-        tmux attach-session -t uom-hybrid
+    if tmux has-session -t uom-orch 2>/dev/null; then
+        _log "Orchestrator session already exists. Attaching..."
+        tmux attach-session -t uom-orch
         return 0
     fi
 
-    _log "Creating hybrid tmux session..."
-    sh "$_hybrid_script" --daemon
-    _log "Hybrid session created. Attaching..."
-    sleep 1
-    tmux attach-session -t uom-hybrid
+    _log "Running full reconciliation..."
+    sh "$_reconcile_script"
+    _log "Reconciliation complete."
+    _log "Watchdog and orchestrators should now be running."
+    _log "Attach: tmux attach -t uom  (project session) or tmux attach -t uom-orch (orchestrator)"
     return 0
 }
 
