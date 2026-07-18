@@ -70,7 +70,9 @@ Repo: `universal-omni-master` | branch: `refactor/structure-audit-2026-07-17`
 ## Git Log (this session)
 
 ```
+97e4c76 feat(phase10): free model rotation — standalone rotation script, retry-after support
 0e8242e feat(phase9): network auto-switch — port guardian restored, watchdog extended
+0df9764 docs: update session resume — Phase 9 complete
 d33341c fix(phase8): final sync — reconcile phone scripts, syntax check all
 c683f0b refactor(phase7): prune/merge dead code — 5 deletions, 4 fixes, catalog update
 019eafb fix(phase6): solo/dual mode — fix dual-pending dead end, invalid modes, schema conflict
@@ -98,12 +100,15 @@ f1f999a test(phase3): watchdog dry-run verification — all watchdog checks PASS
 | `orchestrators/uom-watchdog.sh` | Laptop reachability + phone takeover |
 | `scripts/uom-qemu-watchdog.sh` | QEMU health P1-P10 |
 | `scripts/uom-lib.sh` | Shared library |
+| `scripts/uom-llm-remote.sh` | Remote LLM invocation (phone→laptop) |
 | `tools/uom-state-lib.sh` | State library (schema v2) |
 | `tools/uom-ip-discover.sh` | IP discovery (5 methods) |
+| `tools/uom-model-rotate.sh` | Free model rotation with rate-limit handling |
 | `tools/uom-port-watch.sh` | Port probe primitives |
 | `tools/uom-net-detect.sh` | Network mode detection |
 | `docs/SCRIPT-CATALOG.md` | Updated catalog |
 | `docs/NETWORK-AUTOSWITCH-AUDIT.md` | Phase 9 gap analysis |
+| `docs/NETWORK-SCENARIOS.md` | Network scenario reference |
 | `docs/WATCHDOG-AUDIT-20260718.md` | Watchdog audit |
 | `docs/DRYRUN-T1-T10-20260718.md` | T1-T10 evidence |
 | `docs/WATCHDOG-AUDIT-20260718.md` | Watchdog audit |
@@ -115,8 +120,10 @@ f1f999a test(phase3): watchdog dry-run verification — all watchdog checks PASS
 2. ~~`UOM-DUAL-AGENT/UOM-DUAL-AGENT-ORCHESTRATOR.md`: review and potentially archive~~ ✓ (Phase 7)
 3. `tools/uom-orch-state.sh` (schema v1): eventually deprecate in favor of `uom-state-lib.sh`
 4. ~~`tools/uom-net-detect.sh`: should source `uom-ip-discover.sh` instead of reimplementing~~ ✓ (Phase 9 — integrated into port guardian)
-5. Phase 10: Free model rotation for OpenCode CLI (online only)
-6. Phase 11: Integration verification
-7. Phase 12: Final documentation (NETWORK-SCENARIOS.md, catalog update, push, sync)
+5. ~~Phase 10: Free model rotation for OpenCode CLI~~ ✓ (standalone rotation script created)
+6. ~~Phase 11: Integration verification~~ ✓ (all checks pass, no routing loops)
+7. ~~Phase 12: Final documentation~~ ✓ (NETWORK-SCENARIOS.md, catalog updated)
+8. Deploy updated scripts to phone (after network connectivity verified)
+9. Phone-side dryrun verification (requires SSH to phone)
 
-<!-- last-sync: 2026-07-18T22:30:00+05:30 -->
+<!-- last-sync: 2026-07-18T23:15:00+05:30 -->

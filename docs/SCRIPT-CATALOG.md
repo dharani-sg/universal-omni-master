@@ -1,6 +1,6 @@
 # UOM Script Catalog
 
-Reference: HEAD 019eafb, refactor/structure-audit-2026-07-17.
+Reference: HEAD 97e4c76, refactor/structure-audit-2026-07-17.
 Catalog date: 2026-07-18.
 
 ## Conventions
@@ -53,6 +53,7 @@ Catalog date: 2026-07-18.
 | Path | Responsibility | Can run directly | Status |
 |------|---------------|----------------|--------|
 | tools/uom-ip-discover.sh | IP discovery primitives (5 methods) | No (sourced) | Canonical |
+| tools/uom-model-rotate.sh | Free model rotation with rate-limit handling | Yes | Canonical |
 | tools/uom-net-detect.sh | Network topology detection | No (sourced) | Canonical |
 | tools/uom-orch-laptop.sh | Laptop orchestrator logic | Yes | Canonical |
 | tools/uom-orch-phone.sh | Phone orchestrator logic | Yes | Canonical |
@@ -67,6 +68,7 @@ uom-reconcile.sh (entry point)
   ├── install/bootstrap-termux.sh --apply
   ├── bin/uom-reverse-ssh.sh start
   ├── bin/uom-port-guardian.sh status/start
+  ├── tools/uom-model-rotate.sh (model selection)
   ├── scripts/uom-generator.sh (via tmux send-keys)
   └── scripts/uom-verifier.sh (via tmux send-keys)
 
@@ -75,12 +77,25 @@ uom-qemu-phone (QEMU launcher)
 
 uom-watchdog.sh (phone-side)
   ├── tools/uom-state-lib.sh
+  ├── tools/uom-ip-discover.sh (IP drift detection)
   └── orchestrators/uom-solo-orchestrator.sh (on takeover)
+
+uom-port-guardian.sh (laptop-side)
+  ├── tools/uom-port-watch.sh (primitives)
+  └── bin/uom-ssh-phone.sh (phone discovery)
+
+uom-ssh-phone.sh (laptop→phone)
+  ├── tools/uom-ip-discover.sh (discovery chain)
+  └── .uom-agent/phone.ip (phone announce)
 
 omni-project-start.sh (menu)
   ├── tools/uom-state-lib.sh (mode switching)
   ├── orchestrators/uom-reconcile.sh (hybrid mode)
   └── bin/uom-ssh-phone.sh (phone SSH)
+
+scripts/uom-llm-remote.sh (remote LLM)
+  ├── tools/uom-model-rotate.sh (model selection)
+  └── bin/uom-ssh-phone.sh (phone→laptop LLM)
 ```
 
 ## Deleted (2026-07-18 refactor)
