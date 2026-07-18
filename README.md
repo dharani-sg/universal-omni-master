@@ -592,6 +592,131 @@ All long-running orchestrators use **mkdir-based singleton locks** (`/tmp/.uom_*
 
 ---
 
+## 📱 Phone-Only QEMU Architecture (Phase 9.5)
+
+UOM runs entirely on a Xiaomi Mi 8 (dipper) with crDroid Android 15 inside a rootless QEMU VM. No laptop required for daily operation after initial setup.
+
+```
+Phone (Termux, Android 15, SDK 35)
+  └─ QEMU rootless TCG (no KVM)
+       └─ Alpine 3.21.3 aarch64 (musl/OpenRC)
+            ├─ opencode-zen-smart (curl wrapper, primary transport)
+            ├─ opencode-zen-free (basic rotation)
+            └─ UOM repo (~/src/universal-omni-master)
+```
+
+| Component | Version | Notes |
+|-----------|---------|-------|
+| Phone | Xiaomi Mi 8 (dipper) | crDroid Android 15, SDK 35 |
+| Termux | Google Play 2026.06.21 | Same source for all plugins |
+| QEMU | 10.2.1 | Rootless, TCG (no KVM) |
+| Alpine | 3.21.3 aarch64 | musl/OpenRC, hostname uom-phone-qemu |
+| OpenCode | 1.18.3 (guest) | Native binary BLOCKED (IPv6 hang) |
+| Transport | anonymous-api-fallback | curl wrapper primary |
+
+See [docs/PHONE-ONLY-OPERATIONS.md](docs/PHONE-ONLY-OPERATIONS.md) for daily operations.
+
+## 🔒 Security Boundaries
+
+| Boundary | Policy |
+|----------|--------|
+| QEMU process | Runs as Termux UID, never root |
+| Guest SSH | Key-only, 127.0.0.1:2222 only |
+| Networking | User-mode (no TAP/bridge/root) |
+| Storage | Termux private storage only |
+| AI models | Anonymous, zero-cost, no auth |
+| Git | GitHub canonical, no private keys on phone |
+| TLS | Never disable verification |
+
+See [docs/SECURITY-BOUNDARIES.md](docs/SECURITY-BOUNDARIES.md) for full policy.
+
+## 🔄 Git Sync Policy
+
+GitHub is the canonical transport. Both laptop and phone sync through GitHub, not directly to each other.
+
+```
+Laptop ──push/fetch──► GitHub ◄──fetch── Phone
+```
+
+- Pull = fetch + fast-forward only
+- Push requires clean tested tree
+- No auto-conflict resolution
+- Singleton lock prevents concurrent sync
+
+See [docs/SYNC-ARCHITECTURE.md](docs/SYNC-ARCHITECTURE.md) for details.
+
+## ⚠️ Anonymous Access Warning
+
+Anonymous zero-cost access is an **observed runtime capability**, not a contract. Models may become paid or unavailable at any time. Always verify:
+- Model presence via `/zen/v1/models`
+- Zero input/output/cached cost in response
+- `UOM_ZEN_READY` probe before first use
+
+Never assume a model is free without verification.
+
+## 🚦 Rate Limit Compliance
+
+- Honor `Retry-After` header on HTTP 429
+- Enter global cooldown (never rotate-to-evade)
+- Exponential backoff on 5xx/network errors (1s, 2s, 4s)
+- Max 3 retries per request
+- Concurrency = 1 (singleton lock)
+
+## 🔀 Native vs Fallback Transport
+
+| Environment | Native OpenCode | Curl Wrapper |
+|-------------|----------------|--------------|
+| Laptop | Working (primary) | Diagnostic only |
+| QEMU Guest | BLOCKED (IPv6 hang) | PRIMARY transport |
+| Phone Termux | Working (if installed) | Fallback |
+
+Native OpenCode hangs in QEMU guest due to IPv6 in QEMU user-mode networking. Curl wrapper uses `-4` flag for IPv4-only.
+
+See [docs/OPENCODE-LAPTOP-QEMU-PARITY.md](docs/OPENCODE-LAPTOP-QEMU-PARITY.md) for details.
+
+## 📋 Remaining TODO (Phase 10–13)
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| 10 | Adapt + start Zen Loop in guest | Pending |
+| 11 | Verify laptop-independent operation | Pending |
+| 12 | Persist across Termux restart / phone boot | Pending |
+| 13 | Revoke Termux root safely | Pending |
+
+## 📥 Safe Bootstrap Download
+
+```sh
+# Download bootstrap script
+curl -fsSL https://raw.githubusercontent.com/dharani-sg/universal-omni-master/refactor/structure-audit-2026-07-17/scripts/uom-phone-bootstrap.sh -o /tmp/uom-phone-bootstrap.sh
+
+# Verify checksum
+curl -fsSL https://raw.githubusercontent.com/dharani-sg/universal-omni-master/refactor/structure-audit-2026-07-17/scripts/uom-phone-bootstrap.sh.sha256 -o /tmp/uom-phone-bootstrap.sh.sha256
+sha256sum -c /tmp/uom-phone-bootstrap.sh.sha256
+
+# Run doctor (non-destructive)
+sh /tmp/uom-phone-bootstrap.sh doctor
+
+# Install (only if doctor passes)
+sh /tmp/uom-phone-bootstrap.sh install
+```
+
+## 🏷️ Release Links
+
+- **Pinned tag:** [uom-phone-qemu-phase9-20260718](https://github.com/dharani-sg/universal-omni-master/releases/tag/uom-phone-qemu-phase9-20260718)
+- **Latest release:** [GitHub Releases](https://github.com/dharani-sg/universal-omni-master/releases/latest)
+- **Branch:** [`refactor/structure-audit-2026-07-17`](https://github.com/dharani-sg/universal-omni-master/tree/refactor/structure-audit-2026-07-17)
+
+## 📊 Milestone Status
+
+| Milestone | Description | Date | Status |
+|-----------|-------------|------|--------|
+| M31 | Network Switching Stress Test | — | Pending (gate for M33-M37) |
+| M33-M37 | Zen Loop pipeline tests | — | Blocked by M31 |
+| Phase 9.5 | Phone-only QEMU bootstrap | 2026-07-18 | ✅ Complete |
+| Phase 10 | Zen Loop adaptation | — | Pending |
+
+---
+
 ## 📄 License
 
 **MIT** — Forged in the constraints of legacy hardware, engineered for the AI-augmented fleet of the future.
@@ -602,4 +727,4 @@ All long-running orchestrators use **mkdir-based singleton locks** (`/tmp/.uom_*
   <i>Built with ❤️ on a failing SATA cable. Validated on 6 distros. Targeting $2.6T AI infrastructure market.</i>
 </p>
 
-<!-- last-sync: 2026-07-17T23:45:00Z -->
+<!-- last-sync: 2026-07-18T08:30:00Z -->
