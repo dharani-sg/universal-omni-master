@@ -264,7 +264,22 @@ RESULTEOF
     case "$_overall" in
         PASS) _update_queue "$_task_id" "verified" "verifier:pass" ;;
         WARN) _update_queue "$_task_id" "verified" "verifier:pass-with-warnings" ;;
-        FAIL) _update_queue "$_task_id" "failed" "verifier:${_reasons%,}" ;;
+        FAIL)
+            # Check retry eligibility
+            _task_obj=$(jq -c "map(select(.id == \"$_task_id\")) | .[0]" "$QUEUE_FILE" 2>/dev/null)
+            _max_attempts=$(echo "$_task_obj" | jq -r '.max_attempts // 1')
+            _attempts=$(echo "$_task_obj" | jq -r '.attempts // 0')
+            _new_attempts=$((_attempts + 1))
+            if [ "$_new_attempts" -lt "$_max_attempts" ]; then
+                _log "  → Retry ${_new_attempts}/${_max_attempts}"
+                _update_queue "$_task_id" "pending" "verifier:retry-${_new_attempts}"
+                # Bump attempts counter
+                jq "(map(if .id == \"$_task_id\" then .attempts = $_new_attempts else . end))" "$QUEUE_FILE" > "${QUEUE_FILE}.tmp" && mv "${QUEUE_FILE}.tmp" "$QUEUE_FILE" || true
+            else
+                _log "  ✗ FAIL (retries exhausted ${_attempts}/${_max_attempts})"
+                _update_queue "$_task_id" "failed" "verifier:${_reasons%,}"
+            fi
+            ;;
     esac
 
     # Move .ready to .done
