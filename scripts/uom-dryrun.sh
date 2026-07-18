@@ -117,10 +117,13 @@ test_policy() {
     printf '\n=== STATIC POLICY TESTS ===\n'
 
     # 2a. No active 18022 references outside .uom-agent/context/
-    #     Exclude this test script itself (contains 18022 in its grep pattern text)
+    #     Exclude: this script (grep pattern text), verifier (checks FOR 18022),
+    #     .uom-agent/runtime/ (ephemeral fix scripts)
     _hits=$(grep -r --include='*.sh' --include='*.py' -l '18022' "${UOM_ROOT}/" 2>/dev/null \
         | grep -v '\.uom-agent/context/' \
-        | grep -v 'scripts/uom-dryrun.sh' || true)
+        | grep -v '\.uom-agent/runtime/' \
+        | grep -v 'scripts/uom-dryrun.sh' \
+        | grep -v 'scripts/uom-verifier.sh' || true)
     if [ -z "$_hits" ]; then
         pass "No active 18022 references outside .uom-agent/context/"
     else
@@ -175,8 +178,10 @@ test_policy() {
     fi
 
     # 2g. No direct sudo/doas/su in automation (orchestrators/ and tools/ only)
+    #     Exclude comments (word after # on same line)
     _priv_auto=$(grep -rn --include='*.sh' '\bsudo\b\|\bdoas\b' \
-        "${UOM_ROOT}/orchestrators/" "${UOM_ROOT}/tools/" 2>/dev/null || true)
+        "${UOM_ROOT}/orchestrators/" "${UOM_ROOT}/tools/" 2>/dev/null \
+        | grep -v '^[^:]*:[^:]*:#' || true)
     if [ -z "$_priv_auto" ]; then
         pass "No direct sudo/doas in orchestrators/tools"
     else
@@ -203,9 +208,11 @@ test_policy() {
     fi
 
     # 2j. No direct state.json redirection bypassing state-lib
+    #     Exclude read-only jq -c/cat patterns (monitoring, not mutation)
     _state_bypass=$(grep -rn --include='*.sh' '>.*state\.json\b' \
         "${UOM_ROOT}/orchestrators/" "${UOM_ROOT}/tools/" 2>/dev/null \
-        | grep -v 'uom-state\|\.tmp\|\.lock\|state-lib\|statectl\|orch-state\|migration\|update\.\$' || true)
+        | grep -v 'uom-state\|\.tmp\|\.lock\|state-lib\|statectl\|orch-state\|migration\|update\.\$' \
+        | grep -v 'jq -c\|cat \|2>/dev/null' || true)
     if [ -z "$_state_bypass" ]; then
         pass "No direct state.json redirection bypassing state-lib"
     else

@@ -1,5 +1,7 @@
 #!/bin/sh
 # tools/uom-orch-state.sh — Shared state functions (POSIX/BusyBox ash safe)
+# DEPRECATED: Use tools/uom-state-lib.sh (schema v2) instead.
+# This file uses schema v1 and will be removed in a future release.
 # Source this from both laptop and phone orchestrators
 # POSIX-first: zero bashisms, zero eval, zero set --
 
