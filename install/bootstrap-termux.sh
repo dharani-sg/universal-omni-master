@@ -437,14 +437,33 @@ install_termux_boot() {
   cat > "$boot_dir/start-uom.sh" << 'BOOTEOF'
 #!/data/data/com.termux/files/usr/bin/sh
 # Termux:Boot auto-start for UOM
+# Starts: sshd, reverse tunnel, port guardian, tmux watchdog, phone orchestrator
+# QEMU watchdog is auto-started by uom-qemu-phone when QEMU launches
+
+UOM_DIR="${HOME}/src/universal-omni-master"
+
 sleep 30
+
+# 1. SSH daemon
 if command -v sshd >/dev/null 2>&1; then
   sshd 2>/dev/null || true
 fi
-  cd ~/src/universal-omni-master 2>/dev/null && \
-  sh bin/uom-reverse-ssh.sh &>/dev/null &
-  cd ~/src/universal-omni-master 2>/dev/null && \
+
+# 2. Reverse SSH tunnel (laptop → phone)
+cd "$UOM_DIR" 2>/dev/null && \
+  sh bin/uom-reverse-ssh.sh start &>/dev/null &
+
+# 3. Port guardian (IP/port drift detection)
+cd "$UOM_DIR" 2>/dev/null && \
   sh bin/uom-port-guardian.sh start &>/dev/null &
+
+# 4. Tmux watchdog (session/process recovery)
+cd "$UOM_DIR" 2>/dev/null && \
+  nohup sh orchestrators/uom-tmux-watchdog.sh --daemon &>/dev/null &
+
+# 5. Phone orchestrator (task execution)
+cd "$UOM_DIR" 2>/dev/null && \
+  nohup sh tools/uom-orch-phone.sh &>/dev/null &
 BOOTEOF
 
   chmod 700 "$boot_dir/start-uom.sh"

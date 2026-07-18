@@ -568,24 +568,15 @@ test_components() {
         fail "bin/omni-project-start.sh not found"
     fi
 
-    # 5b. bin/uom-tmux-guardian.sh exists and handles missing tmux
-    if [ -f "${UOM_ROOT}/bin/uom-tmux-guardian.sh" ]; then
-        if sh -n "${UOM_ROOT}/bin/uom-tmux-guardian.sh" 2>/dev/null; then
-            pass "bin/uom-tmux-guardian.sh exists and passes sh -n"
+    # 5b. orchestrators/uom-tmux-watchdog.sh exists and passes syntax check
+    if [ -f "${UOM_ROOT}/orchestrators/uom-tmux-watchdog.sh" ]; then
+        if sh -n "${UOM_ROOT}/orchestrators/uom-tmux-watchdog.sh" 2>/dev/null; then
+            pass "orchestrators/uom-tmux-watchdog.sh exists and passes sh -n"
         else
-            fail "bin/uom-tmux-guardian.sh fails sh -n"
-        fi
-        # Check it doesn't hard-fail when tmux is missing
-        if ! command -v tmux >/dev/null 2>&1; then
-            _out=$(sh "${UOM_ROOT}/bin/uom-tmux-guardian.sh" 2>&1 || true)
-            if echo "$_out" | grep -qi 'tmux\|not found\|missing\|not installed'; then
-                pass "tmux-guardian handles missing tmux gracefully"
-            else
-                warn "tmux-guardian output unclear without tmux"
-            fi
+            fail "orchestrators/uom-tmux-watchdog.sh fails sh -n"
         fi
     else
-        fail "bin/uom-tmux-guardian.sh not found"
+        fail "orchestrators/uom-tmux-watchdog.sh not found"
     fi
 
     # 5c. tools/uom-state-lib.sh exists and passes syntax

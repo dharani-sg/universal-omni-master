@@ -47,6 +47,17 @@ _log() {
     printf '[tmuxwd] %s\n' "$*"
 }
 
+_rotate_log() {
+    [ ! -f "$WATCHDOG_LOG" ] && return
+    _size=$(wc -c < "$WATCHDOG_LOG" 2>/dev/null || echo 0)
+    if [ "${_size:-0}" -gt 1048576 ] 2>/dev/null; then
+        _tmp="${WATCHDOG_LOG}.rotated.$$.tmp"
+        tail -500 "$WATCHDOG_LOG" > "$_tmp" 2>/dev/null
+        mv "$_tmp" "$WATCHDOG_LOG" 2>/dev/null || true
+        _log "log rotated (was ${_size} bytes)"
+    fi
+}
+
 IS_PHONE=false
 if echo "$HOME" | grep -q '/data/data/com.termux' 2>/dev/null; then
     IS_PHONE=true
@@ -58,38 +69,51 @@ fi
 
 _create_uom_session() {
     _session="uom"
-    tmux kill-session -t "$_session" 2>/dev/null || true
-    sleep 0.5
-    tmux new-session -d -s "$_session" -n "start" \
-        "cd ${UOM_DIR} && sh bin/omni-project-start.sh --menu" 2>/dev/null || return 1
-    sleep 0.3
-
-    tmux new-window -t "$_session" -n "opencode" \
-        "cd ${UOM_DIR} && opencode" 2>/dev/null || true
-    sleep 0.2
-
-    tmux new-window -t "$_session" -n "status" \
-        "sh ${UOM_DIR}/bin/uom-status.sh" 2>/dev/null || true
-    sleep 0.2
-
-    tmux new-window -t "$_session" -n "state" \
-        "cd ${UOM_DIR} && watch -n5 'cat .uom-agent/state.json'" 2>/dev/null || true
-    sleep 0.2
-
-    tmux new-window -t "$_session" -n "git" \
-        "cd ${UOM_DIR} && git log --oneline --graph -30 --all" 2>/dev/null || true
-    sleep 0.2
-
-    if $IS_PHONE; then
-        tmux new-window -t "$_session" -n "laptop" \
-            "ssh -F ~/.ssh/config uom-laptop-rev" 2>/dev/null || true
-    else
-        tmux new-window -t "$_session" -n "phone" \
-            "ssh -F ~/.ssh/config uom-phone-rev" 2>/dev/null || true
+    # Check if session already exists — preserve it if so
+    if tmux has-session -t "$_session" 2>/dev/null; then
+        # Verify pane count — repair if too few
+        _pane_count=$(tmux list-panes -t "$_session" 2>/dev/null | wc -l)
+        if [ "${_pane_count:-0}" -lt 2 ] 2>/dev/null; then
+            _log "Session '$_session' exists but only $_pane_count pane(s) — adding state pane"
+            tmux split-window -t "${_session}" -v -p 25 2>/dev/null || true
+            tmux send-keys -t "${_session}" \
+                "cd ${UOM_DIR} && while true; do if [ -f .uom-agent/state.json ]; then jq -c '{mode:.active_agent,writer:.writer_role,task:.task_status,epoch:.ownership_epoch}' .uom-agent/state.json 2>/dev/null || cat .uom-agent/state.json; else echo '{\"error\":\"no state\"}'; fi; sleep 5; done" C-m 2>/dev/null || true
+        fi
+        return 0
     fi
 
-    tmux select-window -t "$_session:0"
-    _log "Created tmux session '${_session}' with 6 windows"
+    # Create new session with main + state pane layout
+    tmux new-session -d -s "$_session" -n "opencode" \
+        -x "$(tput cols 2>/dev/null || echo 80)" \
+        -y "$(tput lines 2>/dev/null || echo 24)" 2>/dev/null || return 1
+    sleep 0.3
+
+    # Set pane title and launch main command
+    tmux select-pane -t "${_session}:opencode.0" -T "uom-main" 2>/dev/null || true
+    tmux send-keys -t "${_session}:opencode.0" \
+        "cd ${UOM_DIR} && sh bin/omni-project-start.sh --menu" C-m 2>/dev/null || true
+
+    # Add state watcher pane (bottom 25%)
+    tmux split-window -t "${_session}:opencode.0" -v -p 25 2>/dev/null || true
+    sleep 0.2
+    tmux select-pane -t "${_session}:opencode.1" -T "uom-state" 2>/dev/null || true
+    tmux send-keys -t "${_session}:opencode.1" \
+        "cd ${UOM_DIR} && while true; do if [ -f .uom-agent/state.json ]; then jq -c '{mode:.active_agent,writer:.writer_role,task:.task_status,epoch:.ownership_epoch}' .uom-agent/state.json 2>/dev/null || cat .uom-agent/state.json; else echo '{\"error\":\"no state\"}'; fi; sleep 5; done" C-m 2>/dev/null || true
+
+    # Add log pane if terminal is wide enough (>120 cols)
+    _cols=$(tput cols 2>/dev/null || echo 80)
+    if [ "${_cols:-80}" -gt 120 ] 2>/dev/null; then
+        tmux split-window -t "${_session}:opencode.0" -h -p 25 2>/dev/null || true
+        sleep 0.2
+        tmux select-pane -t "${_session}:opencode.0" -T "uom-log" 2>/dev/null || true
+        tmux send-keys -t "${_session}:opencode.0" \
+            "tail -f ${WATCHDOG_LOG}" C-m 2>/dev/null || true
+    fi
+
+    # Select main pane (last pane after splits)
+    tmux select-pane -t "${_session}:opencode.0" 2>/dev/null || true
+
+    _log "Created tmux session '${_session}' with pane layout (main + state + optional log)"
     return 0
 }
 
@@ -158,11 +182,22 @@ _check_state_stale() {
 
 _watchdog_check() {
     _recovered=false
+    _rotate_log
 
     # 1. Check uom session (main project tmux)
     if ! _check_session "uom"; then
         _log "Session 'uom' not found. Recreating..."
         _create_uom_session && _recovered=true
+    else
+        # Session exists — verify pane count (repair if <2 panes)
+        _pane_count=$(tmux list-panes -t "uom" 2>/dev/null | wc -l)
+        if [ "${_pane_count:-0}" -lt 2 ] 2>/dev/null; then
+            _log "Session 'uom' has only $_pane_count pane(s) — adding state pane"
+            tmux split-window -t "uom" -v -p 25 2>/dev/null || true
+            tmux send-keys -t "uom" \
+                "cd ${UOM_DIR} && while true; do if [ -f .uom-agent/state.json ]; then jq -c '{mode:.active_agent,writer:.writer_role,task:.task_status,epoch:.ownership_epoch}' .uom-agent/state.json 2>/dev/null || cat .uom-agent/state.json; else echo '{\"error\":\"no state\"}'; fi; sleep 5; done" C-m 2>/dev/null || true
+            _recovered=true
+        fi
     fi
 
     # 2. Check orchestrator session
@@ -212,6 +247,7 @@ _watchdog_check() {
 _daemon_loop() {
     echo "$$" > "$WATCHDOG_PID"
     _log "Tmux watchdog started (PID $$). Interval: ${CHECK_INTERVAL}s"
+    _rotate_log
 
     # Initial creation
     _create_uom_session

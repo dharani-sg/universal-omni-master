@@ -152,6 +152,29 @@ _remove_pid() {
     rm -f "$UOM_PID_FILE" "$UOM_LOCK_FILE" 2>/dev/null || true
 }
 
+# ── Start QEMU watchdog (auto-called after QEMU launch) ───────────────
+_start_qemu_watchdog() {
+    _watchdog_script="${HOME}/bin/uom-qemu-watchdog.sh"
+    _watchdog_lock="${HOME}/uom-vm/locks/watchdog"
+    if [ ! -f "$_watchdog_script" ]; then
+        _log "Watchdog script not found at $_watchdog_script — skipping"
+        return 0
+    fi
+    # Check if watchdog already running
+    if [ -d "$_watchdog_lock" ]; then
+        _old_pid=$(cat "${_watchdog_lock}/pid" 2>/dev/null || echo "")
+        if [ -n "$_old_pid" ] && kill -0 "$_old_pid" 2>/dev/null; then
+            _log "Watchdog already running (PID $_old_pid)"
+            return 0
+        fi
+        rm -rf "$_watchdog_lock" 2>/dev/null || true
+    fi
+    _log "Starting QEMU watchdog..."
+    nohup sh "$_watchdog_script" >> "${UOM_LOG_DIR}/${VM_NAME}-watchdog.log" 2>&1 &
+    _wd_pid=$!
+    _log "Watchdog started (PID $_wd_pid)"
+}
+
 _wait_for_stopped() {
     _timeout=30
     _count=0
@@ -247,6 +270,9 @@ cmd_start() {
 
     _release_lock
     _logf "START done"
+
+    # Auto-start QEMU watchdog
+    _start_qemu_watchdog
 }
 
 cmd_stop() {
@@ -279,6 +305,18 @@ cmd_stop() {
 
     # Step 3: Cleanup
     _remove_pid
+
+    # Stop QEMU watchdog
+    _watchdog_lock="${HOME}/uom-vm/locks/watchdog"
+    if [ -d "$_watchdog_lock" ]; then
+        _wd_pid=$(cat "${_watchdog_lock}/pid" 2>/dev/null || echo "")
+        if [ -n "$_wd_pid" ] && kill -0 "$_wd_pid" 2>/dev/null; then
+            kill "$_wd_pid" 2>/dev/null || true
+            _log "Watchdog stopped (PID $_wd_pid)"
+        fi
+        rm -rf "$_watchdog_lock" 2>/dev/null || true
+    fi
+
     _log "VM stopped."
     _logf "STOP done"
 }
