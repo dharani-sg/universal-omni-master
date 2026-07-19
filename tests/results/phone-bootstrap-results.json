@@ -1,5 +1,5 @@
 {
-  "test_run": "2026-07-19T04:54:40Z",
+  "test_run": "2026-07-19T05:01:19Z",
   "script": "tests/test-phone-bootstrap.sh",
   "total": 72,
   "passed": 72,
