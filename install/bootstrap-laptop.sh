@@ -7,12 +7,23 @@ UOM_REPO="https://github.com/dharani-sg/universal-omni-master.git"
 
 echo "=== UOM Bootstrap for Alpine Linux ==="
 
+# Guard: doas must be configured
+command -v doas >/dev/null 2>&1 || { echo "[FATAL] doas not found or not configured. Set up /etc/doas.conf first."; exit 1; }
+
 doas apk update
 doas apk add --no-cache tmux openssh git curl jq autossh avahi nss-mdns \
   go openssl bash fish neovim
 
 export PATH="$HOME/go/bin:$PATH"
-command -v opencode >/dev/null 2>&1 || go install github.com/opencode-ai/opencode@latest
+# Upstream opencode-ai/opencode is archived — migrated to charmbracelet/crush
+command -v crush >/dev/null 2>&1 || go install github.com/charmbracelet/crush@latest
+
+# Persist Go binary path to Fish shell (survives reboot)
+if command -v fish >/dev/null 2>&1; then
+  mkdir -p "$HOME/.config/fish"
+  grep -q 'go/bin' "$HOME/.config/fish/config.fish" 2>/dev/null || \
+    echo 'fish_add_path $HOME/go/bin' >> "$HOME/.config/fish/config.fish"
+fi
 
 mkdir -p "$HOME/src"
 if [ -d "$HOME/src/universal-omni-master/.git" ]; then
@@ -30,8 +41,5 @@ doas rc-update add sshd default
 doas rc-update add avahi-daemon default
 doas rc-service sshd start
 doas rc-service avahi-daemon start
-
-cd "$HOME/src/universal-omni-master"
-[ -x install/setup-laptop.sh ] && sh install/setup-laptop.sh || true
 
 echo "=== Bootstrap complete. Run: cd ~/src/universal-omni-master && tmux new -s uom ==="

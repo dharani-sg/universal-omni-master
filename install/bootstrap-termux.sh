@@ -280,6 +280,19 @@ inventory_opencode() {
   fi
 
   if [ -z "$oc_cmd" ]; then
+    # Fallback: check for charmbracelet/crush binary
+    for candidate in \
+      "${PREFIX:-}/bin/crush" \
+      "$HOME/go/bin/crush"; do
+      if [ -x "$candidate" ]; then
+        oc_cmd="$candidate"
+        OC_PATH="$candidate"
+        break
+      fi
+    done
+  fi
+
+  if [ -z "$oc_cmd" ]; then
     OC_SOURCE="not-found"
     return
   fi
@@ -351,8 +364,19 @@ resolve_opencode_install() {
     fi
   fi
 
-  # Priority 3-5: manual
-  log "Priority 5: no local install path succeeded."
+  # Priority 3: charmbracelet/crush (replaces archived opencode-ai/opencode)
+  if command -v go >/dev/null 2>&1; then
+    log "Priority 3: attempting go install of charmbracelet/crush..."
+    if go install github.com/charmbracelet/crush@latest 2>/dev/null; then
+      OC_INSTALL_ACTION="go-crush"
+      OC_INSTALL_PRIORITY=3
+      inventory_opencode
+      return
+    fi
+  fi
+
+  # Priority 4-5: manual
+  log "Priority 4: no local install path succeeded."
   OC_INSTALL_ACTION="remote-fallback"
   OC_INSTALL_PRIORITY=5
 }

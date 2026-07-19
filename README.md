@@ -55,30 +55,35 @@ UOM is a POSIX-hardened AI infrastructure stack that turns any two POSIX devices
 curl -fsSL https://raw.githubusercontent.com/dharani-sg/universal-omni-master/main/install/bootstrap.sh | bash
 ```
 
-This single command deploys the full phone agent stack via a **secure 3-stage chain**:
+This single command deploys the full phone/laptop agent stack via a **secure 3-stage chain**:
 
 ```
 curl pipe
   │
   ▼
-Stage 1: bootstrap.sh (88 lines) — Secure downloader
+Stage 1: bootstrap.sh (88 lines) — Secure download-validate-exec
   ├─ Auto-detects Termux/Android vs Alpine Linux
   ├─ Downloads child script from GitHub raw with 3-retry, 60s timeout
-  ├─ Validates: size <500KB, shebang present, not HTML, POSIX syntax check
+  ├─ Validates: size <500KB, shebang present, not HTML, POSIX syntax
   └─ exec child with all forwarded arguments
   │
   ▼
-Stage 2 (Termux): bootstrap-termux.sh (926 lines, hardened)
-  ├─ phone-relay profile (default): tmux + openssh + git + jq + curl + autossh + fzf
-  │   SSH key (id_ed25519_uom), SSH config (UOM-managed block), repo clone, Termux:Boot
-  └─ phone-vm-agent profile (opt-in): QEMU aarch64 + proot-distro + Alpine VM
-      Requires consent: --allow-large-download --allow-vm --allow-opencode-install
+Stage 2 (Termux): bootstrap-termux.sh (930 lines, hardened)
+  ├─ phone-relay (default): tmux, openssh, git, jq, curl, autossh, fzf
+  │   SSH key (id_ed25519_uom), SSH config (UOM-managed block),
+  │   repo clone (SHA-safe + tarball fallback), Termux:Boot
+  │   opencode install ladder: pkg → npm → go (crush) → remote
+  └─ phone-vm-agent (opt-in): +QEMU aarch64/proot-distro + Alpine VM
+      Consent required: --allow-large-download --allow-vm --allow-opencode-install
   │
   ▼
-Stage 2 (Alpine): bootstrap-laptop.sh (37 lines)
-  └─ apk packages, go install opencode, clone repo, enable sshd/avahi
-
-Result: Fully provisioned phone agent with SSH tunnel, tmux, opencode CLI, and optional QEMU VM
+Stage 2 (Alpine): bootstrap-laptop.sh (45 lines)
+  └─ apk packages, go install charmbracelet/crush, fish path persistence,
+     clone repo, enable sshd/avahi, doas guard
+  │
+  ▼
+Result: Fully provisioned phone agent + laptop with SSH tunnel, tmux,
+        crush CLI, and optional QEMU aarch64 VM
 ```
 
 ### Profiles
@@ -98,6 +103,9 @@ sh install/bootstrap-termux.sh --apply --verify
 # Install VM profile (requires explicit consent):
 sh install/bootstrap-termux.sh --apply --profile phone-vm-agent \
   --allow-large-download --allow-vm --allow-opencode-install
+
+# Laptop Alpine:
+curl -fsSL https://raw.githubusercontent.com/dharani-sg/universal-omni-master/main/install/bootstrap-laptop.sh | sh
 ```
 
 ### Hardening Patches (v0.34.0)
