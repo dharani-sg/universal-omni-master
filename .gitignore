@@ -38,3 +38,4 @@ secrets.env
 .uom-agent/test-llm-output.txt
 .uom-agent/*.host
 .uom-termux-user/
+.install-gate-evidence/

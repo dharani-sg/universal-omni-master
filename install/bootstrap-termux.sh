@@ -14,18 +14,36 @@
 set -eu
 
 # ── Constants ────────────────────────────────────────────────────────────
-UOM_REPO="https://github.com/dharani-sg/universal-omni-master.git"
-UOM_DIR="$HOME/src/universal-omni-master"
-UOM_AGENT_DIR="$UOM_DIR/.uom-agent"
-INSTALL_META="$UOM_AGENT_DIR/opencode-install.json"
+UOM_REPO_DEFAULT="https://github.com/dharani-sg/universal-omni-master.git"
+UOM_DIR_DEFAULT="$HOME/src/universal-omni-master"
 SSHD_PORT=8022
 TUNNEL_PORT=31415
+INSTALL_LOCK="${TMPDIR:-/tmp}/uom-install.lock"
+MAX_CHILD_SIZE=512000
 
 # ── Helpers ──────────────────────────────────────────────────────────────
 log()  { printf '[*] %s\n' "$*"; }
 warn() { printf '[!] %s\n' "$*" >&2; }
 die()  { printf '[FATAL] %s\n' "$*" >&2; exit 1; }
 now()  { date '+%Y-%m-%dT%H:%M:%S%z' 2>/dev/null || date '+%Y-%m-%dT%H:%M:%S'; }
+
+# JSON-safe string escape (POSIX, no jq dependency)
+json_escape() {
+  printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/\t/\\t/g'
+}
+
+# ── Cleanup trap ─────────────────────────────────────────────────────────
+_CLEANUP_DONE=0
+_TEST_ROOT=""
+cleanup() {
+  [ "$_CLEANUP_DONE" -eq 1 ] && return
+  _CLEANUP_DONE=1
+  # Release lock
+  rm -f "$INSTALL_LOCK" 2>/dev/null || true
+  # Remove temp files
+  [ -n "${_SSH_CONFIG_TMP:-}" ] && rm -f "$_SSH_CONFIG_TMP" 2>/dev/null || true
+}
+trap cleanup EXIT INT TERM HUP
 
 # ── Parse arguments ──────────────────────────────────────────────────────
 MODE="check"
@@ -94,6 +112,7 @@ HELPEOF
       ;;
     *) die "Unknown argument: $1" ;;
   esac
+  _PREV_ARG="$arg"
 done
 
 # ── Consent validation ──────────────────────────────────────────────────
@@ -176,11 +195,14 @@ check_network_guardrail() {
 ANDROID_SDK=0
 ANDROID_RELEASE="unknown"
 
-if command -v getprop >/dev/null 2>&1; then
+if [ -n "${UOM_SDK_OVERRIDE:-}" ]; then
+  ANDROID_SDK="$UOM_SDK_OVERRIDE"
+  ANDROID_RELEASE="test-override"
+elif command -v getprop >/dev/null 2>&1; then
   sdk_raw="$(getprop ro.build.version.sdk 2>/dev/null || true)"
   rel_raw="$(getprop ro.build.version.release 2>/dev/null || true)"
-  [ -n "$sdk_raw" ] && ANDROID_SDK="$sdk_raw"
-  [ -n "$rel_raw" ] && ANDROID_RELEASE="$rel_raw"
+  [ -n "$sdk_raw" ] && ANDROID_SDK="$sdk_raw" || true
+  [ -n "$rel_raw" ] && ANDROID_RELEASE="$rel_raw" || true
 fi
 
 if [ "$ANDROID_SDK" -eq 0 ] 2>/dev/null; then
@@ -208,24 +230,22 @@ else
   log "Not running in Termux — some features may not apply"
 fi
 
-# ── Section 3: Storage safety ───────────────────────────────────────────
+# ── Section 3: Storage safety (check only — no writes) ──────────────────
 check_storage_safety() {
-  case "$HOME" in
+  case "${HOME:-}" in
     /sdcard/*|/sdcard|*/storage/emulated/*)
       warn "HOME is under /sdcard — file permissions may be unreliable."
       warn "Recommended: move project to \$HOME/src/universal-omni-master"
       ;;
     */storage/*)
       warn "HOME is under /storage — may have restrictive mount options."
-      warn "Recommended: move project to \$HOME/src/universal-omni-master"
       ;;
   esac
 }
 
-storage_warned=0
 check_storage_safety
 
-# ── Section 4: OpenCode inventory ───────────────────────────────────────
+# ── Section 4: OpenCode inventory (read-only) ───────────────────────────
 OC_VERSION=""
 OC_PATH=""
 OC_SOURCE="not-found"
@@ -238,9 +258,8 @@ inventory_opencode() {
   fi
 
   if [ -z "$oc_cmd" ]; then
-    # Check common non-PATH locations
     for candidate in \
-      "$PREFIX/bin/opencode" \
+      "${PREFIX:-}/bin/opencode" \
       "$HOME/bin/opencode" \
       "$HOME/.local/bin/opencode" \
       "$HOME/go/bin/opencode"; do
@@ -257,12 +276,10 @@ inventory_opencode() {
     return
   fi
 
-  # Determine source
   case "$oc_cmd" in
     */go/bin/*)  OC_SOURCE="go-install" ;;
     */bin/opencode)
-      # Check if from npm
-      npm_prefix="$(npm prefix -g 2>/dev/null || true)"
+      npm_prefix="$(npm_config_loglevel=error npm_config_logfile=/dev/null npm prefix -g 2>/dev/null || true)"
       if [ -n "$npm_prefix" ] && case "$oc_cmd" in "$npm_prefix"*) true ;; *) false ;; esac; then
         OC_SOURCE="npm-global"
       else
@@ -272,29 +289,17 @@ inventory_opencode() {
     *) OC_SOURCE="unknown" ;;
   esac
 
-  # Version
   OC_VERSION="$(opencode --version 2>/dev/null || opencode -v 2>/dev/null || true)"
-  if [ -z "$OC_VERSION" ]; then
-    OC_VERSION="unknown"
-  fi
-
-  # Check if binary is actually functional
-  if ! opencode help >/dev/null 2>&1 && ! opencode --help >/dev/null 2>&1; then
-    warn "opencode found at ${oc_cmd} but help fails — may be broken"
-  fi
+  [ -z "$OC_VERSION" ] && OC_VERSION="unknown" || true
 }
 
 log "Inventorying opencode..."
 inventory_opencode
 log "opencode status: source=${OC_SOURCE} version=${OC_VERSION} path=${OC_PATH:-none}"
 
-# ── Section 5: Installation priority ────────────────────────────────────
-# P0: already installed and functional
-# P1: Termux pkg
-# P2: npm opencode-ai (if metadata supports Android)
-# P3: third-party native (requires --allow-third-party-opencode)
-# P4: proot-distro (requires --allow-proot-opencode)
-# P5: remote laptop fallback (document only)
+# ── Section 5: Installation priority (check-only mode) ──────────────────
+OC_INSTALL_ACTION="none"
+OC_INSTALL_PRIORITY=0
 
 resolve_opencode_install() {
   if [ -n "$OC_PATH" ] && [ "$OC_SOURCE" != "not-found" ]; then
@@ -304,74 +309,42 @@ resolve_opencode_install() {
     return
   fi
 
-  # Priority 1: Termux package
-  if command -v pkg >/dev/null 2>&1; then
-    if [ "$MODE" = "apply" ]; then
-      log "Priority 1: attempting Termux package install..."
-      if pkg install -y opencode 2>/dev/null; then
-        OC_INSTALL_ACTION="termux-pkg"
-        OC_INSTALL_PRIORITY=1
-        inventory_opencode
-        return
-      fi
-    else
+  if [ "$MODE" != "apply" ]; then
+    if command -v pkg >/dev/null 2>&1; then
       log "Priority 1: Termux package 'opencode' available (run --apply to install)"
-      OC_INSTALL_ACTION="termux-pkg-pending"
-      OC_INSTALL_PRIORITY=1
-      return
-    fi
-  fi
-
-  # Priority 2: npm opencode-ai
-  if command -v npm >/dev/null 2>&1; then
-    if [ "$MODE" = "apply" ]; then
-      log "Priority 2: attempting npm install of opencode-ai..."
-      if npm install -g opencode-ai 2>/dev/null; then
-        OC_INSTALL_ACTION="npm-global"
-        OC_INSTALL_PRIORITY=2
-        inventory_opencode
-        return
-      fi
-    else
+    elif command -v npm >/dev/null 2>&1; then
       log "Priority 2: npm opencode-ai available (run --apply to install)"
-      OC_INSTALL_ACTION="npm-global-pending"
-      OC_INSTALL_PRIORITY=2
-      return
-    fi
-  fi
-
-  # Priority 3: third-party native (requires flag)
-  if [ "$ALLOW_THIRD_PARTY" -eq 1 ]; then
-    if [ "$MODE" = "apply" ]; then
-      warn "Priority 3: third-party native install requested but no verified method available."
-      warn "Download from https://github.com/anomalyco/opencode/releases and verify manually."
     else
-      log "Priority 3: third-party native — requires --allow-third-party-opencode and --apply"
+      log "No local install path available."
     fi
-    OC_INSTALL_ACTION="third-party-manual"
-    OC_INSTALL_PRIORITY=3
+    OC_INSTALL_ACTION="not-resolved"
     return
   fi
 
-  # Priority 4: proot-distro (requires flag)
-  if [ "$ALLOW_PROOT" -eq 1 ]; then
-    if [ "$IS_TERMUX" -eq 1 ] && command -v proot-distro >/dev/null 2>&1; then
-      if [ "$MODE" = "apply" ]; then
-        log "Priority 4: proot-distro fallback — install Ubuntu/Debian, then opencode inside"
-        warn "proot-distro is slow. Prefer native methods."
-      else
-        log "Priority 4: proot-distro fallback available (run --apply to set up)"
-      fi
-      OC_INSTALL_ACTION="proot-distro"
-      OC_INSTALL_PRIORITY=4
+  # Priority 1: Termux package (apply mode only)
+  if command -v pkg >/dev/null 2>&1 && [ "$SKIP_PACKAGES" -eq 0 ]; then
+    log "Priority 1: attempting Termux package install..."
+    if pkg install -y opencode 2>/dev/null; then
+      OC_INSTALL_ACTION="termux-pkg"
+      OC_INSTALL_PRIORITY=1
+      inventory_opencode
       return
     fi
   fi
 
-  # Priority 5: document remote fallback
+  # Priority 2: npm (apply mode only)
+  if command -v npm >/dev/null 2>&1 && [ "$SKIP_PACKAGES" -eq 0 ]; then
+    log "Priority 2: attempting npm install of opencode-ai..."
+    if npm install -g opencode-ai 2>/dev/null; then
+      OC_INSTALL_ACTION="npm-global"
+      OC_INSTALL_PRIORITY=2
+      inventory_opencode
+      return
+    fi
+  fi
+
+  # Priority 3-5: manual
   log "Priority 5: no local install path succeeded."
-  log "  Use reverse SSH tunnel to run opencode on laptop:"
-  log "    ssh -R 31415:localhost:31415 alpine@<laptop-ip>"
   OC_INSTALL_ACTION="remote-fallback"
   OC_INSTALL_PRIORITY=5
 }
@@ -422,10 +395,23 @@ install_companion_pkgs
 
 # ── Section 7: SSH key generation ───────────────────────────────────────
 ssh_key_generated=0
+SSHD_USER="${UOM_SSH_USER:-$(whoami 2>/dev/null || echo "uom")}"
 
 ensure_ssh_key() {
-  if [ -f "$HOME/.ssh/id_ed25519" ]; then
-    log "SSH key already exists: $HOME/.ssh/id_ed25519"
+  _KEY_PATH="${INSTALL_DIR:+${TEST_ROOT:-}/}${HOME}/.ssh/id_ed25519_uom"
+  # For test-root mode, redirect key into test root
+  if [ "$_USE_TEST_ROOT" -eq 1 ]; then
+    _KEY_DIR="${TEST_ROOT}${HOME}/.ssh"
+    mkdir -p "$_KEY_DIR"
+    _KEY_PATH="${_KEY_DIR}/id_ed25519_uom"
+  else
+    _KEY_DIR="$HOME/.ssh"
+    mkdir -p "$_KEY_DIR" 2>/dev/null || true
+    _KEY_PATH="${_KEY_DIR}/id_ed25519_uom"
+  fi
+
+  if [ -f "$_KEY_PATH" ]; then
+    log "SSH key already exists: $_KEY_PATH"
     return
   fi
 
@@ -434,29 +420,30 @@ ensure_ssh_key() {
     return
   fi
 
-  mkdir -p "$HOME/.ssh"
-  chmod 700 "$HOME/.ssh"
+  mkdir -p "$_KEY_DIR"
+  chmod 700 "$_KEY_DIR"
 
   log "Generating ed25519 SSH key..."
-  ssh-keygen -t ed25519 -f "$HOME/.ssh/id_ed25519" -N "" -C "uom-phone-$(date +%Y%m%d)" 2>/dev/null || {
+  ssh-keygen -t ed25519 -f "$_KEY_PATH" -N "" -C "uom-phone-$(date +%Y%m%d)" 2>/dev/null || {
     warn "ssh-keygen failed"
     return
   }
-  chmod 600 "$HOME/.ssh/id_ed25519"
+  chmod 600 "$_KEY_PATH"
   ssh_key_generated=1
 
   printf '\n'
   log "=== ADD THIS PUBLIC KEY TO LAPTOP ==="
   log "Run on laptop:"
-  log "  echo '$(cat "$HOME/.ssh/id_ed25519.pub")' >> ~/.ssh/authorized_keys"
+  log "  echo '$(cat "${_KEY_PATH}.pub")' >> ~/.ssh/authorized_keys"
   log "====================================="
   printf '\n'
 }
 
 ensure_ssh_key
 
-# ── Section 8: SSH config ───────────────────────────────────────────────
+# ── Section 8: SSH config (managed block, not overwrite) ────────────────
 ssh_config_written=0
+_SSH_CONFIG_TMP=""
 
 install_ssh_config() {
   if [ "$MODE" != "apply" ]; then
@@ -464,54 +451,54 @@ install_ssh_config() {
     return
   fi
 
-  mkdir -p "$HOME/.ssh"
+  _TARGET="${TEST_ROOT:-}${HOME}/.ssh/config"
+  _BACKUP="${_TARGET}.bak.$(date +%Y%m%d%H%M%S)"
 
-  # Only write if not present or different
-  if [ -f "$HOME/.ssh/config" ]; then
-    if grep -q 'Port 8022' "$HOME/.ssh/config" 2>/dev/null; then
-      log "SSH config already has port ${SSHD_PORT}"
-      return
-    fi
-    warn "Existing SSH config found — backing up to $HOME/.ssh/config.bak"
-    cp "$HOME/.ssh/config" "$HOME/.ssh/config.bak"
+  mkdir -p "$(dirname "$_TARGET")"
+
+  # Check if managed block already exists
+  if [ -f "$_TARGET" ] && grep -q '# UOM-MANAGED-BEGIN' "$_TARGET" 2>/dev/null; then
+    log "SSH config already has UOM managed block"
+    return
   fi
 
-  cat > "$HOME/.ssh/config" << SSHEOF
+  # Backup existing config
+  if [ -f "$_TARGET" ]; then
+    cp "$_TARGET" "$_BACKUP"
+    log "Backed up existing SSH config to $_BACKUP"
+  fi
+
+  # Append managed block instead of replacing
+  {
+    if [ -f "$_TARGET" ]; then
+      cat "$_TARGET"
+    fi
+    cat << SSHEOF
+
+# UOM-MANAGED-BEGIN — do not edit between these markers
 Host uom-phone-local
   HostName 127.0.0.1
   Port ${SSHD_PORT}
-  User alpine
-  IdentityFile ~/.ssh/id_ed25519
+  User ${SSHD_USER}
+  IdentityFile ~/.ssh/id_ed25519_uom
   ServerAliveInterval 30
   ServerAliveCountMax 3
-  StrictHostKeyChecking no
+  StrictHostKeyChecking accept-new
 
 Host uom-phone-tunnel
   HostName 127.0.0.1
   Port ${TUNNEL_PORT}
-  User alpine
-  IdentityFile ~/.ssh/id_ed25519
+  User ${SSHD_USER}
+  IdentityFile ~/.ssh/id_ed25519_uom
   ServerAliveInterval 30
   ServerAliveCountMax 3
-  StrictHostKeyChecking no
-
-Host uom-laptop-lan
-  HostName 192.168.40.90
-  Port 22
-  User alpine
-  IdentityFile ~/.ssh/id_ed25519
-  ServerAliveInterval 30
-
-Host uom-laptop-mdns
-  HostName hp-pavilion.local
-  Port 22
-  User alpine
-  IdentityFile ~/.ssh/id_ed25519
+  StrictHostKeyChecking accept-new
+# UOM-MANAGED-END
 SSHEOF
-
-  chmod 600 "$HOME/.ssh/config"
+  } > "$_TARGET"
+  chmod 600 "$_TARGET"
   ssh_config_written=1
-  log "SSH config written (port ${SSHD_PORT})"
+  log "SSH config updated (managed block appended)"
 }
 
 install_ssh_config
@@ -520,13 +507,26 @@ install_ssh_config
 repo_action="none"
 
 ensure_repo() {
-  mkdir -p "$HOME/src"
+  if [ "$_USE_TEST_ROOT" -eq 1 ]; then
+    _REPO_DIR="${TEST_ROOT}${UOM_DIR_DEFAULT}"
+  else
+    _REPO_DIR="$UOM_DIR_DEFAULT"
+  fi
 
-  if [ -d "$UOM_DIR/.git" ]; then
-    log "Repository exists at ${UOM_DIR}"
+  if [ -d "$_REPO_DIR/.git" ]; then
+    log "Repository exists at ${_REPO_DIR}"
     if [ "$MODE" = "apply" ]; then
-      log "Pulling latest..."
-      git -C "$UOM_DIR" pull --ff-only 2>/dev/null || warn "Pull failed — manual merge may be needed"
+      # Check if dirty
+      if ! git -C "$_REPO_DIR" diff --quiet 2>/dev/null; then
+        warn "Repository is dirty — skipping pull to avoid data loss"
+        warn "  Clean manually: cd $_REPO_DIR && git stash"
+        repo_action="dirty-skipped"
+        return
+      fi
+      log "Pulling ${REF}..."
+      git -C "$_REPO_DIR" fetch origin "$REF" 2>/dev/null \
+        && git -C "$_REPO_DIR" checkout FETCH_HEAD 2>/dev/null \
+        || warn "Checkout failed — manual merge may be needed"
       repo_action="updated"
     else
       log "Repository update pending (run --apply to pull)"
@@ -534,8 +534,8 @@ ensure_repo() {
     fi
   else
     if [ "$MODE" = "apply" ]; then
-      log "Cloning UOM repository..."
-      git clone "$UOM_REPO" "$UOM_DIR" 2>/dev/null || {
+      log "Cloning UOM repository (ref: ${REF})..."
+      git clone --branch "$REF" "$REPO_URL" "$_REPO_DIR" 2>/dev/null || {
         warn "git clone failed"
         return
       }
@@ -565,13 +565,14 @@ install_termux_boot() {
 
   if [ "$MODE" != "apply" ]; then
     log "Termux:Boot script pending (run --apply to install)"
+    log "  NOTE: You must also install Termux:Boot plugin from same source as Termux"
     return
   fi
 
-  boot_dir="$HOME/.termux/boot"
-  mkdir -p "$boot_dir"
+  _BOOT_DIR="${TEST_ROOT:-}${HOME}/.termux/boot"
+  mkdir -p "$_BOOT_DIR"
 
-  cat > "$boot_dir/start-uom.sh" << 'BOOTEOF'
+  cat > "$_BOOT_DIR/start-uom.sh" << 'BOOTEOF'
 #!/data/data/com.termux/files/usr/bin/sh
 # Termux:Boot auto-start for UOM
 # Starts: sshd, reverse tunnel, port guardian, tmux watchdog, phone orchestrator
@@ -603,9 +604,10 @@ cd "$UOM_DIR" 2>/dev/null && \
   nohup sh tools/uom-orch-phone.sh &>/dev/null &
 BOOTEOF
 
-  chmod 700 "$boot_dir/start-uom.sh"
+  chmod 700 "$_BOOT_DIR/start-uom.sh"
   boot_script_installed=1
-  log "Termux:Boot script installed at ${boot_dir}/start-uom.sh"
+  log "Termux:Boot script installed at ${_BOOT_DIR}/start-uom.sh"
+  log "  IMPORTANT: Install Termux:Boot plugin and launch it once to activate."
 }
 
 install_termux_boot
@@ -617,37 +619,158 @@ record_metadata() {
     return
   fi
 
-  mkdir -p "$UOM_AGENT_DIR"
+  if [ "$_USE_TEST_ROOT" -eq 1 ]; then
+    _META_DIR="${TEST_ROOT}${UOM_DIR_DEFAULT}/.uom-agent"
+  else
+    _META_DIR="${UOM_DIR_DEFAULT}/.uom-agent"
+  fi
 
-  # Build JSON without jq dependency
-  cat > "$INSTALL_META" << METAEOF
+  mkdir -p "$_META_DIR"
+
+  _META_FILE="${_META_DIR}/opencode-install.json"
+
+  # Build JSON using json_escape (POSIX-safe)
+  cat > "$_META_FILE" << METAEOF
 {
   "schema": 1,
-  "timestamp": "$(now)",
+  "timestamp": "$(json_escape "$(now)")",
   "android_sdk": ${ANDROID_SDK},
-  "android_release": "${ANDROID_RELEASE}",
+  "android_release": "$(json_escape "${ANDROID_RELEASE}")",
   "is_termux": ${IS_TERMUX},
   "profile": "${PROFILE}",
   "opencode_source": "${OC_SOURCE}",
   "opencode_version": "${OC_VERSION}",
   "opencode_path": "${OC_PATH}",
   "opencode_priority": ${OC_INSTALL_PRIORITY},
-  "opencode_action": "${OC_INSTALL_ACTION}",
+  "opencode_action": "$(json_escape "${OC_INSTALL_ACTION}")",
   "ssh_key_generated": ${ssh_key_generated},
   "ssh_port": ${SSHD_PORT},
   "tunnel_port": ${TUNNEL_PORT},
-  "repo_action": "${repo_action}",
+  "repo_action": "$(json_escape "${repo_action}")",
   "boot_script_installed": ${boot_script_installed},
-  "mode": "apply"
+  "profile": "$(json_escape "${PROFILE}")",
+  "ref": "$(json_escape "${REF}")",
+  "test_root": "$(json_escape "${TEST_ROOT}")",
+  "mode": "$(json_escape "${MODE}")"
 }
 METAEOF
 
-  log "Install metadata recorded at ${INSTALL_META}"
+  log "Install metadata recorded at ${_META_FILE}"
 }
 
 record_metadata
 
-# ── Section 12: Summary ─────────────────────────────────────────────────
+# ── Section 12: Verify mode ─────────────────────────────────────────────
+run_verify() {
+  printf '\n=== UOM INSTALL VERIFICATION ===\n'
+  _FAILURES=0
+
+  # Check SSH key
+  _KEY="${TEST_ROOT:-}${HOME}/.ssh/id_ed25519_uom"
+  if [ -f "$_KEY" ]; then
+    log "SSH key: PASS ($_KEY)"
+  else
+    warn "SSH key: MISSING"
+    _FAILURES=$((_FAILURES + 1))
+  fi
+
+  # Check SSH config managed block
+  _CONF="${TEST_ROOT:-}${HOME}/.ssh/config"
+  if [ -f "$_CONF" ] && grep -q 'UOM-MANAGED-BEGIN' "$_CONF" 2>/dev/null; then
+    log "SSH config: PASS (managed block present)"
+  else
+    warn "SSH config: MISSING managed block"
+    _FAILURES=$((_FAILURES + 1))
+  fi
+
+  # Check repository
+  _REPO="${TEST_ROOT:-}${UOM_DIR_DEFAULT}"
+  if [ -d "$_REPO/.git" ]; then
+    log "Repository: PASS ($_REPO)"
+  else
+    warn "Repository: MISSING"
+    _FAILURES=$((_FAILURES + 1))
+  fi
+
+  # Check companion packages
+  for pkg_name in tmux openssh git jq curl; do
+    if command -v "$pkg_name" >/dev/null 2>&1; then
+      log "Package ${pkg_name}: PASS"
+    else
+      warn "Package ${pkg_name}: MISSING"
+      _FAILURES=$((_FAILURES + 1))
+    fi
+  done
+
+  # Check Termux:Boot
+  if [ "$ANDROID_SDK" -ge 31 ] 2>/dev/null; then
+    _BOOT="${TEST_ROOT:-}${HOME}/.termux/boot/start-uom.sh"
+    if [ -f "$_BOOT" ]; then
+      log "Termux:Boot: PASS (script present)"
+    else
+      warn "Termux:Boot: NOT INSTALLED"
+    fi
+  fi
+
+  # Check metadata
+  _META="${TEST_ROOT:-}${UOM_DIR_DEFAULT}/.uom-agent/opencode-install.json"
+  if [ -f "$_META" ]; then
+    log "Metadata: PASS ($_META)"
+  else
+    warn "Metadata: MISSING"
+  fi
+
+  if [ "$_FAILURES" -eq 0 ]; then
+    printf '\nVERIFY_PASS\n'
+    return 0
+  else
+    printf '\nVERIFY_FAIL (%d issues)\n' "$_FAILURES"
+    return 1
+  fi
+}
+
+if [ "$MODE" = "verify" ]; then
+  run_verify
+  exit $?
+fi
+
+# ── Section 13: Rollback ────────────────────────────────────────────────
+run_rollback() {
+  log "Rolling back installer-owned changes..."
+  # Remove SSH managed block
+  _CONF="${TEST_ROOT:-}${HOME}/.ssh/config"
+  if [ -f "$_CONF" ] && grep -q 'UOM-MANAGED-BEGIN' "$_CONF" 2>/dev/null; then
+    # Extract everything outside the managed block
+    sed '/# UOM-MANAGED-BEGIN/,/# UOM-MANAGED-END/d' "$_CONF" > "${_CONF}.rollback"
+    mv "${_CONF}.rollback" "$_CONF"
+    log "Removed UOM managed SSH block"
+  fi
+
+  # Remove boot script
+  _BOOT="${TEST_ROOT:-}${HOME}/.termux/boot/start-uom.sh"
+  if [ -f "$_BOOT" ]; then
+    rm -f "$_BOOT"
+    log "Removed Termux:Boot script"
+  fi
+
+  # Restore SSH config backup if exists
+  _BACKUP=$(ls -t "${TEST_ROOT:-}${HOME}/.ssh/config.bak."* 2>/dev/null | head -1)
+  if [ -n "$_BACKUP" ] && [ -f "$_BACKUP" ]; then
+    cp "$_BACKUP" "$_CONF"
+    log "Restored SSH config from $_BACKUP"
+  fi
+
+  log "Rollback complete. Repository and SSH keys NOT removed (manual cleanup required)."
+  printf '\nROLLED_BACK\n'
+}
+
+if [ "$MODE" = "apply" ] && [ "$ROLLBACK" -eq 1 ]; then
+  run_rollback
+  cleanup
+  exit 0
+fi
+
+# ── Section 14: Summary ─────────────────────────────────────────────────
 printf '\n'
 printf '=== UOM BOOTSTRAP SUMMARY ===\n'
 printf 'Mode:          %s\n' "$MODE"
@@ -662,7 +785,6 @@ if [ "$MODE" = "apply" ]; then
   printf 'SSH config:    %s\n' "$([ "$ssh_config_written" -eq 1 ] && echo 'written' || echo 'existing-or-pending')"
   printf 'Repo:          %s\n' "$repo_action"
   printf 'Termux:Boot:   %s\n' "$([ "$boot_script_installed" -eq 1 ] && echo 'installed' || echo 'skipped-or-pending')"
-  printf 'Metadata:      %s\n' "$INSTALL_META"
 fi
 
 printf '\n=== VERIFICATION STEPS ===\n'
@@ -676,7 +798,7 @@ if [ "$MODE" = "apply" ]; then
   fi
 else
   printf '  This was a dry run (--check). To apply changes:\n'
-  printf '    sh %s --apply\n' "$0"
+  printf '    sh %s --apply --verify\n' "$0"
   if [ "$ALLOW_THIRD_PARTY" -eq 0 ]; then
     printf '  Add --allow-third-party-opencode to enable third-party installs\n'
   fi
@@ -699,3 +821,5 @@ if [ "$PROFILE" = "phone-vm-agent" ]; then
   printf '  sh bin/uom-vm-ssh.sh       — SSH into VM guest\n'
 fi
 printf '\n'
+
+cleanup
