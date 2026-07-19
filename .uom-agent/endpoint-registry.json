@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "run_id": "overnight-triple-20260719T173255Z",
+  "updated_at": "2026-07-19T18:13:00Z",
+  "network_mode": "lan",
+  "laptop": {
+    "hostname": "alpine-laptop",
+    "ip": "192.168.40.90",
+    "ssh_port": 22,
+    "ssh_user": "alpine",
+    "opencode_path": "/home/alpine/.opencode/bin/opencode",
+    "opencode_version": "1.18.3",
+    "status": "primary"
+  },
+  "phone1": {
+    "hostname": "phone1-qemu",
+    "ip": "192.168.40.207",
+    "ssh_port": 8022,
+    "ssh_user": "u0_a608",
+    "qemu_jump": "ssh -J u0_a608@192.168.40.207:8022 uom@127.0.0.1 -p 2222",
+    "opencode_status": "DEGRADED",
+    "opencode_issue": "musl SIGPWR thread hang, no sudo for gcompat",
+    "status": "degraded"
+  },
+  "phone2": {
+    "hostname": "phone2-termux",
+    "ip": "192.168.40.157",
+    "ssh_port": 8022,
+    "ssh_user": "u0_a608",
+    "opencode_status": "BROKEN",
+    "opencode_issue": "lildax ET_EXEC rejected by Android linker",
+    "ssh_to_laptop_user": "alpine",
+    "status": "active_ssh_only"
+  }
+}
