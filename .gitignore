@@ -30,5 +30,11 @@ secrets.env
 .uom-agent/locks/
 .uom-agent/logs/
 .uom-agent/runtime/
+.uom-agent/feedback/
+.uom-agent/generated/
+.uom-agent/verified/
+.uom-agent/burnin-output.log
+.uom-agent/burnin-summary.json
+.uom-agent/test-llm-output.txt
 .uom-agent/*.host
 .uom-termux-user/

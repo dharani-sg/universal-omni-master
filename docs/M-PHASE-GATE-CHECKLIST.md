@@ -47,3 +47,11 @@ ROADMAP.md, SESSION-RESUME-2026-07-18.md
 | 21 | ShellCheck results — not run, unknown how many warnings/errors exist | PRE-M-PHASE-AUDIT §3 | small | run `shellcheck` |
 | 22 | Sync race window — how often does the no-sync design cause retries to be lost? | BURNIN-SMOKE-REPORT | medium | add instrumentation to sync loop |
 | 23 | QEMU guest `/` at 77% disk — could cause verifier crashes | observed during session (df output) | small | check guest disk and free space |
+
+---
+
+**Inventory cross-reference (2026-07-19):**
+All 11 items found in `todo-inventory-20260719.txt` are already reflected
+above. One false positive (`XXXXXX` in `mktemp` pattern at
+`bin/uom-phone-provision.sh:104`) is not actionable. Inventory confirms
+checklist complete.
