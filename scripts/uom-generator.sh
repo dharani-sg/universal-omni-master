@@ -354,15 +354,24 @@ main() {
             continue
         fi
 
-        # Handle existing markers
+        # Handle existing markers — retry / abandon logic
         _done_file="${GEN_DIR}/${_task_id}.done"
         _ready_file="${GEN_DIR}/${_task_id}.ready"
         if [ -f "$_done_file" ]; then
             # Task is pending but .done exists — verifier requested retry
-            _retry_num=$(jq -r '.[] | select(.id == "'$_task_id'").attempts // 0' "$QUEUE_FILE" 2>/dev/null)
-            mv "$_done_file" "${GEN_DIR}/${_task_id}.done.retry-${_retry_num}"
-            rm -f "$_ready_file"
-            _log "Retry ${_retry_num}: cleared old markers, regenerating ${_task_id}"
+            _task_json=$(jq -c '.[] | select(.id == "'$_task_id'")' "$QUEUE_FILE" 2>/dev/null)
+            _fail_count=$(echo "$_task_json" | jq -r '.fail_count // 0')
+            _max_attempts=$(echo "$_task_json" | jq -r '.max_attempts // 3')
+            if [ "$_fail_count" -lt "$_max_attempts" ]; then
+                mv "$_done_file" "${GEN_DIR}/${_task_id}.done.attempt-${_fail_count}"
+                rm -f "$_ready_file"
+                _log "Retry ${_fail_count}/${_max_attempts}: archived .done, regenerating ${_task_id}"
+            else
+                _log "Abandoning ${_task_id}: exhausted ${_fail_count}/${_max_attempts} attempts"
+                _mark_task "$_task_id" "abandoned" "attempts-exhausted"
+                _safe_sleep "$POLL_INTERVAL"
+                continue
+            fi
         elif [ -f "$_ready_file" ]; then
             # .ready exists and no .done — verifier hasn't picked it up yet
             _log "Task ${_task_id}: already generated — marking in_progress"
