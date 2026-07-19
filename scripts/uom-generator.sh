@@ -236,7 +236,7 @@ _call_llm_cloud() {
             fi
 
             _retry=$((_retry + 1))
-            [ "$_retry" -lt "$_max_retries" ] && { _log "Retry ${_retry}/${_max_retries} in 10s"; sleep 10; }
+            [ "$_retry" -lt "$_max_retries" ] && { _log "Retry ${_retry}/${_max_retries} in 10s"; _safe_sleep 10; }
         done
     fi
 
@@ -255,7 +255,7 @@ _call_llm_cloud() {
             fi
 
             _retry=$((_retry + 1))
-            [ "$_retry" -lt "$_max_retries" ] && { _log "Retry ${_retry}/${_max_retries} in 10s"; sleep 10; }
+            [ "$_retry" -lt "$_max_retries" ] && { _log "Retry ${_retry}/${_max_retries} in 10s"; _safe_sleep 10; }
         done
     fi
 
@@ -325,9 +325,14 @@ OUTPUT: Just the script code, nothing else."
     printf '%s' "$_prompt"
 }
 
+# ── Signal-safe sleep ──────────────────────────────────────────────────
+_safe_sleep() { sleep "$1" & wait $! 2>/dev/null; }
+
 # ── Main loop ───────────────────────────────────────────────────────────
 main() {
     _acquire_lock
+    _cleanup_sig() { _log "Shutting down (signal)"; rm -f "$LOCK_FILE" "$PID_FILE" 2>/dev/null; exit 0; }
+    trap _cleanup_sig TERM INT
     _log "Generator agent starting (model=${LLM_MODEL}, poll=${POLL_INTERVAL}s)"
     _log "PID: $$, queue: ${QUEUE_FILE}, output: ${GEN_DIR}"
 
@@ -345,15 +350,24 @@ main() {
             if [ "$((_cycle % 60))" -eq 0 ] 2>/dev/null; then
                 _log "Idle — no pending tasks (cycle ${_cycle})"
             fi
-            sleep "$POLL_INTERVAL"
+            _safe_sleep "$POLL_INTERVAL"
             continue
         fi
 
-        # Skip if already generated (idempotent)
-        if [ -f "${GEN_DIR}/${_task_id}.ready" ] || [ -f "${GEN_DIR}/${_task_id}.done" ]; then
+        # Handle existing markers
+        _done_file="${GEN_DIR}/${_task_id}.done"
+        _ready_file="${GEN_DIR}/${_task_id}.ready"
+        if [ -f "$_done_file" ]; then
+            # Task is pending but .done exists — verifier requested retry
+            _retry_num=$(jq -r '.[] | select(.id == "'$_task_id'").attempts // 0' "$QUEUE_FILE" 2>/dev/null)
+            mv "$_done_file" "${GEN_DIR}/${_task_id}.done.retry-${_retry_num}"
+            rm -f "$_ready_file"
+            _log "Retry ${_retry_num}: cleared old markers, regenerating ${_task_id}"
+        elif [ -f "$_ready_file" ]; then
+            # .ready exists and no .done — verifier hasn't picked it up yet
             _log "Task ${_task_id}: already generated — marking in_progress"
             _mark_task "$_task_id" "in_progress" "generated-already-existed"
-            sleep "$POLL_INTERVAL"
+            _safe_sleep "$POLL_INTERVAL"
             continue
         fi
 
@@ -413,7 +427,7 @@ READYEOF
             rm -f "$_output_file" 2>/dev/null || true
         fi
 
-        sleep "$POLL_INTERVAL"
+        _safe_sleep "$POLL_INTERVAL"
     done
 }
 

@@ -75,7 +75,7 @@ _check_resources() {
     _mem_avail=$(awk '/MemAvailable/{print $2}' /proc/meminfo 2>/dev/null || echo "999999")
     if [ "${_mem_avail:-999999}" -lt 204800 ] 2>/dev/null; then
         _log "Low memory: $((_mem_avail / 1024))MB — backing off 30s"
-        sleep 30
+            _safe_sleep 30
         return 1
     fi
     return 0
@@ -331,9 +331,14 @@ FBEOF
     esac
 }
 
+# ── Signal-safe sleep ──────────────────────────────────────────────────
+_safe_sleep() { sleep "$1" & wait $! 2>/dev/null; }
+
 # ── Main loop ───────────────────────────────────────────────────────────
 main() {
     _acquire_lock
+    _cleanup_sig() { _log "Shutting down (signal)"; rm -f "$LOCK_FILE" "$PID_FILE" 2>/dev/null; exit 0; }
+    trap _cleanup_sig TERM INT
     _log "Verifier agent starting (poll=${POLL_INTERVAL}s)"
     _log "PID: $$, watching: ${GEN_DIR}, results: ${VERIFIED_DIR}"
 
@@ -382,7 +387,7 @@ main() {
         fi
 
         if [ "$_found" -eq 0 ]; then
-            sleep "$POLL_INTERVAL"
+            _safe_sleep "$POLL_INTERVAL"
         fi
     done
 }
