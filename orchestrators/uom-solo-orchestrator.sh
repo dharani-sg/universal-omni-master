@@ -211,7 +211,7 @@ while true; do
     if command -v opencode >/dev/null 2>&1; then
         (
             cd "$UOM_REPO_ROOT"
-            opencode --non-interactive --task "$_task_id"
+            opencode run "$_task_id"
         ) >> "$LOG_FILE" 2>&1 || _exit_code=$?
     else
         _slog "opencode not found — cannot process task $_task_id"

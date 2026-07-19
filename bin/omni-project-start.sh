@@ -510,7 +510,7 @@ action_tmux() {
 action_opencode() {
     if ! command -v opencode >/dev/null 2>&1; then
         _log "ERROR: opencode not found in PATH"
-        _log "Install: curl -fsSL https://opencode.ai/install.sh | sh"
+        _log "Install: curl -fsSL https://opencode.ai/install | sh"
         return 1
     fi
 

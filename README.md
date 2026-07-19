@@ -68,22 +68,23 @@ Stage 1: bootstrap.sh (88 lines) — Secure download-validate-exec
   └─ exec child with all forwarded arguments
   │
   ▼
-Stage 2 (Termux): bootstrap-termux.sh (930 lines, hardened)
+Stage 2 (Termux): bootstrap-termux.sh (950 lines, hardened)
   ├─ phone-relay (default): tmux, openssh, git, jq, curl, autossh, fzf
   │   SSH key (id_ed25519_uom), SSH config (UOM-managed block),
   │   repo clone (SHA-safe + tarball fallback), Termux:Boot
-  │   opencode install ladder: pkg → npm → go (crush) → remote
+  │   opencode install ladder: pkg → npm → go install → remote installer
   └─ phone-vm-agent (opt-in): +QEMU aarch64/proot-distro + Alpine VM
       Consent required: --allow-large-download --allow-vm --allow-opencode-install
   │
   ▼
 Stage 2 (Alpine): bootstrap-laptop.sh (45 lines)
-  └─ apk packages, go install charmbracelet/crush, fish path persistence,
-     clone repo, enable sshd/avahi, doas guard
+  └─ apk packages, npm/Ginstall opencode CLI (free/no-auth tier),
+     fish PATH persistence (~/.opencode/bin), clone repo,
+     enable sshd/avahi, doas guard
   │
   ▼
 Result: Fully provisioned phone agent + laptop with SSH tunnel, tmux,
-        crush CLI, and optional QEMU aarch64 VM
+        opencode CLI (free tier, no auth), and optional QEMU aarch64 VM
 ```
 
 ### Profiles
@@ -526,7 +527,7 @@ sh bin/uom-port-guardian.sh dryrun    # Self-test
 | Policy | Rule |
 |--------|------|
 | **POSIX-First** | `#!/bin/sh` everywhere. BusyBox ash-safe. Zero bashisms, zero `eval`. |
-| **No local LLMs** | Cloud-only via opencode --model. No ollama. No local inference. |
+| **No local LLMs** | Cloud-only via `opencode run --model`. No ollama. No local inference. |
 | **Secrets** | Never in tracked files. Use `~/.config/uom/secrets.env` (mode 600). |
 | **SSH keys** | Dedicated `id_ed25519_uom`. UOM-MANAGED block in config. |
 | **Git sync** | GitHub canonical. Pull = fetch + ff-only. No auto-conflict resolution. |

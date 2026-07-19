@@ -129,7 +129,7 @@ test_model() {
     printf '%s' "$_result"
   else
     printf 'echo POSIX sh function name\n' \
-      | timeout 10 opencode --model "$_model_name" 2>&1 \
+      | timeout 10 opencode run --model "$_model_name" 2>&1 \
       | head -20
   fi
 }

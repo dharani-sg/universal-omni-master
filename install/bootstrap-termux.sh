@@ -32,6 +32,13 @@ json_escape() {
   printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/\t/\\t/g'
 }
 
+# Ensure opencode binary path is on PATH (npm installs to ~/.opencode/bin)
+OPTDIR="${PREFIX:-$HOME}/.opencode/bin"
+case ":${PATH:-}:" in
+  *":$OPTDIR:"*) ;;
+  *) export PATH="$OPTDIR:$PATH" ;;
+esac
+
 # ── Cleanup trap ─────────────────────────────────────────────────────────
 _CLEANUP_DONE=0
 _TEST_ROOT=""
@@ -268,22 +275,10 @@ inventory_opencode() {
   if [ -z "$oc_cmd" ]; then
     for candidate in \
       "${PREFIX:-}/bin/opencode" \
+      "$HOME/.opencode/bin/opencode" \
       "$HOME/bin/opencode" \
       "$HOME/.local/bin/opencode" \
       "$HOME/go/bin/opencode"; do
-      if [ -x "$candidate" ]; then
-        oc_cmd="$candidate"
-        OC_PATH="$candidate"
-        break
-      fi
-    done
-  fi
-
-  if [ -z "$oc_cmd" ]; then
-    # Fallback: check for charmbracelet/crush binary
-    for candidate in \
-      "${PREFIX:-}/bin/crush" \
-      "$HOME/go/bin/crush"; do
       if [ -x "$candidate" ]; then
         oc_cmd="$candidate"
         OC_PATH="$candidate"
@@ -364,20 +359,29 @@ resolve_opencode_install() {
     fi
   fi
 
-  # Priority 3: charmbracelet/crush (replaces archived opencode-ai/opencode)
+  # Priority 3: Go install from archived-but-available OSS repo
   if command -v go >/dev/null 2>&1; then
-    log "Priority 3: attempting go install of charmbracelet/crush..."
-    if go install github.com/charmbracelet/crush@latest 2>/dev/null; then
-      OC_INSTALL_ACTION="go-crush"
+    log "Priority 3: attempting go install of opencode-ai/opencode..."
+    if go install github.com/opencode-ai/opencode@latest 2>/dev/null; then
+      OC_INSTALL_ACTION="go-install"
       OC_INSTALL_PRIORITY=3
       inventory_opencode
       return
     fi
   fi
 
-  # Priority 4-5: manual
-  log "Priority 4: no local install path succeeded."
-  OC_INSTALL_ACTION="remote-fallback"
+  # Priority 4: opencode.ai official install script (works without Go/npm)
+  log "Priority 4: attempting opencode.ai remote installer..."
+  if curl -fsSL https://opencode.ai/install 2>/dev/null | sh 2>/dev/null; then
+    OC_INSTALL_ACTION="remote-installer"
+    OC_INSTALL_PRIORITY=4
+    inventory_opencode
+    return
+  fi
+
+  # Priority 5: exhausted
+  log "Priority 5: all install methods exhausted."
+  OC_INSTALL_ACTION="failed"
   OC_INSTALL_PRIORITY=5
 }
 

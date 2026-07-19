@@ -113,21 +113,24 @@ source ~/.bashrc
 bun install -g opencode-ai
 ```
 
-### 1.5 Configure opencode AI provider (free tier)
+### 1.5 Configure opencode AI provider (free tier — no auth needed)
+
+The opencode CLI uses the **opencode cloud provider** by default with **free-tier models** — no API key, no login, no credit card required.
+
+Copy the UOM free-tier config:
 
 ```sh
-mkdir -p ~/.config/opencode
-cat > ~/.config/opencode/config.json << 'EOF'
-{
-  "provider": "openrouter",
-  "model": "google/gemini-2.5-flash",
-  "apiKey": "YOUR_OPENROUTER_KEY_HERE"
-}
-EOF
+cp ~/src/universal-omni-master/config/phone/opencode.json ~/.config/opencode/config.json
 ```
 
-> **Free models via OpenRouter** (as of mid-2026): `google/gemini-2.5-flash`, `meta-llama/llama-3.3-70b-instruct:free`, `deepseek/deepseek-chat:free`. Check `openrouter.ai/models?q=free` for current list.
->
+This blocks paid providers (OpenAI, Anthropic, Google, OpenRouter) and uses only free opencode-hosted models.
+
+Verify with a test prompt:
+
+```sh
+opencode run --model opencode/north-mini-code-free "Say 'hello from free tier'"
+```
+
 > **Alternative — Gemini direct (most generous free tier):**
 > ```sh
 > # Use provider "google" with your GEMINI_API_KEY from aistudio.google.com

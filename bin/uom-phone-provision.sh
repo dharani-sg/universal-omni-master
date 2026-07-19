@@ -21,7 +21,7 @@ UOM_DIR="${OMNI_ROOT:-$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)}"
 PHONE_REV="${PHONE_REV:-uom-phone-rev}"
 PHONE_TEST="ssh -o ConnectTimeout=5 -o BatchMode=yes -F ~/.ssh/config ${PHONE_REV} true 2>/dev/null"
 PROOT_DISTRO="${UOM_PROOT_DISTRO:-debian}"
-OPENCODE_INSTALL_URL="${UOM_OPENCODE_INSTALL_URL:-https://opencode.ai/install.sh}"
+OPENCODE_INSTALL_URL="${UOM_OPENCODE_INSTALL_URL:-https://opencode.ai/install}"
 LAPTOP_OC_CFG="${HOME}/.config/opencode"
 
 _log() { printf '[provision] %s %s\n' "$(date -u +%H:%M:%S)" "$*"; }

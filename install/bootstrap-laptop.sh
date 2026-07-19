@@ -14,15 +14,17 @@ doas apk update
 doas apk add --no-cache tmux openssh git curl jq autossh avahi nss-mdns \
   go openssl bash fish neovim
 
-export PATH="$HOME/go/bin:$PATH"
-# Upstream opencode-ai/opencode is archived — migrated to charmbracelet/crush
-command -v crush >/dev/null 2>&1 || go install github.com/charmbracelet/crush@latest
+export PATH="$HOME/.opencode/bin:$HOME/go/bin:$PATH"
+# Install opencode CLI (free/no-auth tier) — npm package maintained and active
+# GitHub OSS repo (opencode-ai/opencode) is archived but npm/Go paths still serve
+command -v opencode >/dev/null 2>&1 || npm install -g opencode-ai 2>/dev/null \
+  || go install github.com/opencode-ai/opencode@latest
 
-# Persist Go binary path to Fish shell (survives reboot)
+# Persist opencode binary path to Fish shell (survives reboot)
 if command -v fish >/dev/null 2>&1; then
   mkdir -p "$HOME/.config/fish"
-  grep -q 'go/bin' "$HOME/.config/fish/config.fish" 2>/dev/null || \
-    echo 'fish_add_path $HOME/go/bin' >> "$HOME/.config/fish/config.fish"
+  grep -q 'opencode/bin' "$HOME/.config/fish/config.fish" 2>/dev/null || \
+    echo 'fish_add_path $HOME/.opencode/bin' >> "$HOME/.config/fish/config.fish"
 fi
 
 mkdir -p "$HOME/src"
