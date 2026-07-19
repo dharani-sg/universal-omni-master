@@ -1,12 +1,15 @@
 #!/bin/sh
 # install/bootstrap-termux.sh — UOM Bootstrap for Termux/Android ARM64
 # POSIX sh. Modes: --check (default, read-only), --apply (make changes).
-# Flags: --allow-third-party-opencode, --allow-proot-opencode
+# Profiles: phone-relay (default), phone-vm-agent (opt-in)
+# Consent flags: --allow-vm, --allow-large-download, --allow-opencode-install, --allow-metered
 #
 # Usage:
-#   sh install/bootstrap-termux.sh                  # check mode
-#   sh install/bootstrap-termux.sh --apply          # apply changes
+#   sh install/bootstrap-termux.sh                                    # check mode (phone-relay)
+#   sh install/bootstrap-termux.sh --apply                            # apply changes (phone-relay)
 #   sh install/bootstrap-termux.sh --apply --allow-third-party-opencode
+#   sh install/bootstrap-termux.sh --apply --profile phone-vm-agent \
+#     --allow-large-download --allow-vm --allow-opencode-install
 
 set -eu
 
@@ -26,22 +29,148 @@ now()  { date '+%Y-%m-%dT%H:%M:%S%z' 2>/dev/null || date '+%Y-%m-%dT%H:%M:%S'; }
 
 # ── Parse arguments ──────────────────────────────────────────────────────
 MODE="check"
+PROFILE="phone-relay"
 ALLOW_THIRD_PARTY=0
 ALLOW_PROOT=0
+ALLOW_VM=0
+ALLOW_LARGE_DOWNLOAD=0
+ALLOW_OPENCODE_INSTALL=0
+ALLOW_METERED=0
 
-for arg in "$@"; do
-  case "$arg" in
-    --apply)                    MODE="apply" ;;
-    --check)                    MODE="check" ;;
-    --allow-third-party-opencode) ALLOW_THIRD_PARTY=1 ;;
-    --allow-proot-opencode)    ALLOW_PROOT=1 ;;
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --apply)                    MODE="apply"; shift ;;
+    --check)                    MODE="check"; shift ;;
+    --allow-third-party-opencode) ALLOW_THIRD_PARTY=1; shift ;;
+    --allow-proot-opencode)    ALLOW_PROOT=1; shift ;;
+    --allow-vm)                ALLOW_VM=1; shift ;;
+    --allow-large-download)    ALLOW_LARGE_DOWNLOAD=1; shift ;;
+    --allow-opencode-install)  ALLOW_OPENCODE_INSTALL=1; shift ;;
+    --allow-metered)           ALLOW_METERED=1; shift ;;
+    --profile)
+      shift
+      [ $# -eq 0 ] && die "--profile requires a value. Usage: --profile phone-vm-agent"
+      val="$1"
+      case "$val" in
+        phone-relay|phone-vm-agent) PROFILE="$val"; shift ;;
+        *) die "Unknown profile: $val. Valid: phone-relay, phone-vm-agent" ;;
+      esac
+      ;;
+    --profile=*)
+      val="${1#*=}"
+      case "$val" in
+        phone-relay|phone-vm-agent) PROFILE="$val"; shift ;;
+        *) die "Unknown profile: $val. Valid: phone-relay, phone-vm-agent" ;;
+      esac
+      ;;
     -h|--help)
-      printf 'Usage: sh %s [--check|--apply] [--allow-third-party-opencode] [--allow-proot-opencode]\n' "$0"
+      cat << HELPEOF
+Usage: sh $0 [OPTIONS]
+
+Modes:
+  --check                         Dry-run (default)
+  --apply                         Apply changes
+
+Profiles:
+  --profile phone-relay           Lightweight install (default, ~25KB)
+  --profile phone-vm-agent        Full QEMU + Alpine VM install (requires consent flags below)
+
+Consent flags (required for --profile phone-vm-agent):
+  --allow-large-download          Consent to multi-GiB downloads
+  --allow-vm                      Consent to booting an emulated VM
+  --allow-opencode-install        Consent to installing OpenCode inside VM guest
+  --allow-metered                 Allow download on metered/cellular data (optional)
+
+Existing flags:
+  --allow-third-party-opencode    Allow third-party native opencode install
+  --allow-proot-opencode          Allow proot-distro fallback
+
+Examples:
+  sh $0 --check
+  sh $0 --apply
+  sh $0 --apply --profile phone-vm-agent --allow-large-download --allow-vm --allow-opencode-install
+HELPEOF
       exit 0
       ;;
-    *) die "Unknown argument: $arg" ;;
+    *) die "Unknown argument: $1" ;;
   esac
 done
+
+# ── Consent validation ──────────────────────────────────────────────────
+validate_consent() {
+  if [ "$PROFILE" != "phone-vm-agent" ]; then
+    return
+  fi
+
+  missing=""
+  [ "$ALLOW_LARGE_DOWNLOAD" -eq 0 ]   && missing="${missing}  --allow-large-download\n"
+  [ "$ALLOW_VM" -eq 0 ]               && missing="${missing}  --allow-vm\n"
+  [ "$ALLOW_OPENCODE_INSTALL" -eq 0 ] && missing="${missing}  --allow-opencode-install\n"
+
+  if [ -n "$missing" ]; then
+    printf '[FATAL] Profile "phone-vm-agent" requires the following consent flags:\n%s' "$missing" >&2
+    printf '  (add --allow-metered for metered/cellular networks)\n' >&2
+    exit 1
+  fi
+
+  log "Profile: phone-vm-agent — all required consent flags present"
+  if [ "$ALLOW_METERED" -eq 1 ]; then
+    log "  --allow-metered: metered/cellular downloads permitted"
+  fi
+}
+
+validate_consent
+
+# ── Resource guardrails (phone-vm-agent only) ───────────────────────────
+check_storage_guardrail() {
+  [ "$PROFILE" != "phone-vm-agent" ] && return
+
+  # Need at least 6 GiB free for VM artifacts
+  free_kb=$(df -k "$HOME" 2>/dev/null | awk 'NR==2 {print $4}')
+  if [ -z "$free_kb" ] || [ "$free_kb" -lt 6291456 ] 2>/dev/null; then
+    if [ -n "$free_kb" ]; then
+      free_mb=$((free_kb / 1024))
+      die "Insufficient storage: ${free_mb} MiB free, need 6144 MiB (6 GiB)"
+    fi
+    warn "Cannot check free storage — proceeding anyway"
+  else
+    free_mb=$((free_kb / 1024))
+    log "Storage guardrail: ${free_mb} MiB free (>= 6144 MiB)"
+  fi
+}
+
+check_battery_guardrail() {
+  [ "$PROFILE" != "phone-vm-agent" ] && return
+
+  cap=""
+  status=""
+  [ -r /sys/class/power_supply/Battery/capacity ] && cap=$(cat /sys/class/power_supply/Battery/capacity 2>/dev/null)
+  [ -r /sys/class/power_supply/Battery/status ]   && status=$(cat /sys/class/power_supply/Battery/status 2>/dev/null)
+
+  if [ -n "$cap" ]; then
+    if [ "$cap" -lt 30 ] 2>/dev/null && [ "$status" != "Charging" ] && [ "$status" != "Full" ]; then
+      die "Battery too low (${cap}%) and not charging. Charge to >= 30% or connect charger."
+    fi
+    log "Battery guardrail: ${cap}% (status=${status:-unknown})"
+  else
+    warn "Cannot read battery state — proceeding (best-effort)"
+  fi
+}
+
+check_network_guardrail() {
+  [ "$PROFILE" != "phone-vm-agent" ] && return
+  [ "$ALLOW_METERED" -eq 1 ] && return
+
+  if command -v dumpsys >/dev/null 2>&1; then
+    metered=$(dumpsys connectivity 2>/dev/null | grep -i 'metered' | head -1 || true)
+    case "$metered" in
+      *METERED*|*m-metered*|*1*)
+        die "Metered network detected. Use --allow-metered to proceed."
+        ;;
+    esac
+  fi
+  log "Network guardrail: passed (Wi-Fi assumed or not metered)"
+}
 
 # ── Section 1: Android detection ────────────────────────────────────────
 ANDROID_SDK=0
@@ -249,12 +378,21 @@ resolve_opencode_install() {
 
 resolve_opencode_install
 
+# ── Run resource guardrails ──────────────────────────────────────────────
+check_storage_guardrail
+check_battery_guardrail
+check_network_guardrail
+
 # ── Section 6: Companion packages ───────────────────────────────────────
 COMPANION_PKGS="tmux openssh git jq curl autossh fzf"
+[ "$PROFILE" = "phone-vm-agent" ] && COMPANION_PKGS="$COMPANION_PKGS qemu-system-x86_64 tar ca-certificates"
 
 install_companion_pkgs() {
   if [ "$MODE" != "apply" ]; then
     log "Companion packages would be installed: ${COMPANION_PKGS}"
+    if [ "$PROFILE" = "phone-vm-agent" ]; then
+      log "  (VM profile: includes QEMU, tar, ca-certificates)"
+    fi
     log "  (run --apply to install)"
     return
   fi
@@ -265,7 +403,6 @@ install_companion_pkgs() {
   fi
 
   log "Installing companion packages..."
-  # Install one at a time to avoid uncontrolled loops
   pkg update -y >/dev/null 2>&1 || true
 
   for pkg_name in $COMPANION_PKGS; do
@@ -490,6 +627,7 @@ record_metadata() {
   "android_sdk": ${ANDROID_SDK},
   "android_release": "${ANDROID_RELEASE}",
   "is_termux": ${IS_TERMUX},
+  "profile": "${PROFILE}",
   "opencode_source": "${OC_SOURCE}",
   "opencode_version": "${OC_VERSION}",
   "opencode_path": "${OC_PATH}",
@@ -513,6 +651,7 @@ record_metadata
 printf '\n'
 printf '=== UOM BOOTSTRAP SUMMARY ===\n'
 printf 'Mode:          %s\n' "$MODE"
+printf 'Profile:       %s\n' "$PROFILE"
 printf 'Android:       %s (SDK %s)\n' "$ANDROID_RELEASE" "$ANDROID_SDK"
 printf 'Termux:        %s\n' "$([ "$IS_TERMUX" -eq 1 ] && echo 'yes' || echo 'no')"
 printf 'opencode:      %s (source=%s, path=%s)\n' "$OC_VERSION" "$OC_SOURCE" "${OC_PATH:-none}"
@@ -532,6 +671,9 @@ if [ "$MODE" = "apply" ]; then
   printf '  2. ssh -p %d localhost echo ok  (test sshd)\n' "$SSHD_PORT"
   printf '  3. tmux new -s uom\n'
   printf '  4. cd %s && sh bin/uom-status.sh\n' "$UOM_DIR"
+  if [ "$PROFILE" = "phone-vm-agent" ]; then
+    printf '  5. sh bin/uom-vm-status.sh      (check VM status)\n'
+  fi
 else
   printf '  This was a dry run (--check). To apply changes:\n'
   printf '    sh %s --apply\n' "$0"
@@ -541,10 +683,19 @@ else
   if [ "$ALLOW_PROOT" -eq 0 ]; then
     printf '  Add --allow-proot-opencode to enable proot-distro fallback\n'
   fi
+  if [ "$PROFILE" = "phone-vm-agent" ]; then
+    printf '  Add --allow-large-download --allow-vm --allow-opencode-install for VM profile consent\n'
+  fi
 fi
 
 printf '\n=== QUICK COMMANDS ===\n'
 printf '  sh bin/uom-status.sh         — Check all services\n'
 printf '  sh bin/uom-status.sh tunnel  — Check tunnel status\n'
 printf '  tmux new -s uom              — Start tmux session\n'
+if [ "$PROFILE" = "phone-vm-agent" ]; then
+  printf '  sh bin/uom-vm-start.sh     — Start QEMU VM\n'
+  printf '  sh bin/uom-vm-stop.sh      — Stop QEMU VM\n'
+  printf '  sh bin/uom-vm-status.sh    — Check VM status\n'
+  printf '  sh bin/uom-vm-ssh.sh       — SSH into VM guest\n'
+fi
 printf '\n'
