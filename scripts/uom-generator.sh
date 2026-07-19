@@ -90,12 +90,9 @@ _log() {
     printf '%s\n' "$_msg" | tee -a "$LOG_FILE"
 }
 
-# ── Cleanup ─────────────────────────────────────────────────────────────
-_cleanup() {
-    rm -f "$LOCK_FILE" "$PID_FILE" 2>/dev/null || true
-    _log "Generator agent stopped"
-}
-trap '_cleanup' HUP INT TERM
+# ── Shutdown flag ───────────────────────────────────────────────────────
+_SHUTDOWN=0
+_START_TS=0
 
 # ── Singleton guard ─────────────────────────────────────────────────────
 _acquire_lock() {
@@ -331,13 +328,24 @@ _safe_sleep() { sleep "$1" & wait $! 2>/dev/null; }
 # ── Main loop ───────────────────────────────────────────────────────────
 main() {
     _acquire_lock
-    _cleanup_sig() { _log "Shutting down (signal)"; rm -f "$LOCK_FILE" "$PID_FILE" 2>/dev/null; exit 0; }
-    trap _cleanup_sig TERM INT
+    _START_TS=$(date +%s 2>/dev/null || echo 0)
+    _trap_sig() {
+        _SHUTDOWN=1
+        _now=$(date +%s 2>/dev/null || echo 0)
+        _elapsed=$((_now - _START_TS))
+        _log "Graceful shutdown (PID=$$, elapsed=${_elapsed}s, signal=$1)"
+        rm -f "$LOCK_FILE" "$PID_FILE" 2>/dev/null || true
+        exit 0
+    }
+    trap '_trap_sig TERM' TERM
+    trap '_trap_sig INT' INT
+    trap '_trap_sig HUP' HUP
     _log "Generator agent starting (model=${LLM_MODEL}, poll=${POLL_INTERVAL}s)"
     _log "PID: $$, queue: ${QUEUE_FILE}, output: ${GEN_DIR}"
 
     _cycle=0
     while true; do
+        [ "$_SHUTDOWN" -eq 1 ] && exit 0
         _cycle=$((_cycle + 1))
 
         # Resource gating

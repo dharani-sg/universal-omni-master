@@ -42,10 +42,17 @@ _log() {
   printf '[fb-agg] %s %s\n' "$_ts" "$*" | tee -a "$LOG_FILE"
 }
 
+_SHUTDOWN=0
+_START_TS=0
+_safe_sleep() { sleep "$1" & wait $! 2>/dev/null; }
 _cleanup() {
+  _now=$(date +%s 2>/dev/null || echo 0)
+  _elapsed=$((_now - _START_TS))
+  _log "Graceful shutdown (PID=$$, elapsed=${_elapsed}s)"
   rm -rf "$LOCK_DIR" 2>/dev/null || true
 }
-trap '_cleanup' INT TERM EXIT
+trap '_SHUTDOWN=1; _cleanup; exit 0' INT TERM
+trap '_cleanup' EXIT
 
 _acquire_lock() {
   if mkdir "$LOCK_DIR" 2>/dev/null; then
@@ -202,13 +209,15 @@ _aggregate() {
 
 main() {
   _acquire_lock
+  _START_TS=$(date +%s 2>/dev/null || echo 0)
   _log "aggregator started${DRYRUN:+ (dryrun)}"
 
   if [ "$WATCH" -eq 1 ]; then
     _log "watch mode (poll=15s)"
     while true; do
+      [ "$_SHUTDOWN" -eq 1 ] && _cleanup && exit 0
       _aggregate
-      sleep 15
+      _safe_sleep 15
     done
   else
     _aggregate
