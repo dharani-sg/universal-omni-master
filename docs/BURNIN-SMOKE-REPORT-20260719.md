@@ -86,3 +86,17 @@ LLM|2|SMOKE-002|north-mini-code-free
 LLM|3|SMOKE-003|north-mini-code-free
 Total: 3/9 budget consumed
 ```
+
+## Cleanup Result
+
+Cleanup executed 2026-07-19T03:52:26Z — documented in `.uom-agent/logs/phase17-cleanup-20260719T035226Z.log`.
+
+| Node | Result | Details |
+|---|---|---|
+| Local (laptop) | CLEAN | No smoke processes found (already stopped in earlier cleanup). |
+| Phone (relay) | CLEAN | One stale `uom-generator` (burnin-dist context) killed via TERM. |
+| Guest (QEMU) | CLEAN | Verifier PID 5354 killed via TERM, responded immediately. |
+| Stale locks | none | Smoke sandbox already deleted; no smoke/burnin lock files remained. |
+
+All processes stopped without requiring SIGKILL.
+```
