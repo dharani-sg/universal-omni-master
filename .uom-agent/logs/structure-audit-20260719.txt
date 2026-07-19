@@ -1,0 +1,30 @@
+STRUCTURE AUDIT — 2026-07-19
+=============================
+Compare: README "File Structure" (lines 176-279) vs actual disk state
+Branch: burnin/dual-agent-20260718
+
+RESULTS (files ON DISK not documented in README):
+-------------------------------------------------
+bin/    : 21 omni-* files missing from README tree
+scripts/: audit-m11.sh, build-monolith.sh, compat-check.sh,
+          freeze-profile.sh, omni-seed.sh, uom-llm-remote.sh,
+          uom-proot-setup.sh, uom-widget-lib.sh (8 files)
+tools/  : uom-canary-sync.sh, uom-net-detect.sh, uom-port-watch.sh (3 files)
+install/: setup-aliases.sh (1 file)
+phone-shortcuts/: 20-UOM-Guest-Shell, 40-UOM-Host-Console,
+                   PHONE-APP-ACTION-REQUIRED.md, uom-widget-lib.sh (4 items)
+security/: SECRETS.md (1 file)
+
+RESULTS (README claims vs actual):
+----------------------------------
+- README says "scripts/: test-*.sh (32 files)" — actual: 31 test-*.sh files
+- README says "scripts/phone-shortcuts/: 12 scripts" — actual: 10 items
+- README says "docs/: (44 docs)" — actual: 45 .md files
+- All files listed in README tree exist on disk: YES (no broken references)
+
+VERDICT: DOCUMENTATION GAP
+- Code base has ~40 files not documented in README file tree
+- No files listed in README are missing from disk
+- README is stale — needs update to reflect actual directory contents
+- Fix: regenerate File Structure section from actual tree or add note
+  that omni-* files are from sibling project (copy-paste residue)

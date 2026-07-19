@@ -163,11 +163,11 @@ Test harness: `sh tests/test-phone-bootstrap.sh` (72 assertions, 54/72 pass).
 
 | Node | Role | IP | User | Model | SDK | Status |
 |------|------|----|------|-------|-----|--------|
-| Phone2 | Hotspot/Gateway | 10.21.250.151 | u0_a217 | Redmi Note | 35 | UP |
-| Laptop | Primary agent | 10.21.250.90 | alpine | HP Pavilion | — | UP |
-| Phone1 | Secondary + QEMU host | 10.21.250.76 | u0_a608 | MI 8 | 35 | UP (QEMU running) |
+| Phone2 | Hotspot/Gateway | 192.168.40.157 (dynamic) | u0_a217 | Redmi Note | 35 | UP |
+| Laptop | Primary agent | 192.168.40.90 (dynamic) | alpine | HP Pavilion | — | UP |
+| Phone1 | Secondary + QEMU host | 10.21.250.76 (OFFLINE) | u0_a608 | MI 8 | 35 | UP (QEMU running) |
 
-- Phone2 provides the WiFi hotspot. Laptop and Phone1 connect through it.
+- Phone2 provides the WiFi hotspot (192.168.40.x subnet). IPs are dynamic — use uom-ip-discover.sh for discovery.
 - Direct SSH on port 8022 between all nodes (no reverse tunnel needed on same subnet).
 - Phone1 runs `qemu-system-aarch64` with Alpine guest for isolated AI workloads.
 
@@ -277,6 +277,10 @@ universal-omni-master/
     ├── uom-firewall.sh               # nftables firewall
     └── install-hooks.sh              # Pre-commit hooks
 ```
+
+> **Note:** The `bin/` directory also contains 21 `omni-*` CLI tools from the
+> UOM provisioning engine (M1-M27 milestones). These are documented in
+> `docs/SCRIPT-CATALOG.md` and tested by `scripts/test-m*.sh` (31 test files).
 
 ---
 
