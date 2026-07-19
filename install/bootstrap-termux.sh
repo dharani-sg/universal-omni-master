@@ -35,6 +35,7 @@ json_escape() {
 # ── Cleanup trap ─────────────────────────────────────────────────────────
 _CLEANUP_DONE=0
 _TEST_ROOT=""
+_USE_TEST_ROOT=0
 cleanup() {
   [ "$_CLEANUP_DONE" -eq 1 ] && return
   _CLEANUP_DONE=1
@@ -54,6 +55,14 @@ ALLOW_VM=0
 ALLOW_LARGE_DOWNLOAD=0
 ALLOW_OPENCODE_INSTALL=0
 ALLOW_METERED=0
+REF="${UOM_REF:-main}"
+REPO_URL="${UOM_REPO_URL:-$UOM_REPO_DEFAULT}"
+INSTALL_DIR="${UOM_INSTALL_DIR:-$UOM_DIR_DEFAULT}"
+SKIP_PACKAGES=0
+NON_INTERACTIVE=0
+RESUME=0
+ROLLBACK=0
+TEST_ROOT=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -112,7 +121,6 @@ HELPEOF
       ;;
     *) die "Unknown argument: $1" ;;
   esac
-  _PREV_ARG="$arg"
 done
 
 # ── Consent validation ──────────────────────────────────────────────────
@@ -885,7 +893,7 @@ if [ "$MODE" = "apply" ]; then
   printf '  1. opencode --version\n'
   printf '  2. ssh -p %d localhost echo ok  (test sshd)\n' "$SSHD_PORT"
   printf '  3. tmux new -s uom\n'
-  printf '  4. cd %s && sh bin/uom-status.sh\n' "$UOM_DIR"
+  printf '  4. cd %s && sh bin/uom-status.sh\n' "$UOM_DIR_DEFAULT"
   if [ "$PROFILE" = "phone-vm-agent" ]; then
     printf '  5. sh bin/uom-vm-status.sh      (check VM status)\n'
   fi
