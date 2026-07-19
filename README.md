@@ -49,26 +49,55 @@ UOM is a POSIX-hardened AI infrastructure stack that turns any two POSIX devices
 
 ## Bootstrap + Installer
 
-### One-liner (auto-detects platform)
+### One curl command — zero-trust phone deployment
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/dharani-sg/universal-omni-master/main/install/bootstrap.sh | bash
 ```
 
-### Termux Installer (hardened)
+This single command deploys the full phone agent stack via a **secure 3-stage chain**:
 
-The primary installer is `install/bootstrap-termux.sh` with two profiles:
+```
+curl pipe
+  │
+  ▼
+Stage 1: bootstrap.sh (88 lines) — Secure downloader
+  ├─ Auto-detects Termux/Android vs Alpine Linux
+  ├─ Downloads child script from GitHub raw with 3-retry, 60s timeout
+  ├─ Validates: size <500KB, shebang present, not HTML, POSIX syntax check
+  └─ exec child with all forwarded arguments
+  │
+  ▼
+Stage 2 (Termux): bootstrap-termux.sh (926 lines, hardened)
+  ├─ phone-relay profile (default): tmux + openssh + git + jq + curl + autossh + fzf
+  │   SSH key (id_ed25519_uom), SSH config (UOM-managed block), repo clone, Termux:Boot
+  └─ phone-vm-agent profile (opt-in): QEMU aarch64 + proot-distro + Alpine VM
+      Requires consent: --allow-large-download --allow-vm --allow-opencode-install
+  │
+  ▼
+Stage 2 (Alpine): bootstrap-laptop.sh (37 lines)
+  └─ apk packages, go install opencode, clone repo, enable sshd/avahi
 
-| Profile | Size | Purpose | Consent Required |
-|---------|------|---------|-----------------|
-| `phone-relay` | ~25KB | SSH endpoint, tmux, git, reverse tunnel (default) | None |
-| `phone-vm-agent` | +proot-distro/QEMU | Full VM for isolated AI workloads | `--allow-large-download --allow-vm --allow-opencode-install` |
+Result: Fully provisioned phone agent with SSH tunnel, tmux, opencode CLI, and optional QEMU VM
+```
+
+### Profiles
+
+| Profile | Size | What It Installs | Consent Required |
+|---------|------|------------------|-----------------|
+| `phone-relay` | ~25KB packages | tmux, openssh, git, jq, curl, autossh, fzf, SSH key, SSH config, UOM repo, Termux:Boot | None |
+| `phone-vm-agent` | +proot-distro/QEMU | Same + QEMU aarch64 + proot-distro + Alpine VM image | `--allow-large-download --allow-vm --allow-opencode-install` |
 
 ```sh
-sh install/bootstrap-termux.sh --check                              # Read-only preflight
-sh install/bootstrap-termux.sh --apply --verify                      # Install + validate
+# Read-only preflight (safe to run anywhere):
+sh install/bootstrap-termux.sh --check
+
+# Install phone-relay (default):
+sh install/bootstrap-termux.sh --apply --verify
+
+# Install VM profile (requires explicit consent):
 sh install/bootstrap-termux.sh --apply --profile phone-vm-agent \
-  --allow-large-download --allow-vm --allow-opencode-install         # VM profile
+  --allow-large-download --allow-vm --allow-opencode-install
 ```
 
 ### Hardening Patches (v0.34.0)
@@ -414,23 +443,25 @@ scripts/uom-generator.sh "write a POSIX sh function"
 
 ## Quick Start
 
-### Bootstrap
+### Bootstrap (deploy phone agent stack)
 
 ```sh
-# Any device (auto-detects platform):
+# Deploy full phone agent (auto-detects Termux vs Alpine, 3-stage secure chain):
 curl -fsSL https://raw.githubusercontent.com/dharani-sg/universal-omni-master/main/install/bootstrap.sh | bash
 
-# Or clone manually:
+# Or clone manually for local use:
 git clone https://github.com/dharani-sg/universal-omni-master.git
 cd universal-omni-master
 ```
 
-### Phone (Termux)
+### Phone (Termux) — direct installer
 
 ```sh
 sh install/bootstrap-termux.sh --check                        # Read-only preflight
-sh install/bootstrap-termux.sh --apply                        # Install phone-relay
+sh install/bootstrap-termux.sh --apply                        # Install phone-relay (default)
 sh install/bootstrap-termux.sh --apply --verify               # Install + validate
+sh install/bootstrap-termux.sh --apply --profile phone-vm-agent \
+  --allow-large-download --allow-vm --allow-opencode-install  # Deploy QEMU VM + Alpine
 ```
 
 ### Zen Loop
