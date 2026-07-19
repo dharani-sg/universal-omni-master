@@ -91,7 +91,7 @@ Modes:
 
 Profiles:
   --profile phone-relay           Lightweight install (default, ~25KB)
-  --profile phone-vm-agent        Full QEMU + Alpine VM install (requires consent flags below)
+  --profile phone-vm-agent        Full VM install (proot-distro default; QEMU aarch64 experimental, opt-in)
 
 Consent flags (required for --profile phone-vm-agent):
   --allow-large-download          Consent to multi-GiB downloads
@@ -356,15 +356,39 @@ check_storage_guardrail
 check_battery_guardrail
 check_network_guardrail
 
+# ── Architecture detection (experimental QEMU for aarch64 only) ──────────
+UOM_ARCH="$(uname -m 2>/dev/null || echo 'unknown')"
+DEFAULT_VM_BACKEND="proot"
+case "$UOM_ARCH" in
+  aarch64|arm64)
+    QEMU_ARCH_OK=1
+    QEMU_BIN="qemu-system-aarch64"
+    VM_BACKEND_MESSAGE="proot-distro (default) or QEMU aarch64 (experimental, opt-in)"
+    ;;
+  *)
+    QEMU_ARCH_OK=0
+    QEMU_BIN=""
+    VM_BACKEND_MESSAGE="unsupported on this architecture"
+    ;;
+esac
+
 # ── Section 6: Companion packages ───────────────────────────────────────
 COMPANION_PKGS="tmux openssh git jq curl autossh fzf"
-[ "$PROFILE" = "phone-vm-agent" ] && COMPANION_PKGS="$COMPANION_PKGS qemu-system-x86_64 tar ca-certificates"
+if [ "$PROFILE" = "phone-vm-agent" ]; then
+  if [ "$QEMU_ARCH_OK" -eq 1 ]; then
+    COMPANION_PKGS="$COMPANION_PKGS $QEMU_BIN tar ca-certificates proot-distro"
+  else
+    warn "Architecture $UOM_ARCH not supported for phone-vm-agent QEMU backend"
+    warn "  phone-vm-agent on this device will use proot-distro fallback only"
+    COMPANION_PKGS="$COMPANION_PKGS proot-distro"
+  fi
+fi
 
 install_companion_pkgs() {
   if [ "$MODE" != "apply" ]; then
     log "Companion packages would be installed: ${COMPANION_PKGS}"
     if [ "$PROFILE" = "phone-vm-agent" ]; then
-      log "  (VM profile: includes QEMU, tar, ca-certificates)"
+      log "  (VM profile: backend=${VM_BACKEND_MESSAGE})"
     fi
     log "  (run --apply to install)"
     return
@@ -376,7 +400,18 @@ install_companion_pkgs() {
   fi
 
   log "Installing companion packages..."
-  pkg update -y >/dev/null 2>&1 || true
+  _PKG_UPDATE_OK=0
+  _RETRIES=3
+  while [ "$_RETRIES" -gt 0 ] && [ "$_PKG_UPDATE_OK" -eq 0 ]; do
+    if timeout 60 pkg update -y >/dev/null 2>&1; then
+      _PKG_UPDATE_OK=1
+    else
+      _RETRIES=$((_RETRIES - 1))
+      [ "$_RETRIES" -gt 0 ] && warn "pkg update failed, retrying (${_RETRIES} left)..."
+      sleep 2
+    fi
+  done
+  [ "$_PKG_UPDATE_OK" -eq 0 ] && warn "pkg update failed after 3 attempts — continuing anyway"
 
   for pkg_name in $COMPANION_PKGS; do
     if command -v "$pkg_name" >/dev/null 2>&1; then
@@ -503,10 +538,37 @@ SSHEOF
 
 install_ssh_config
 
+# ── Section 8b: Network gate ─────────────────────────────────────────────
+REPO_STATE="unknown"
+check_network_gate() {
+  _REACHABLE=0
+  if command -v curl >/dev/null 2>&1; then
+    if curl -fsSL --connect-timeout 5 "https://github.com" >/dev/null 2>&1; then
+      _REACHABLE=1
+    fi
+  fi
+  if [ "$_REACHABLE" -eq 1 ]; then
+    REPO_STATE="reachable"
+    log "Network gate: github reachable"
+  else
+    REPO_STATE="skipped-network"
+    warn "Network gate: github unreachable — repo clone will be skipped"
+    if [ "$PROFILE" = "phone-relay" ]; then
+      log "  phone-relay can continue without repo (SSH/tmux/keys still set up)"
+    fi
+  fi
+}
+check_network_gate
+
 # ── Section 9: Repository clone/update ──────────────────────────────────
 repo_action="none"
 
 ensure_repo() {
+  if [ "$REPO_STATE" = "skipped-network" ]; then
+    log "Network unreachable — skipping repo clone"
+    repo_action="skipped-network"
+    return
+  fi
   if [ "$_USE_TEST_ROOT" -eq 1 ]; then
     _REPO_DIR="${TEST_ROOT}${UOM_DIR_DEFAULT}"
   else
@@ -535,10 +597,41 @@ ensure_repo() {
   else
     if [ "$MODE" = "apply" ]; then
       log "Cloning UOM repository (ref: ${REF})..."
-      git clone --branch "$REF" "$REPO_URL" "$_REPO_DIR" 2>/dev/null || {
-        warn "git clone failed"
+      if [ -d "$_REPO_DIR" ] && [ -n "$(ls -A "$_REPO_DIR" 2>/dev/null)" ]; then
+        warn "Target $_REPO_DIR exists and is not empty — skipping clone"
+        repo_action="exists-skipped"
         return
-      }
+      fi
+      _OWNER_REPO="dharani-sg/universal-omni-master"
+      _CLONE_SUCCESS=0
+      if git clone --depth 1 "$REPO_URL" "$_REPO_DIR" 2>/dev/null; then
+        _CLONE_SUCCESS=1
+        if [ -n "$REF" ] && ! git -C "$_REPO_DIR" rev-parse --verify "refs/heads/$REF" 2>/dev/null; then
+          git -C "$_REPO_DIR" fetch --depth 1 origin "$REF" 2>/dev/null && \
+          git -C "$_REPO_DIR" checkout "$REF" 2>/dev/null || \
+          warn "Could not fetch/checkout ref $REF — using default branch"
+        fi
+      fi
+      if [ "$_CLONE_SUCCESS" -eq 0 ]; then
+        warn "git clone failed — trying tarball fallback"
+        _TARBALL_URL="https://codeload.github.com/${_OWNER_REPO}/tar.gz/${REF}"
+        _PARENT_DIR="$(dirname "$_REPO_DIR")"
+        mkdir -p "$_PARENT_DIR"
+        if curl -fsSL "$_TARBALL_URL" -o /tmp/uom-tarball-$$.tar.gz 2>/dev/null; then
+          tar xzf "/tmp/uom-tarball-$$.tar.gz" -C "$_PARENT_DIR" 2>/dev/null
+          _EXTRACTED=$(ls -d "$_PARENT_DIR/universal-omni-master-"* 2>/dev/null | head -1)
+          if [ -n "$_EXTRACTED" ]; then
+            mv "$_EXTRACTED" "$_REPO_DIR" 2>/dev/null
+            rm -f "/tmp/uom-tarball-$$.tar.gz"
+            _CLONE_SUCCESS=1
+          fi
+        fi
+        rm -f "/tmp/uom-tarball-$$.tar.gz" 2>/dev/null || true
+      fi
+      if [ "$_CLONE_SUCCESS" -eq 0 ]; then
+        warn "git clone and tarball fallback both failed"
+        return
+      fi
       repo_action="cloned"
     else
       log "Repository clone pending (run --apply to clone)"

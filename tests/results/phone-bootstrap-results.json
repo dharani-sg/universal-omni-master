@@ -1,9 +1,9 @@
 {
-  "test_run": "2026-07-19T05:01:19Z",
+  "test_run": "2026-07-19T08:04:41Z",
   "script": "tests/test-phone-bootstrap.sh",
   "total": 72,
-  "passed": 72,
-  "failed": 0,
+  "passed": 54,
+  "failed": 18,
   "skipped": 0,
-  "result": "ALL_PASS"
+  "result": "SOME_FAIL"
 }
