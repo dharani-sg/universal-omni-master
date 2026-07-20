@@ -31,7 +31,7 @@ case "$DEVICE" in
     BUNDLE="/tmp/uom-${DEVICE}-$(date +%s).bundle"
     timeout 25 ssh -i "$KEY" -p "$REMOTE_PORT" -o BatchMode=yes "$REMOTE_HOST" \
       "cd $REPO 2>/dev/null && git bundle create $BUNDLE HEAD 2>/dev/null && echo OK" 2>/dev/null && \
-    timeout 25 scp -i "$KEY" -P "$REMOTE_PORT" -o StrictHostKeyChecking=no \
+    timeout 25 scp -i "$KEY" -P "$REMOTE_PORT" -o StrictHostKeyChecking=accept-new \
       "$REMOTE_HOST:$BUNDLE" "$BUNDLE_DIR/inbox/$(basename $BUNDLE)" 2>/dev/null && \
     timeout 25 ssh -i "$KEY" -p "$REMOTE_PORT" -o BatchMode=yes "$REMOTE_HOST" \
       "rm -f $BUNDLE" 2>/dev/null

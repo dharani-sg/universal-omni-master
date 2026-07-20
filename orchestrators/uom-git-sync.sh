@@ -14,7 +14,7 @@ log() { echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $*"; }
 # Returns 0 on success, 1 on failure
 phone_ssh() {
   local label="$1"; shift
-  local ssh_base=(-i "$KEY" -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=no)
+  local ssh_base=(-i "$KEY" -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new)
   local LAN_HOST LAN_PORT TUN_PORT TUN_USER
   case "$label" in
     phone1) LAN_HOST="u0_a608@192.168.40.207"; LAN_PORT=8022; TUN_PORT=31415; TUN_USER="u0_a608" ;;
@@ -35,7 +35,7 @@ phone_ssh() {
 # Phone SCP helper: try LAN first, then reverse tunnel
 phone_scp() {
   local label="$1" src="$2" dst="$3"
-  local scp_base=(-i "$KEY" -o StrictHostKeyChecking=no -o ConnectTimeout=5)
+  local scp_base=(-i "$KEY" -o StrictHostKeyChecking=accept-new -o ConnectTimeout=5)
   local LAN_HOST LAN_PORT TUN_PORT TUN_USER
   case "$label" in
     phone1) LAN_HOST="u0_a608@192.168.40.207"; LAN_PORT=8022; TUN_PORT=31415; TUN_USER="u0_a608" ;;
