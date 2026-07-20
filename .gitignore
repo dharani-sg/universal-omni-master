@@ -39,3 +39,4 @@ secrets.env
 .uom-agent/*.host
 .uom-termux-user/
 .install-gate-evidence/
+__pycache__/

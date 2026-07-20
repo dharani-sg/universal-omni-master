@@ -2,7 +2,7 @@
   "schema_version": 2,
   "active_agent": "dual",
   "writer_role": "laptop",
-  "ownership_epoch": 0,
+  "ownership_epoch": 5,
   "lease_id": "",
   "lease_expires_epoch": 0,
   "task_status": "idle",
@@ -10,9 +10,19 @@
   "current_task_desc": "",
   "checkpoint_ref": "",
   "takeover_count": 0,
-  "last_transition": "M30-termux-native->completed",
-  "last_transition_at": "2026-07-18T23:30:00+05:30",
-  "last_commit": "",
-  "laptop_heartbeat": "2026-07-17T17:38:46+05:30",
-  "phone_heartbeat": "2026-07-17T15:57:44+05:30"
+  "last_transition": "overnight-triple-PHASE13-PASS->completed",
+  "last_transition_at": "2026-07-20T07:03:00+05:30",
+  "last_commit": "f403e1a",
+  "laptop_heartbeat": "2026-07-20T07:03:00+05:30",
+  "phone_heartbeat": "2026-07-20T07:03:00+05:30",
+  "overnight_run": {
+    "run_id": "overnight-triple-20260719T173255Z",
+    "status": "COMPLETE",
+    "phase13": "PASS",
+    "cost": 0,
+    "pushes": 0,
+    "base_branch": "burnin/dual-agent-20260718",
+    "integration_branch": "overnight-triple-20260719T173255Z/integration",
+    "final_commit": "f403e1a"
+  }
 }

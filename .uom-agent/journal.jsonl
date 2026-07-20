@@ -1,0 +1,87 @@
+{"ts":"2026-07-20T01:42:21Z","src":"trident","evt":"TRIDENT_STARTED","data":{"pid":10678,"cycle":60}}
+{"ts":"2026-07-20T01:42:21Z","src":"trident","evt":"SUPER_DEAD","data":{"pid":""}}
+{"ts":"2026-07-20T01:42:21Z","src":"trident","evt":"REVIVE_SUPER","data":{"reason":"process_dead"}}
+{"ts":"2026-07-20T01:42:21Z","src":"trident","evt":"COORD_DEAD","data":{"pid":""}}
+{"ts":"2026-07-20T01:42:21Z","src":"trident","evt":"REVIVE_COORD","data":{"reason":"process_dead"}}
+{"ts":"2026-07-20T01:42:21Z","src":"trident","evt":"GUARD_DEAD","data":{"pid":""}}
+{"ts":"2026-07-20T01:42:21Z","src":"trident","evt":"REVIVE_GUARD","data":{"reason":"process_dead"}}
+{"ts":"2026-07-20T01:42:21Z","src":"trident","evt":"ANTISL_DEAD","data":{"pid":""}}
+{"ts":"2026-07-20T01:42:21Z","src":"trident","evt":"REVIVE_ANTISL","data":{"reason":"process_dead"}}
+{"ts":"2026-07-20T01:42:36Z","src":"trident","evt":"MODEL_OK","data":{"detail":"[model-rotate] 2026-07-20T01:42:21Z probing opencode/north-mini-code-free (timeout=15s)
+[model-rotate] 2026-07-20T01:42:36Z OK: opencode/north-mini-code-free (15s)
+VERIFIED: opencode/north-mini-code-free"}}
+{"ts":"2026-07-20T01:42:36Z","src":"trident","evt":"PORT_DEGRADED","data":{"detail":"some ports unreachable"}}
+{"ts":"2026-07-20T01:42:38Z","src":"trident","evt":"PHONE_CHECK","data":{"phone1":1,"phone2":1}}
+{"ts":"2026-07-20T01:42:38Z","src":"trident","evt":"NET_DRIFT","data":{"old":"","new":"192.168.40.90"}}
+{"ts":"2026-07-20T01:42:38Z","src":"trident","evt":"PORT_DEGRADED","data":{"detail":"some ports unreachable"}}
+{"ts":"2026-07-20T01:43:38Z","src":"trident","evt":"SUPER_DEAD","data":{"pid":""}}
+{"ts":"2026-07-20T01:43:38Z","src":"trident","evt":"REVIVE_SUPER","data":{"reason":"process_dead"}}
+{"ts":"2026-07-20T01:43:38Z","src":"trident","evt":"COORD_DEAD","data":{"pid":""}}
+{"ts":"2026-07-20T01:43:38Z","src":"trident","evt":"REVIVE_COORD","data":{"reason":"process_dead"}}
+{"ts":"2026-07-20T01:43:38Z","src":"trident","evt":"GUARD_DEAD","data":{"pid":""}}
+{"ts":"2026-07-20T01:43:38Z","src":"trident","evt":"REVIVE_GUARD","data":{"reason":"process_dead"}}
+{"ts":"2026-07-20T01:43:38Z","src":"trident","evt":"ANTISL_DEAD","data":{"pid":""}}
+{"ts":"2026-07-20T01:43:38Z","src":"trident","evt":"REVIVE_ANTISL","data":{"reason":"process_dead"}}
+{"ts":"2026-07-20T01:43:38Z","src":"trident","evt":"PORT_DEGRADED","data":{"detail":"some ports unreachable"}}
+{"ts":"2026-07-20T01:44:38Z","src":"trident","evt":"SUPER_DEAD","data":{"pid":""}}
+{"ts":"2026-07-20T01:44:38Z","src":"trident","evt":"REVIVE_SUPER","data":{"reason":"process_dead"}}
+{"ts":"2026-07-20T01:44:38Z","src":"trident","evt":"COORD_DEAD","data":{"pid":""}}
+{"ts":"2026-07-20T01:44:38Z","src":"trident","evt":"REVIVE_COORD","data":{"reason":"process_dead"}}
+{"ts":"2026-07-20T01:44:38Z","src":"trident","evt":"GUARD_DEAD","data":{"pid":""}}
+{"ts":"2026-07-20T01:44:38Z","src":"trident","evt":"REVIVE_GUARD","data":{"reason":"process_dead"}}
+{"ts":"2026-07-20T01:44:38Z","src":"trident","evt":"ANTISL_DEAD","data":{"pid":""}}
+{"ts":"2026-07-20T01:44:38Z","src":"trident","evt":"REVIVE_ANTISL","data":{"reason":"process_dead"}}
+{"ts":"2026-07-20T01:44:39Z","src":"trident","evt":"PORT_DEGRADED","data":{"detail":"some ports unreachable"}}
+{"ts":"2026-07-20T01:45:39Z","src":"trident","evt":"SUPER_DEAD","data":{"pid":""}}
+{"ts":"2026-07-20T01:45:39Z","src":"trident","evt":"REVIVE_SUPER","data":{"reason":"process_dead"}}
+{"ts":"2026-07-20T01:45:39Z","src":"trident","evt":"COORD_DEAD","data":{"pid":""}}
+{"ts":"2026-07-20T01:45:39Z","src":"trident","evt":"REVIVE_COORD","data":{"reason":"process_dead"}}
+{"ts":"2026-07-20T01:45:39Z","src":"trident","evt":"GUARD_DEAD","data":{"pid":""}}
+{"ts":"2026-07-20T01:45:39Z","src":"trident","evt":"REVIVE_GUARD","data":{"reason":"process_dead"}}
+{"ts":"2026-07-20T01:45:39Z","src":"trident","evt":"ANTISL_DEAD","data":{"pid":""}}
+{"ts":"2026-07-20T01:45:39Z","src":"trident","evt":"REVIVE_ANTISL","data":{"reason":"process_dead"}}
+{"ts":"2026-07-20T01:45:39Z","src":"trident","evt":"PORT_DEGRADED","data":{"detail":"some ports unreachable"}}
+{"ts":"2026-07-20T01:46:39Z","src":"trident","evt":"SUPER_DEAD","data":{"pid":""}}
+{"ts":"2026-07-20T01:46:39Z","src":"trident","evt":"REVIVE_SUPER","data":{"reason":"process_dead"}}
+{"ts":"2026-07-20T01:46:39Z","src":"trident","evt":"COORD_DEAD","data":{"pid":""}}
+{"ts":"2026-07-20T01:46:39Z","src":"trident","evt":"REVIVE_COORD","data":{"reason":"process_dead"}}
+{"ts":"2026-07-20T01:46:39Z","src":"trident","evt":"GUARD_DEAD","data":{"pid":""}}
+{"ts":"2026-07-20T01:46:39Z","src":"trident","evt":"REVIVE_GUARD","data":{"reason":"process_dead"}}
+{"ts":"2026-07-20T01:46:39Z","src":"trident","evt":"ANTISL_DEAD","data":{"pid":""}}
+{"ts":"2026-07-20T01:46:39Z","src":"trident","evt":"REVIVE_ANTISL","data":{"reason":"process_dead"}}
+{"ts":"2026-07-20T01:46:39Z","src":"trident","evt":"PORT_DEGRADED","data":{"detail":"some ports unreachable"}}
+{"ts":"2026-07-20T01:47:40Z","src":"trident","evt":"SUPER_DEAD","data":{"pid":""}}
+{"ts":"2026-07-20T01:47:40Z","src":"trident","evt":"REVIVE_SUPER","data":{"reason":"process_dead"}}
+{"ts":"2026-07-20T01:47:40Z","src":"trident","evt":"COORD_DEAD","data":{"pid":""}}
+{"ts":"2026-07-20T01:47:40Z","src":"trident","evt":"REVIVE_COORD","data":{"reason":"process_dead"}}
+{"ts":"2026-07-20T01:47:40Z","src":"trident","evt":"GUARD_DEAD","data":{"pid":""}}
+{"ts":"2026-07-20T01:47:40Z","src":"trident","evt":"REVIVE_GUARD","data":{"reason":"process_dead"}}
+{"ts":"2026-07-20T01:47:40Z","src":"trident","evt":"ANTISL_DEAD","data":{"pid":""}}
+{"ts":"2026-07-20T01:47:40Z","src":"trident","evt":"REVIVE_ANTISL","data":{"reason":"process_dead"}}
+{"ts":"2026-07-20T01:47:40Z","src":"trident","evt":"PORT_DEGRADED","data":{"detail":"some ports unreachable"}}
+{"ts":"2026-07-20T01:47:41Z","src":"trident","evt":"PHONE_CHECK","data":{"phone1":1,"phone2":1}}
+{"ts":"2026-07-20T01:48:41Z","src":"trident","evt":"SUPER_DEAD","data":{"pid":""}}
+{"ts":"2026-07-20T01:48:41Z","src":"trident","evt":"REVIVE_SUPER","data":{"reason":"process_dead"}}
+{"ts":"2026-07-20T01:48:41Z","src":"trident","evt":"COORD_DEAD","data":{"pid":""}}
+{"ts":"2026-07-20T01:48:41Z","src":"trident","evt":"REVIVE_COORD","data":{"reason":"process_dead"}}
+{"ts":"2026-07-20T01:48:41Z","src":"trident","evt":"GUARD_DEAD","data":{"pid":""}}
+{"ts":"2026-07-20T01:48:41Z","src":"trident","evt":"REVIVE_GUARD","data":{"reason":"process_dead"}}
+{"ts":"2026-07-20T01:48:41Z","src":"trident","evt":"ANTISL_DEAD","data":{"pid":""}}
+{"ts":"2026-07-20T01:48:41Z","src":"trident","evt":"REVIVE_ANTISL","data":{"reason":"process_dead"}}
+{"ts":"2026-07-20T01:48:41Z","src":"trident","evt":"PORT_DEGRADED","data":{"detail":"some ports unreachable"}}
+{"ts":"2026-07-20T01:49:42Z","src":"trident","evt":"SUPER_DEAD","data":{"pid":""}}
+{"ts":"2026-07-20T01:49:42Z","src":"trident","evt":"REVIVE_SUPER","data":{"reason":"process_dead"}}
+{"ts":"2026-07-20T01:49:42Z","src":"trident","evt":"COORD_DEAD","data":{"pid":""}}
+{"ts":"2026-07-20T01:49:42Z","src":"trident","evt":"REVIVE_COORD","data":{"reason":"process_dead"}}
+{"ts":"2026-07-20T01:49:42Z","src":"trident","evt":"GUARD_DEAD","data":{"pid":""}}
+{"ts":"2026-07-20T01:49:42Z","src":"trident","evt":"REVIVE_GUARD","data":{"reason":"process_dead"}}
+{"ts":"2026-07-20T01:49:42Z","src":"trident","evt":"ANTISL_DEAD","data":{"pid":""}}
+{"ts":"2026-07-20T01:49:42Z","src":"trident","evt":"REVIVE_ANTISL","data":{"reason":"process_dead"}}
+{"ts":"2026-07-20T01:49:42Z","src":"trident","evt":"PORT_DEGRADED","data":{"detail":"some ports unreachable"}}
+{"ts":"2026-07-20T01:50:42Z","src":"trident","evt":"SUPER_DEAD","data":{"pid":""}}
+{"ts":"2026-07-20T01:50:42Z","src":"trident","evt":"REVIVE_SUPER","data":{"reason":"process_dead"}}
+{"ts":"2026-07-20T01:50:42Z","src":"trident","evt":"GUARD_DEAD","data":{"pid":""}}
+{"ts":"2026-07-20T01:50:42Z","src":"trident","evt":"REVIVE_GUARD","data":{"reason":"process_dead"}}
+{"ts":"2026-07-20T01:50:42Z","src":"trident","evt":"ANTISL_DEAD","data":{"pid":""}}
+{"ts":"2026-07-20T01:50:42Z","src":"trident","evt":"REVIVE_ANTISL","data":{"reason":"process_dead"}}
+{"ts":"2026-07-20T01:50:42Z","src":"trident","evt":"PORT_DEGRADED","data":{"detail":"some ports unreachable"}}
