@@ -1,61 +1,335 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/Shell-POSIX%20BusyBox%20ash-000000?logo=gnubash&logoColor=white" alt="POSIX sh">
-  <img src="https://img.shields.io/badge/Release-v0.34.0--rc1-blueviolet?logo=github" alt="Release">
-  <img src="https://img.shields.io/badge/License-MIT-green?logo=opensourceinitiative" alt="License">
-  <img src="https://img.shields.io/badge/Dual--Agent-Laptop+Phone-orange?logo=android" alt="Dual-Agent">
-  <img src="https://img.shields.io/badge/Network-Drift%20Resilient-blue" alt="Network">
-  <img src="https://img.shields.io/badge/Installer-Hardened-brightgreen" alt="Hardened">
-  <img src="https://img.shields.io/badge/Model-Dynamic%20Rotation-ff6b6b" alt="Dynamic Model">
+  <img src="https://img.shields.io/badge/UNIVERSAL-OMNI--MASTER-v0.34.0--rc1-6C3FBF?style=for-the-badge&logo=atom&logoColor=white" alt="UOM">
 </p>
 
 <h1 align="center">UNIVERSAL OMNI-MASTER</h1>
+
 <p align="center">
-  <b>POSIX-Hardened AI Infrastructure Stack</b><br>
-  <i>Dual-agent orchestration. Dynamic model rotation. Network drift resilience. Zero dependencies.</i>
+  <strong>POSIX-Hardened AI Infrastructure Stack</strong><br>
+  <em>Dual-agent orchestration · Dynamic model rotation · Network drift resilience · Zero dependencies</em>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Shell-POSIX%20ash-1E1E2E?style=flat-square&logo=gnubash&logoColor=white" alt="POSIX sh">
+  <img src="https://img.shields.io/badge/Release-v0.34.0--rc1-7C3AED?style=flat-square&logo=github&logoColor=white" alt="Release">
+  <img src="https://img.shields.io/badge/License-MIT-10B981?style=flat-square&logo=opensourceinitiative&logoColor=white" alt="License">
+  <img src="https://img.shields.io/badge/Dual--Agent-Laptop%2BPhone-F59E0B?style=flat-square&logo=android&logoColor=white" alt="Dual-Agent">
+  <img src="https://img.shields.io/badge/Network-Drift%20Resilient-3B82F6?style=flat-square&logo=wifi&logoColor=white" alt="Network">
+  <img src="https://img.shields.io/badge/Installer-Hardened-22C55E?style=flat-square&logo=shield&logoColor=white" alt="Hardened">
+  <img src="https://img.shields.io/badge/Model-Dynamic%20Rotation-EF4444?style=flat-square&logo=openai&logoColor=white" alt="Dynamic Model">
+  <img src="https://img.shields.io/badge/Cost-ZERO-000000?style=flat-square&logo=dollar&logoColor=white" alt="Zero Cost">
 </p>
 
 <p align="center">
   <a href="#-overview">Overview</a> ·
   <a href="#-architecture">Architecture</a> ·
-  <a href="#-bootstrap--installer">Bootstrap</a> ·
-  <a href="#-file-structure">Structure</a> ·
+  <a href="#-quick-start">Quick Start</a> ·
   <a href="#-cli-surface">CLI</a> ·
-  <a href="#-dual-agent-system">Dual-Agent</a> ·
   <a href="#-zen-loop-pipeline">Zen Loop</a> ·
+  <a href="#-dual-agent-system">Dual-Agent</a> ·
   <a href="#-roadmap">Roadmap</a> ·
-  <a href="#-quick-start">Quick Start</a>
+  <a href="#-validated-environments">Environments</a> ·
+  <a href="#-key-policies">Policies</a>
 </p>
 
 ---
 
 ## Overview
 
-UOM is a POSIX-hardened AI infrastructure stack that turns any two POSIX devices (laptop + phone) into a resilient dual-agent AI system.
+<p align="center">
+  <img src="https://img.shields.io/badge/What_It_Does-Transforms_two POSIX devices into a resilient AI system-6366F1?style=for-the-badge" alt="Overview">
+</p>
 
-**What it does:**
-- Provisions Android/Termux phones as AI relay nodes
-- Runs a cloud code generation pipeline (Zen Loop) with dynamic free-model rotation
-- Survives network changes (WiFi switch, hotspot migration) without reconfiguration
-- Deploys rootless QEMU aarch64 VMs on phones for isolated AI workloads
-- Syncs state across 3 nodes via Git (laptop, phone1, phone2)
+UOM turns any two POSIX devices — a laptop and a phone — into a resilient dual-agent AI system. Cloud-only. No local LLMs. No sudo. No API keys. No hardcoded IPs.
 
-**Key design constraints:**
+| Capability | How |
+|------------|-----|
+| 📱 **Phone Provisioning** | Deploy Android/Termux phones as AI relay nodes via a 3-stage hardened bootstrap chain |
+| 🔄 **Zen Loop Pipeline** | Cloud code generation with dynamic free-model rotation and 6-step reconcile |
+| 🌐 **Network Drift Resilience** | Survives WiFi switches, hotspot migration — 5-method IP discovery + port guardian |
+| 💻 **QEMU Workloads** | Rootless QEMU aarch64 VMs on phones for isolated AI processing |
+| 🔀 **3-Node State Sync** | Git-based state machine across laptop, phone1, phone2 via GitHub |
+
+**Design Constraints:**
 - POSIX `#!/bin/sh` throughout — zero bashisms, zero Python runtime deps
 - No local LLMs — cloud-only via opencode with anonymous free-tier models
 - No sudo — runs entirely as unprivileged user
 - No hardcoded IPs — 5-method IP discovery cascade with drift resilience
+- No API keys — free tier only, zero cost
 
 ---
 
-## Bootstrap + Installer
+## Architecture
 
-### One curl command — zero-trust phone deployment
+<p align="center">
+  <img src="https://img.shields.io/badge/System_Architecture-Triple_Node_Mesh-6366F1?style=for-the-badge" alt="Architecture">
+</p>
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        UNIVERSAL OMNI-MASTER                            │
+│                           v0.34.0-rc1                                   │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  ┌─────────────────────────┐       ┌─────────────────────────┐         │
+│  │    LAPTOP (Primary)     │◄─────►│    PHONE1 (Secondary)   │         │
+│  │    Alpine Linux         │ SSH   │    Termux / Android     │         │
+│  │    opencode v1.18.3     │ 8022  │    QEMU aarch64 guest   │         │
+│  │    192.168.40.90        │       │    10.21.250.76         │         │
+│  └───────────┬─────────────┘       └───────────┬─────────────┘         │
+│              │                                  │                       │
+│              │       ┌──────────────────┐       │                       │
+│              │       │   PHONE2 (Mom's) │       │                       │
+│              │       │   WiFi Hotspot   │       │                       │
+│              │       │   Termux + SSH   │       │                       │
+│              │       │   192.168.40.157 │       │                       │
+│              │       └──────────────────┘       │                       │
+│              │                                  │                       │
+│  ┌───────────▼──────────────────────────────────▼─────────────────┐    │
+│  │             Git (Shared State Store via GitHub)                │    │
+│  │  state.json (schema v2)  │  queue.json  │  done.json          │    │
+│  │  heartbeat               │  multi-node  │  takeover_count     │    │
+│  └────────────────────────────────────────────────────────────────┘    │
+│                                                                         │
+│  ┌────────────────────────────────────────────────────────────────┐    │
+│  │             Zen Loop Cloud Pipeline                            │    │
+│  │  Dynamic model selection (4-model free pool, auto-failover)   │    │
+│  │  Network drift resilience (port guardian, SHA256 fingerprint) │    │
+│  │  No ollama. No sudo. No hardcoded models. No API keys.        │    │
+│  └────────────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Network Topology
+
+| Node | Role | IP | Device | SDK | Status |
+|------|------|----|--------|-----|--------|
+| 🔴 Phone2 | Hotspot / Gateway | `192.168.40.157` (dynamic) | Redmi Note 23106RN0DA | 35 | <img src="https://img.shields.io/badge/UP-22C55E" alt="UP"> |
+| 🔵 Laptop | Primary Agent | `192.168.40.90` (dynamic) | HP Pavilion 15-n010tx | — | <img src="https://img.shields.io/badge/UP-22C55E" alt="UP"> |
+| 🟡 Phone1 | Secondary + QEMU Host | `10.21.250.76` (OFFLINE) | Xiaomi Mi 8 (dipper) | 35 | <img src="https://img.shields.io/badge/DEGRADED-F59E0B" alt="DEGRADED"> |
+
+> Phone2 provides the WiFi hotspot (`192.168.40.x` subnet). All IPs are dynamic — use `uom-ip-discover.sh` for discovery. Direct SSH on port 8022 between all nodes.
+
+---
+
+## Quick Start
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Get_Started-In_3_Steps-22C55E?style=for-the-badge" alt="Quick Start">
+</p>
+
+### 1. Deploy Phone Agent (One Curl Command)
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/dharani-sg/universal-omni-master/main/install/bootstrap.sh | bash
 ```
 
-This single command deploys the full phone/laptop agent stack via a **secure 3-stage chain**:
+This auto-detects Termux vs Alpine and runs a **secure 3-stage chain**:
+
+```
+curl pipe → Stage 1: bootstrap.sh (download-validate-exec)
+         → Stage 2: bootstrap-termux.sh (phone-relay or phone-vm-agent)
+         → Stage 3: SSH key, tmux, opencode CLI, repo clone
+```
+
+### 2. Provision Phone (Direct Installer)
+
+```sh
+# Read-only preflight (safe to run anywhere):
+sh install/bootstrap-termux.sh --check
+
+# Install phone-relay (default, ~25KB packages):
+sh install/bootstrap-termux.sh --apply --verify
+
+# Install VM profile (requires explicit consent):
+sh install/bootstrap-termux.sh --apply --profile phone-vm-agent \
+  --allow-large-download --allow-vm --allow-opencode-install
+```
+
+### 3. Run the Zen Loop
+
+```sh
+# Full 6-step pipeline:
+sh orchestrators/uom-reconcile.sh
+
+# Force model re-selection:
+sh orchestrators/uom-reconcile.sh --reselect-model
+
+# Standalone model operations:
+sh tools/uom-model-rotate.sh select   # pick best free model
+sh tools/uom-model-rotate.sh status   # show pool + history
+
+# Just generate:
+scripts/uom-generator.sh "write a POSIX sh function"
+```
+
+### Laptop Bootstrap (Alpine)
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/dharani-sg/universal-omni-master/main/install/bootstrap-laptop.sh | sh
+```
+
+---
+
+## CLI Surface
+
+<p align="center">
+  <img src="https://img.shields.io/badge/CLI_Surface-30%2B_Tools-6366F1?style=for-the-badge&logo=terminal&logoColor=white" alt="CLI">
+</p>
+
+### 🔧 Core Operations
+
+| Command | Location | Purpose |
+|---------|----------|---------|
+| `uom-ssh-phone.sh` | `bin/` | Drift-tolerant laptop→phone SSH (5-method IP discovery) |
+| `uom-reverse-ssh.sh` | `bin/` | Phone→laptop reverse tunnel (autossh-backed) |
+| `uom-port-guardian.sh` | `orchestrators/` | Network drift sentinel (20s polling, SSH config rewrite) |
+| `uom-watchdog.sh` | `orchestrators/` | Phone→laptop reachability + wake-lock |
+| `uom-tmux-watchdog.sh` | `orchestrators/` | Tmux session + tunnel watchdog |
+| `uom-reconcile.sh` | `orchestrators/` | 6-step Zen Loop (dynamic model + drift resilience) |
+| `uom-solo-orchestrator.sh` | `orchestrators/` | Phone-only fallback when laptop unreachable |
+| `uom-trident-supervisor.sh` | `orchestrators/` | Triple supervisor for overnight orchestrations |
+
+### 🧠 Zen Loop Tools
+
+| Command | Location | Purpose |
+|---------|----------|---------|
+| `uom-generator.sh` | `scripts/` | Cloud code generator (opencode stdin + 3-retry) |
+| `uom-verifier.sh` | `scripts/` | Syntax/policy verifier (stub-aware, no LLM calls) |
+| `uom-model-rotate.sh` | `tools/` | Free model rotation (4-model pool, Retry-After handling) |
+| `uom-phone-gen-loop.sh` | `tools/` | Phone generator loop (PHASE14) |
+| `uom-sync-loop.sh` | `tools/` | Bidirectional sync loop (PHASE15) |
+| `uom-feedback-aggregator.sh` | `tools/` | Verifier feedback aggregation (PHASE16) |
+
+### 🛠️ Infrastructure
+
+| Command | Location | Purpose |
+|---------|----------|---------|
+| `uom-state-lib.sh` | `tools/` | POSIX state library with atomic locking (v2) |
+| `uom-queue.sh` | `tools/` | Task queue manager |
+| `uom-ip-discover.sh` | `tools/` | 5-method IP discovery cascade |
+| `uom-status.sh` | `bin/` | Service status dashboard |
+| `uom-deploy-phone.sh` | `bin/` | Deploy scripts → phone via SSH |
+| `uom-phone-provision.sh` | `bin/` | proot-distro Debian + opencode provisioner |
+| `uom-checkpoint.sh` | `bin/` | Session checkpoint/resume |
+
+### 🏗️ Provisioning Engine (omni-* CLI)
+
+| Command | Purpose |
+|---------|---------|
+| `omni-detect` | Hardware + OS detection |
+| `omni-boot` | Boot config + GRUB management |
+| `omni-deploy` | System deployment |
+| `omni-gpu` | GPU driver management |
+| `omni-storage` | Disk + LVM management |
+| `omni-audit` | System audit |
+| `omni-healer` | Self-healing repairs |
+| `omni-patcher` | Patch management |
+| `omni-snapshot` | Btrfs/ZFS snapshots |
+| `omni-rollback` | Snapshot rollback |
+| `omni-tui` | Terminal UI dashboard |
+| `omni-service` | Service management |
+| `omni-security` | Security hardening |
+| `omni-saas` | SaaS deployment |
+| `omni-openclaw` | OpenClaw integration |
+| `omni-fleet` | Multi-node fleet management |
+| `omni-manager` | Resource management |
+| `omni-compliance` | Compliance scanning |
+| `omni-manifest` | Package manifests |
+| `omni-desktop` | 11 WM/DE profiles |
+
+> Full catalog: [`docs/SCRIPT-CATALOG.md`](docs/SCRIPT-CATALOG.md)
+
+---
+
+## Zen Loop Pipeline
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Zen_Loop-6--Step_Reconcile-Pipeline-7C3AED?style=for-the-badge" alt="Zen Loop">
+</p>
+
+Cloud-only code generation with dynamic model selection and network drift resilience.
+
+```
+┌──────────┐   ┌───────────┐   ┌────────────┐   ┌──────────┐
+│ Step 0   │──►│ Step 1-2  │──►│ Step 3-4   │──►│ Step 5-6 │
+│ Pre-fl   │   │ tmux +    │   │ Network +  │   │ Generate │
+│ checks   │   │ model     │   │ tunnel     │   │ + verify │
+│          │   │ selection │   │ discovery  │   │ + super  │
+└──────────┘   └───────────┘   └────────────┘   └──────────┘
+```
+
+### 6-Step Reconcile
+
+| Step | Action | Script |
+|------|--------|--------|
+| 0 | Pre-flight: sshd, jq, opencode, routing, API reachability | `orchestrators/uom-reconcile.sh` |
+| 1–2 | Tmux guard + cloud bootstrap: create session, select model | `orchestrators/uom-reconcile.sh` |
+| 3–4 | Network + tunnel: fingerprint, port 31415 liveness, guardian start | `orchestrators/uom-reconcile.sh` |
+| 5–6 | Zen agents + supervisor: generator, verifier, status report | `scripts/uom-generator.sh`, `scripts/uom-verifier.sh` |
+
+### Free Model Pool
+
+| # | Model | Role | Auto-Failover |
+|---|-------|------|---------------|
+| 1 | `deepseek-v4-flash-free` | Primary | — |
+| 2 | `nemotron-3-ultra-free` | Fallback 1 | ✓ |
+| 3 | `north-mini-code-free` | Fallback 2 | ✓ |
+| 4 | `big-pickle` | Fallback 3 | ✓ |
+
+> Cache TTL: 300s · Retry-After: respected · History: 50 entries · Cost: **$0**
+
+---
+
+## Dual-Agent System
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Dual--Agent-Resilient_Pair_Mode-6366F1?style=for-the-badge" alt="Dual-Agent">
+</p>
+
+Laptop + Phone operate as a resilient AI agent pair. Git serves as the shared state store.
+
+### Node Modes
+
+| Mode | Trigger | Who Runs opencode |
+|------|---------|-------------------|
+| 🟢 **dual** | Both reachable | Laptop primary |
+| 🟡 **solo** | Laptop unreachable (>300s) | Phone autonomous |
+| 🔴 **pending** | >15 min (3 watchdog cycles) | Manual confirm to dual |
+
+### State Machine (schema v2)
+
+```json
+{
+  "schema_version": 2,
+  "active_agent": "dual",
+  "writer_role": "laptop",
+  "ownership_epoch": 5,
+  "task_status": "idle",
+  "takeover_count": 0,
+  "last_transition": "overnight-triple-PHASE13-PASS->completed"
+}
+```
+
+### Network Resilience
+
+`orchestrators/uom-port-guardian.sh` is a background sentinel that:
+
+1. **Discovers** phone IP via 5-method cascade (stored hint → known IPs → subnet scan)
+2. **Reacts** on drift (~20s polling): rewrites SSH config, publishes host hints, signals reconcile
+3. **Fingerprints** network: `SHA256(gateway + laptop_ip + phone_ip)`
+
+Tunnel port fixed at `31415` with pre-flight reachability check.
+
+---
+
+## Bootstrap + Installer
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Installer-3--Stage_Hardened-22C55E?style=for-the-badge&logo=shield&logoColor=white" alt="Installer">
+</p>
+
+### Secure 3-Stage Chain
 
 ```
 curl pipe
@@ -70,7 +344,7 @@ Stage 1: bootstrap.sh (88 lines) — Secure download-validate-exec
   ▼
 Stage 2 (Termux): bootstrap-termux.sh (950 lines, hardened)
   ├─ phone-relay (default): tmux, openssh, git, jq, curl, autossh, fzf
-  │   SSH key (id_ed25519_uom), SSH config (UOM-managed block),
+  │   SSH key (id_ed25519_uom), SSH config (UOM-MANAGED block),
   │   repo clone (SHA-safe + tarball fallback), Termux:Boot
   │   opencode install ladder: pkg → npm → go install → remote installer
   └─ phone-vm-agent (opt-in): +QEMU aarch64/proot-distro + Alpine VM
@@ -94,314 +368,27 @@ Result: Fully provisioned phone agent + laptop with SSH tunnel, tmux,
 | `phone-relay` | ~25KB packages | tmux, openssh, git, jq, curl, autossh, fzf, SSH key, SSH config, UOM repo, Termux:Boot | None |
 | `phone-vm-agent` | +proot-distro/QEMU | Same + QEMU aarch64 + proot-distro + Alpine VM image | `--allow-large-download --allow-vm --allow-opencode-install` |
 
-```sh
-# Read-only preflight (safe to run anywhere):
-sh install/bootstrap-termux.sh --check
-
-# Install phone-relay (default):
-sh install/bootstrap-termux.sh --apply --verify
-
-# Install VM profile (requires explicit consent):
-sh install/bootstrap-termux.sh --apply --profile phone-vm-agent \
-  --allow-large-download --allow-vm --allow-opencode-install
-
-# Laptop Alpine:
-curl -fsSL https://raw.githubusercontent.com/dharani-sg/universal-omni-master/main/install/bootstrap-laptop.sh | sh
-```
-
 ### Hardening Patches (v0.34.0)
 
 | Patch | Fix | Detail |
 |-------|-----|--------|
-| A | SHA-safe clone | `git clone --depth 1` → `fetch --depth 1 origin $REF` → `checkout` → codeload tarball fallback. Non-empty dirs skipped safely. |
-| B | Key consistency | Dedicated `id_ed25519_uom` with UOM-MANAGED-BEGIN/END markers. Never overwrites unrelated keys. |
-| C | Arch policy | `qemu-system-x86_64` removed from aarch64 defaults. `DEFAULT_VM_BACKEND=proot`. QEMU aarch64 = experimental opt-in only. |
-| D | Network gate | `REPO_STATE=skipped-network` on github unreachable. Phone-relay succeeds without repo. |
-| E | pkg update | 3-retry with `timeout 60`, warn-and-continue on total failure. |
+| A | SHA-safe clone | `git clone --depth 1` → `fetch --depth 1 origin $REF` → `checkout` → codeload tarball fallback |
+| B | Key consistency | Dedicated `id_ed25519_uom` with UOM-MANAGED-BEGIN/END markers |
+| C | Arch policy | `qemu-system-x86_64` removed from aarch64 defaults. QEMU aarch64 = experimental opt-in only |
+| D | Network gate | `REPO_STATE=skipped-network` on github unreachable. Phone-relay succeeds without repo |
+| E | pkg update | 3-retry with `timeout 60`, warn-and-continue on total failure |
 
-Test harness: `sh tests/test-phone-bootstrap.sh` (72 assertions, 54/72 pass).
-
----
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         UNIVERSAL OMNI-MASTER                             │
-│                           v0.34.0-rc1                                    │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│  ┌─────────────────────────┐        ┌─────────────────────────┐        │
-│  │     LAPTOP (Primary)    │◄──────►│     PHONE1 (Secondary)  │        │
-│  │     Alpine Linux        │  SSH   │     Termux / Android    │        │
-│  │     opencode            │  rvrs  │     opencode + QEMU VM  │        │
-│  │     dynamic IP          │  tunnel│     aarch64 guest       │        │
-│  └───────────┬─────────────┘  31415 └───────────┬─────────────┘        │
-│              │                                   │                       │
-│              │        ┌──────────────────┐       │                       │
-│              │        │  PHONE2 (Mom's)  │       │                       │
-│              │        │  WiFi Hotspot    │       │                       │
-│              │        │  Termux + SSH    │       │                       │
-│              │        └──────────────────┘       │                       │
-│              │                                   │                       │
-│  ┌───────────▼───────────────────────────────────▼─────────────────┐    │
-│  │              Git (Shared State Store via GitHub)                │    │
-│  │  .uom-agent/state.json  │  queue.json  │  done.json             │    │
-│  │  heartbeat/schema v2    │  multi-node   │  takeover_count       │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
-│                                                                          │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │              Zen Loop Cloud Pipeline                             │    │
-│  │  Dynamic model selection (4-model free pool, auto-failover)      │    │
-│  │  Network drift resilience (port guardian, SHA256 fingerprint)    │    │
-│  │  No ollama. No sudo. No hardcoded models. No API keys.          │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────────────────┘
-```
-
-### Current Network Topology
-
-| Node | Role | IP | User | Model | SDK | Status |
-|------|------|----|------|-------|-----|--------|
-| Phone2 | Hotspot/Gateway | 192.168.40.157 (dynamic) | u0_a217 | Redmi Note | 35 | UP |
-| Laptop | Primary agent | 192.168.40.90 (dynamic) | alpine | HP Pavilion | — | UP |
-| Phone1 | Secondary + QEMU host | 10.21.250.76 (OFFLINE) | u0_a608 | MI 8 | 35 | UP (QEMU running) |
-
-- Phone2 provides the WiFi hotspot (192.168.40.x subnet). IPs are dynamic — use uom-ip-discover.sh for discovery.
-- Direct SSH on port 8022 between all nodes (no reverse tunnel needed on same subnet).
-- Phone1 runs `qemu-system-aarch64` with Alpine guest for isolated AI workloads.
-
----
-
-## File Structure
-
-```
-universal-omni-master/
-├── bin/                              # CLI entrypoints + wrappers
-│   ├── uom-ssh-phone.sh              # Drift-tolerant laptop->phone SSH (5-method discovery)
-│   ├── uom-reverse-ssh.sh            # Phone->laptop reverse tunnel (autossh-backed)
-│   ├── uom-port-guardian.sh          # -> orchestrators/ (symlink wrapper)
-│   ├── uom-tmux-watchdog.sh          # -> orchestrators/ (symlink wrapper)
-│   ├── uom-status.sh                 # Service status dashboard
-│   ├── uom-qemu-phone                # QEMU VM lifecycle manager
-│   ├── uom-deploy-phone.sh           # Deploy scripts -> phone via SSH
-│   ├── uom-phone-provision.sh        # proot-distro Debian + opencode provisioner
-│   ├── uom-sync / uom-sync-status    # Git sync helpers
-│   ├── uom-checkpoint.sh             # Session checkpoint/resume
-│   ├── uom-statectl.sh               # State file management
-│   └── uom-resume.sh                 # Session resume note
-│
-├── orchestrators/                    # Long-running daemon coordinators
-│   ├── uom-reconcile.sh              # 6-step Zen Loop (dynamic model + drift resilience)
-│   ├── uom-port-guardian.sh          # Network drift sentinel (20s polling, SSH rewrite)
-│   ├── uom-watchdog.sh               # Phone->laptop reachability + wake-lock
-│   ├── uom-tmux-watchdog.sh          # Tmux session guardian + tunnel watchdog
-│   └── uom-solo-orchestrator.sh      # Phone-only fallback when laptop dies
-│
-├── scripts/                          # Pipelines, generators, verifiers, tests
-│   ├── uom-generator.sh              # Cloud code generator (opencode stdin, 3-retry)
-│   ├── uom-verifier.sh               # Syntax/policy verifier (stub-aware)
-│   ├── uom-lib.sh                    # Consolidated shared library (~280 lines)
-│   ├── uom-dryrun.sh                 # Full dry-run test suite
-│   ├── uom-phone-bootstrap.sh        # Phone bootstrap wrapper + checksum
-│   ├── uom-qemu-watchdog.sh          # QEMU health watchdog (P1-P10)
-│   ├── uom-reconcile.sh              # Standalone reconcile entry
-│   ├── uom-sync.sh                   # Sync loop helper
-│   └── test-*.sh (32 files)          # Milestone regression tests (M1-M27)
-│
-├── tools/                            # Libraries + orchestration tools
-│   ├── uom-model-rotate.sh           # Free model rotation (Retry-After, history, 4-model pool)
-│   ├── uom-state-lib.sh              # POSIX state library with atomic locking (v2)
-│   ├── uom-ip-discover.sh            # 5-method IP discovery cascade
-│   ├── uom-queue.sh                  # Task queue manager
-│   ├── uom-phone-gen-loop.sh         # Phone generator loop (PHASE14)
-│   ├── uom-sync-loop.sh              # Bidirectional sync loop (PHASE15)
-│   ├── uom-feedback-aggregator.sh    # Verifier feedback loop (PHASE16)
-│   ├── uom-orch-laptop.sh            # Laptop-side orchestrator
-│   ├── uom-orch-phone.sh             # Phone-side orchestrator
-│   ├── uom-orch-state.sh             # State machine interface
-│   └── uom-smoke-sync.sh             # Smoke test sync
-│
-├── install/                          # Bootstrap + installation
-│   ├── bootstrap.sh                  # Universal curl installer (auto-detects platform)
-│   ├── bootstrap-termux.sh           # Termux-specific installer (hardened, 926 lines)
-│   ├── bootstrap-laptop.sh           # Laptop Alpine bootstrap
-│   └── secrets.env.template          # API key template (keys blank)
-│
-├── tests/                            # Test suites
-│   ├── test-phone-bootstrap.sh       # 72-assertion installer test harness
-│   ├── test-remote-llm.sh            # Remote LLM pipeline test (PHASE13)
-│   └── test-zen-loop-e2e.sh          # End-to-end Zen Loop test (PHASE17)
-│
-├── docs/                             # Architecture + operations (44 docs)
-│   ├── ROADMAP.md                    # Full roadmap
-│   ├── SCRIPT-CATALOG.md             # Complete script inventory + caller/callee map
-│   ├── ZEN-LOOP.md                   # Zen Loop architecture + verifier rejection
-│   ├── CONCURRENCY.md                # Conflict matrix + singleton patterns
-│   ├── NETWORK-SCENARIOS.md          # 10 network scenarios + model rotation
-│   ├── SECURITY-BOUNDARIES.md        # Security policy
-│   ├── PHONE-ONLY-OPERATIONS.md      # Daily phone operations
-│   ├── PHONE-SETUP.md                # Phone setup guide
-│   ├── SYNC-ARCHITECTURE.md          # Git sync policy + architecture
-│   ├── INSTALLER-TRUTH-MATRIX-20260719.md  # Installer audit results
-│   ├── NET-ADAPT-WIFI-SWITCH-TEST-20260719.md  # WiFi switch test report
-│   ├── POSTWIFI-INSTALLER-DRYRUN-20260719.md   # Post-wifi dry-run results
-│   ├── GUARDRAIL-DRYRUN-20260719.md            # Guardrail test results
-│   ├── SESSION-GATE-20260719.md                # Session gate table
-│   └── (30 more)
-│
-├── scripts/phone-shortcuts/          # Phone app shortcuts (12 scripts)
-│   ├── 00-UOM-Status                 # Status widget
-│   ├── 30-UOM-Zen-Console            # Zen console launcher
-│   ├── 50-UOM-Logs                   # Log viewer
-│   ├── 90-UOM-Stop                   # Graceful stop
-│   ├── tasks/10-UOM-Start            # Boot startup task
-│   └── opencode-zen-smart            # Smart model selection shortcut
-│
-├── .uom-agent/                       # Runtime state (gitignored)
-│   ├── state.json                    # Agent state machine (schema v2)
-│   ├── queue.json                    # Task queue (PHASE13-17)
-│   ├── done.json                     # Completed tasks
-│   ├── phone.host                    # Phone IP:PORT hint (port-guardian managed)
-│   ├── laptop.host                   # Laptop IP:PORT hint
-│   ├── runtime/                      # selected_model, net_fingerprint, last-reconcile
-│   ├── logs/                         # Component logs
-│   ├── locks/                        # Singleton lockfiles (mkdir-based)
-│   └── generated/verified/           # Zen Loop output staging
-│
-├── config/uom/                       # Configuration templates
-│   └── zen.env.example               # Zen Loop env vars
-│
-└── security/                         # Hardening + firewall + hooks
-    ├── uom-harden-ssh.sh             # ed25519-only SSH
-    ├── uom-firewall.sh               # nftables firewall
-    └── install-hooks.sh              # Pre-commit hooks
-```
-
-> **Note:** The `bin/` directory also contains 21 `omni-*` CLI tools from the
-> UOM provisioning engine (M1-M27 milestones). These are documented in
-> `docs/SCRIPT-CATALOG.md` and tested by `scripts/test-m*.sh` (31 test files).
-
----
-
-## CLI Surface
-
-### Operational Tools
-
-| Tool | Location | Purpose |
-|------|----------|---------|
-| `uom-ssh-phone.sh` | `bin/` | Drift-tolerant laptop->phone SSH (5-method IP discovery) |
-| `uom-reverse-ssh.sh` | `bin/` | Phone->laptop reverse tunnel (autossh-backed) |
-| `uom-port-guardian.sh` | `orchestrators/` | Network drift sentinel (20s polling, SSH config rewrite) |
-| `uom-watchdog.sh` | `orchestrators/` | Phone->laptop reachability + wake-lock |
-| `uom-tmux-watchdog.sh` | `orchestrators/` | Tmux session + tunnel watchdog |
-| `uom-reconcile.sh` | `orchestrators/` | 6-step Zen Loop (dynamic model + drift resilience) |
-| `uom-solo-orchestrator.sh` | `orchestrators/` | Phone-only fallback when laptop unreachable |
-| `uom-generator.sh` | `scripts/` | Cloud code generator (opencode stdin + 3-retry) |
-| `uom-verifier.sh` | `scripts/` | Syntax/policy verifier (stub-aware, no LLM calls) |
-| `uom-model-rotate.sh` | `tools/` | Free model rotation (4-model pool, Retry-After handling) |
-| `uom-state-lib.sh` | `tools/` | POSIX state library with atomic locking (v2) |
-| `uom-queue.sh` | `tools/` | Task queue manager |
-| `uom-sync-loop.sh` | `tools/` | Bidirectional sync loop |
-| `uom-feedback-aggregator.sh` | `tools/` | Verifier feedback aggregation |
-| `uom-phone-gen-loop.sh` | `tools/` | Phone generator loop |
-| `uom-status.sh` | `bin/` | Service status dashboard |
-
----
-
-## Dual-Agent System
-
-Laptop + Phone operate as a resilient AI agent pair. Git serves as the shared state store.
-
-### Node Modes
-
-| Mode | Trigger | Who Runs opencode |
-|------|---------|-------------------|
-| **dual** | Both reachable | Laptop primary |
-| **solo** | Laptop unreachable (>300s) | Phone autonomous |
-| **pending** | >15 min (3 watchdog cycles) | Manual confirm to dual |
-
-### State Machine (schema v2)
-
-```
-state.json:
-  agent_mode: "dual" | "solo" | "pending"
-  heartbeat: timestamp
-  takeover_count: int
-  last_sync: timestamp
-
-queue.json:
-  tasks[]: { id, phase, description, status, created, updated }
-  status: "pending" | "in_progress" | "done" | "failed" | "stale"
-```
-
-### Network Resilience
-
-`orchestrators/uom-port-guardian.sh` is a background sentinel that:
-
-1. **Discovers** phone IP via 5-method cascade (stored hint → known IPs → subnet scan)
-2. **Reacts** on drift (~20s polling): rewrites SSH config, publishes host hints, signals reconcile
-3. **Fingerprints** network: SHA256(gateway + laptop_ip + phone_ip)
-
-Tunnel port is fixed at `31415` with pre-flight reachability check.
-
----
-
-## Zen Loop Pipeline
-
-Cloud-only code generation with dynamic model selection and network drift resilience.
-
-```
-┌──────────┐   ┌───────────┐   ┌────────────┐   ┌──────────┐
-│ Step 0   │──>│ Step 1-2  │──>│ Step 3-4   │──>│ Step 5-6 │
-│ Pre-fl   │   │ tmux +    │   │ Network +  │   │ Generate │
-│ checks   │   │ model     │   │ tunnel     │   │ + verify │
-│          │   │ selection │   │ discovery  │   │ + super  │
-└──────────┘   └───────────┘   └────────────┘   └──────────┘
-```
-
-### Free Model Pool
-
-| # | Model | Auto-Failover |
-|---|-------|---------------|
-| 1 | `deepseek-v4-flash-free` | Primary |
-| 2 | `nemotron-3-ultra-free` | Fallback 1 |
-| 3 | `north-mini-code-free` | Fallback 2 |
-| 4 | `big-pickle` | Fallback 3 |
-
-Cache TTL: 300s | Retry-After: respected | History: 50
-
-### 6-Step Reconcile Pipeline
-
-| Step | Action | Script |
-|------|--------|--------|
-| 0 | Pre-flight: sshd, jq, opencode, routing, API reachability | `orchestrators/uom-reconcile.sh` |
-| 1-2 | Tmux guard + cloud bootstrap: create session, select model | `orchestrators/uom-reconcile.sh` |
-| 3-4 | Network + tunnel: fingerprint, port 31415 liveness, guardian start | `orchestrators/uom-reconcile.sh` |
-| 5-6 | Zen agents + supervisor: generator, verifier, status report | `scripts/uom-generator.sh`, `scripts/uom-verifier.sh` |
-
-### Usage
-
-```sh
-# Full pipeline:
-sh orchestrators/uom-reconcile.sh
-
-# Force model re-selection:
-sh orchestrators/uom-reconcile.sh --reselect-model
-
-# Model rotation standalone:
-sh tools/uom-model-rotate.sh select   # pick best free model
-sh tools/uom-model-rotate.sh status   # show pool + history
-
-# Just generate:
-scripts/uom-generator.sh "write a POSIX sh function"
-```
+> Test harness: `sh tests/test-phone-bootstrap.sh` (72 assertions, 54/72 pass)
 
 ---
 
 ## Roadmap
 
-### Sealed (Foundation through Phase 12)
+<p align="center">
+  <img src="https://img.shields.io/badge/Roadmap-M01_to_M43-Sealed_to_Future-7C3AED?style=for-the-badge" alt="Roadmap">
+</p>
+
+### ✅ Sealed (Foundation → Phase 12)
 
 | Phase | Milestones | Core Deliverables |
 |-------|-----------|-------------------|
@@ -417,132 +404,183 @@ scripts/uom-generator.sh "write a POSIX sh function"
 | Dynamic | M31 | Dynamic model selection, network fingerprinting |
 | Phase 0–12 | — | Repo audit, watchdog catalog, state v2, security hardening, dual-agent loop, network switching test, power-failure recovery, commercialization prep, network auto-switch, free model rotation, integration verification, documentation |
 
-### Active Pipeline (PHASE13–PHASE17)
+### 🔄 Active Pipeline (PHASE13–PHASE17)
 
 | Phase | ID | Description | Status |
 |-------|----|-------------|--------|
-| **PHASE13** | `ssh-remote-llm` | Verify SSH-based remote LLM pipeline from phone to laptop opencode | Pending |
-| **PHASE14** | `phone-generator-loop` | Verify phone generator agent picks up pending tasks and calls remote LLM | Pending |
-| **PHASE15** | `bidirectional-sync` | Verify bidirectional sync of generated/verified state between phone and laptop | Pending |
-| **PHASE16** | `verifier-feedback-loop` | Verify verifier on laptop processes phone-generated code and writes feedback | Pending |
-| **PHASE17** | `zen-loop-e2e` | End-to-end zen loop: phone generates, laptop verifies, phone receives feedback | Pending |
+| **PHASE13** | `ssh-remote-llm` | Verify SSH-based remote LLM pipeline from phone to laptop opencode | <img src="https://img.shields.io/badge/PASS-22C55E" alt="PASS"> |
+| **PHASE14** | `phone-generator-loop` | Verify phone generator agent picks up pending tasks and calls remote LLM | <img src="https://img.shields.io/badge/PENDING-F59E0B" alt="Pending"> |
+| **PHASE15** | `bidirectional-sync` | Verify bidirectional sync of generated/verified state between phone and laptop | <img src="https://img.shields.io/badge/PENDING-F59E0B" alt="Pending"> |
+| **PHASE16** | `verifier-feedback-loop` | Verify verifier on laptop processes phone-generated code and writes feedback | <img src="https://img.shields.io/badge/PENDING-F59E0B" alt="Pending"> |
+| **PHASE17** | `zen-loop-e2e` | End-to-end zen loop: phone generates, laptop verifies, phone receives feedback | <img src="https://img.shields.io/badge/PENDING-F59E0B" alt="Pending"> |
 
-### Recently Completed (2026-07-19 Session)
+### 📋 Recently Completed (2026-07-19 Session)
 
 | Item | Status | Details |
 |------|--------|---------|
-| WiFi switch dry-run | PASS | Both phones reachable post-WiFi change. Phone2 identified as hotspot host. |
-| Installer hardening | 5/5 patches | SHA-safe clone, key consistency, arch policy, network gate, pkg update retry |
-| Branch sync | CLEAN | `burnin/dual-agent-20260718` ↔ `fix/phone-bootstrap-release-gate-20260719` at `f97f085` |
-| Phone dry-run | PASS | check → apply → idempotency → rollback on Phone2 |
-| Guardrail test | PASS | storage, battery, network, arch guardrails all functional |
-| README overhaul | DONE | 758→280 lines, roadmap restructured, topology added |
+| WiFi switch dry-run | <img src="https://img.shields.io/badge/PASS-22C55E" alt="PASS"> | Both phones reachable post-WiFi change. Phone2 identified as hotspot host |
+| Installer hardening | <img src="https://img.shields.io/badge/5%2F5_Patches-22C55E" alt="5/5"> | SHA-safe clone, key consistency, arch policy, network gate, pkg update retry |
+| Branch sync | <img src="https://img.shields.io/badge/CLEAN-22C55E" alt="CLEAN"> | `burnin/dual-agent-20260718` ↔ `fix/phone-bootstrap-release-gate-20260719` |
+| Phone dry-run | <img src="https://img.shields.io/badge/PASS-22C55E" alt="PASS"> | check → apply → idempotency → rollback on Phone2 |
+| Guardrail test | <img src="https://img.shields.io/badge/PASS-22C55E" alt="PASS"> | storage, battery, network, arch guardrails all functional |
+| PHASE13 verify | <img src="https://img.shields.io/badge/PASS-22C55E" alt="PASS"> | Real LLM traffic: Phone2→SSH→Laptop→opencode→response verified |
 
-### Future Horizon (Unscheduled)
+### 🔮 Future Horizon (Unscheduled)
 
 | Phase | Vision |
 |-------|--------|
-| M33 | Post-Quantum: ML-KEM-768 hybrid KEX, ML-DSA host keys |
-| M34 | Predictive AI: CRC linear regression, thermal telemetry, 60-min failure lookahead |
-| M35 | Observability: eBPF kernel telemetry, bpftrace, Tetragon |
-| M36 | Edge/IoT: Nix golden images, A/B OTA, dm-verity + Secure Boot |
-| M37 | Confidential: AMD SEV-SNP / Intel TDX / ARM CCA detection |
-| M38 | Protocol: MCP Server integration for AI assistants |
-| M39 | Bootloader: systemd-boot default, BLS entries, UKI first-class |
-| M40 | Federation: Hub + daemon + dashboard, Prometheus, mDNS auto-discovery |
+| M33 | **Post-Quantum:** ML-KEM-768 hybrid KEX, ML-DSA host keys |
+| M34 | **Predictive AI:** CRC linear regression, thermal telemetry, 60-min failure lookahead |
+| M35 | **Observability:** eBPF kernel telemetry, bpftrace, Tetragon |
+| M36 | **Edge/IoT:** Nix golden images, A/B OTA, dm-verity + Secure Boot |
+| M37 | **Confidential:** AMD SEV-SNP / Intel TDX / ARM CCA detection |
+| M38 | **Protocol:** MCP Server integration for AI assistants |
+| M39 | **Bootloader:** systemd-boot default, BLS entries, UKI first-class |
+| M40 | **Federation:** Hub + daemon + dashboard, Prometheus, mDNS auto-discovery |
 | M41-M43 | Power, OverlayFS, Trust |
 
 ---
 
-## Quick Start
+## File Structure
 
-### Bootstrap (deploy phone agent stack)
+<p align="center">
+  <img src="https://img.shields.io/badge/Project_Structure-150%2B_Files-6366F1?style=for-the-badge&logo=folder&logoColor=white" alt="Structure">
+</p>
 
-```sh
-# Deploy full phone agent (auto-detects Termux vs Alpine, 3-stage secure chain):
-curl -fsSL https://raw.githubusercontent.com/dharani-sg/universal-omni-master/main/install/bootstrap.sh | bash
-
-# Or clone manually for local use:
-git clone https://github.com/dharani-sg/universal-omni-master.git
-cd universal-omni-master
 ```
-
-### Phone (Termux) — direct installer
-
-```sh
-sh install/bootstrap-termux.sh --check                        # Read-only preflight
-sh install/bootstrap-termux.sh --apply                        # Install phone-relay (default)
-sh install/bootstrap-termux.sh --apply --verify               # Install + validate
-sh install/bootstrap-termux.sh --apply --profile phone-vm-agent \
-  --allow-large-download --allow-vm --allow-opencode-install  # Deploy QEMU VM + Alpine
-```
-
-### Zen Loop
-
-```sh
-sh orchestrators/uom-reconcile.sh                  # Full 6-step pipeline
-sh tools/uom-model-rotate.sh select                # Pick best model
-sh tools/uom-model-rotate.sh status                # Show pool + history
-scripts/uom-generator.sh "write a function"        # Cloud generation
-```
-
-### Dual-Agent
-
-```sh
-# Laptop:
-sh tools/uom-orch-laptop.sh
-
-# Phone:
-sh bin/uom-reverse-ssh.sh start    # Reverse tunnel
-sh bin/uom-port-guardian.sh start  # Network sentinel
-
-# Verify:
-ssh -p 31415 u0_a608@127.0.0.1 "echo TUNNEL OK"
-```
-
-### Network Drift
-
-```sh
-sh bin/uom-port-guardian.sh start     # Background sentinel
-sh bin/uom-port-guardian.sh status    # Running? last-seen targets?
-sh bin/uom-port-guardian.sh dryrun    # Self-test
+universal-omni-master/
+├── bin/                              # CLI entrypoints + wrappers (30+)
+│   ├── omni-*                       # Provisioning engine (M1-M27)
+│   ├── uom-ssh-phone.sh             # Drift-tolerant laptop->phone SSH
+│   ├── uom-reverse-ssh.sh           # Phone->laptop reverse tunnel
+│   ├── uom-deploy-phone.sh          # Deploy scripts -> phone via SSH
+│   ├── uom-phone-provision.sh       # proot-distro provisioner
+│   ├── uom-checkpoint.sh            # Session checkpoint/resume
+│   └── uom-status.sh                # Service status dashboard
+│
+├── orchestrators/                    # Long-running daemon coordinators
+│   ├── uom-reconcile.sh             # 6-step Zen Loop
+│   ├── uom-port-guardian.sh         # Network drift sentinel
+│   ├── uom-watchdog.sh              # Phone->laptop reachability
+│   ├── uom-tmux-watchdog.sh         # Tmux session guardian
+│   ├── uom-solo-orchestrator.sh     # Phone-only fallback
+│   ├── uom-trident-supervisor.sh    # Triple orchestrator supervisor
+│   └── uom-trident-hook.sh          # Trident event hook
+│
+├── scripts/                          # Pipelines, generators, tests
+│   ├── uom-generator.sh             # Cloud code generator
+│   ├── uom-verifier.sh              # Syntax/policy verifier
+│   ├── uom-lib.sh                   # Consolidated shared library
+│   ├── phone-shortcuts/             # Phone app shortcuts (12)
+│   └── test-*.sh                    # Regression tests (32)
+│
+├── tools/                            # Libraries + orchestration tools
+│   ├── uom-model-rotate.sh          # Free model rotation
+│   ├── uom-state-lib.sh             # POSIX state library (v2)
+│   ├── uom-ip-discover.sh           # 5-method IP discovery
+│   ├── uom-queue.sh                 # Task queue manager
+│   ├── uom-phone-gen-loop.sh        # Phone generator loop
+│   ├── uom-sync-loop.sh             # Bidirectional sync
+│   └── uom-feedback-aggregator.sh   # Verifier feedback
+│
+├── install/                          # Bootstrap + installation
+│   ├── bootstrap.sh                 # Universal curl installer
+│   ├── bootstrap-termux.sh          # Termux installer (hardened)
+│   ├── bootstrap-laptop.sh          # Laptop Alpine bootstrap
+│   ├── secrets.env.template         # API key template
+│   └── setup-aliases.sh             # Shell aliases
+│
+├── tests/                            # Test suites
+│   ├── test-phone-bootstrap.sh      # 72-assertion installer tests
+│   ├── test-remote-llm.sh           # Remote LLM pipeline test
+│   ├── test-zen-loop-e2e.sh         # End-to-end Zen Loop test
+│   └── burnin.sh                    # Burn-in test suite
+│
+├── docs/                             # Architecture + operations (45+)
+│   ├── ROADMAP.md                   # Full roadmap
+│   ├── SCRIPT-CATALOG.md            # Script inventory + caller/callee
+│   ├── ZEN-LOOP.md                  # Zen Loop architecture
+│   ├── CONCURRENCY.md               # Conflict matrix + singletons
+│   ├── NETWORK-SCENARIOS.md         # 10 network scenarios
+│   ├── SECURITY-BOUNDARIES.md       # Security policy
+│   └── (40 more)
+│
+├── security/                         # Hardening + firewall + hooks
+│   ├── uom-harden-ssh.sh            # ed25519-only SSH
+│   ├── uom-firewall.sh              # nftables firewall
+│   └── install-hooks.sh             # Pre-commit hooks
+│
+├── .uom-agent/                       # Runtime state (gitignored)
+│   ├── state.json                   # Agent state machine (schema v2)
+│   ├── queue.json                   # Task queue
+│   ├── done.json                    # Completed tasks
+│   ├── phone.host / laptop.host     # IP hints (port-guardian managed)
+│   ├── runtime/                     # selected_model, net_fingerprint
+│   ├── logs/                        # Component logs
+│   ├── locks/                       # Singleton lockfiles (mkdir-based)
+│   └── context/                     # M-phase context docs
+│
+├── reports/                          # Overnight run reports
+│   └── morning-report-*.md          # Status reports
+│
+├── api_wrapper.py                    # Python API client (rate limiting, retry)
+├── .opencode/opencode.json           # opencode project config
+└── NETWORK_CODE_POLICY.md            # Free-tier API policy
 ```
 
 ---
 
 ## Validated Environments
 
+<p align="center">
+  <img src="https://img.shields.io/badge/Environments-4_Distros_Tested-3B82F6?style=for-the-badge" alt="Environments">
+</p>
+
 | Distro | Libc | Init | Role | Status |
 |--------|------|------|------|--------|
-| Alpine 3.21 | musl | OpenRC | Laptop + QEMU guest | Primary |
-| Termux (Android 15) | bionic | — | Phone1 + Phone2 | Primary |
-| Void Linux | glibc | runit | Laptop (dual-boot) | Tested |
-| Debian 12 | glibc | systemd | — | Tested |
+| Alpine 3.21 | musl | OpenRC | Laptop + QEMU guest | <img src="https://img.shields.io/badge/PRIMARY-22C55E" alt="Primary"> |
+| Termux (Android 15) | bionic | — | Phone1 + Phone2 | <img src="https://img.shields.io/badge/PRIMARY-22C55E" alt="Primary"> |
+| Void Linux | glibc | runit | Laptop (dual-boot) | <img src="https://img.shields.io/badge/TESTED-3B82F6" alt="Tested"> |
+| Debian 12 | glibc | systemd | — | <img src="https://img.shields.io/badge/TESTED-3B82F6" alt="Tested"> |
 
 **Hardware:**
-- HP Pavilion 15-n010tx (Intel i3-3217U, 4GB RAM) — laptop
-- Xiaomi Mi 8 (dipper, SDK 35) — Phone1, QEMU host
-- Redmi Note 23106RN0DA (SDK 35) — Phone2, hotspot host
+| Device | Model | Role |
+|--------|-------|------|
+| 💻 Laptop | HP Pavilion 15-n010tx (Intel i3-3217U, 4GB RAM) | Primary agent |
+| 📱 Phone1 | Xiaomi Mi 8 (dipper, SDK 35) | Secondary + QEMU host |
+| 📱 Phone2 | Redmi Note 23106RN0DA (SDK 35) | Hotspot host |
 
 ---
 
 ## Key Policies
 
+<p align="center">
+  <img src="https://img.shields.io/badge/Policies-Non--Negotiable-EF4444?style=for-the-badge" alt="Policies">
+</p>
+
 | Policy | Rule |
 |--------|------|
-| **POSIX-First** | `#!/bin/sh` everywhere. BusyBox ash-safe. Zero bashisms, zero `eval`. |
-| **No local LLMs** | Cloud-only via `opencode run --model`. No ollama. No local inference. |
-| **Secrets** | Never in tracked files. Use `~/.config/uom/secrets.env` (mode 600). |
-| **SSH keys** | Dedicated `id_ed25519_uom`. UOM-MANAGED block in config. |
-| **Git sync** | GitHub canonical. Pull = fetch + ff-only. No auto-conflict resolution. |
-| **Singleton locks** | mkdir-based locks with PID validation + trap cleanup. |
-| **Rate limits** | Honor Retry-After. Max 3 retries. Concurrency = 1. |
+| 🐚 **POSIX-First** | `#!/bin/sh` everywhere. BusyBox ash-safe. Zero bashisms, zero `eval`. |
+| ☁️ **No local LLMs** | Cloud-only via `opencode run --model`. No ollama. No local inference. |
+| 🔐 **Secrets** | Never in tracked files. Use `~/.config/uom/secrets.env` (mode 600). |
+| 🔑 **SSH keys** | Dedicated `id_ed25519_uom`. UOM-MANAGED block in config. |
+| 🔄 **Git sync** | GitHub canonical. Pull = fetch + ff-only. No auto-conflict resolution. |
+| 🔒 **Singleton locks** | mkdir-based locks with PID validation + trap cleanup. |
+| ⏱️ **Rate limits** | Honor Retry-After. Max 3 retries. Concurrency = 1. |
+| 💰 **Zero cost** | Free tier only. No API keys. No paid endpoints. |
 
 ---
 
 ## License
 
 **MIT** — Built with care on a failing SATA cable. Validated on 3 distros + 2 phones.
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Built_With-POSIX_sh-000000?style=for-the-badge&logo=gnubash&logoColor=white" alt="POSIX sh">
+  <img src="https://img.shields.io/badge/Zero-Cost-10B981?style=for-the-badge" alt="Zero Cost">
+  <img src="https://img.shields.io/badge/Zero-Dependencies-3B82F6?style=for-the-badge" alt="Zero Deps">
+  <img src="https://img.shields.io/badge/3_Distros-Tested-F59E0B?style=for-the-badge" alt="3 Distros">
+</p>
 
 ---
 
