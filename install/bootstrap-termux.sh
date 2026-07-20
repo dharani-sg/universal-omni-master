@@ -464,6 +464,173 @@ install_companion_pkgs() {
 
 install_companion_pkgs
 
+# ── Section 6b: Runit services for process supervision ─────────────────
+runit_services_installed=0
+
+install_runit_services() {
+  if [ "$IS_TERMUX" -ne 1 ]; then
+    log "Runit services: skipped (not Termux)"
+    return
+  fi
+
+  _SVDIR="${PREFIX:-/data/data/com.termux/files/usr}/var/service"
+
+  if [ "$MODE" != "apply" ]; then
+    log "Runit services would be created in ${_SVDIR}"
+    log "  (run --apply to create)"
+    return
+  fi
+
+  log "Creating runit services in ${_SVDIR}..."
+
+  # Determine SSH port and tunnel port based on profile/profile context
+  _SSHD_PORT=${SSHD_PORT:-8022}
+  _TUNNEL_PORT=${TUNNEL_PORT:-31415}
+
+  # Service: uom-sshd
+  if [ ! -d "$_SVDIR/uom-sshd" ]; then
+    mkdir -p "$_SVDIR/uom-sshd/log/main"
+    cat > "$_SVDIR/uom-sshd/run" << 'SSHEOF'
+#!/data/data/com.termux/files/usr/bin/sh
+exec 2>&1
+SVDIR=/data/data/com.termux/files/usr/var/service
+export SVDIR
+exec sshd -D -e -p 8022 -o "PidFile=/tmp/sshd.pid"
+SSHEOF
+    chmod +x "$_SVDIR/uom-sshd/run"
+    cat > "$_SVDIR/uom-sshd/log/run" << 'LOGEOF'
+#!/data/data/com.termux/files/usr/bin/sh
+exec svlogd -tt ./main
+LOGEOF
+    chmod +x "$_SVDIR/uom-sshd/log/run"
+    log "  uom-sshd: created"
+    runit_services_installed=1
+  else
+    log "  uom-sshd: already exists"
+  fi
+
+  # Service: uom-tunnel
+  if [ ! -d "$_SVDIR/uom-tunnel" ]; then
+    mkdir -p "$_SVDIR/uom-tunnel/log/main"
+    cat > "$_SVDIR/uom-tunnel/run" << 'TUNEOF'
+#!/data/data/com.termux/files/usr/bin/sh
+# UOM reverse tunnel — discovers laptop IP from cache/gateway, maps port by whoami
+exec 2>&1
+
+CACHE=$HOME/.uom-agent/laptop.ip
+LAPTOP_IP=""
+# 1) cached
+[ -f "$CACHE" ] && LAPTOP_IP=$(cat "$CACHE")
+# 2) gateway (SLIRP or LAN)
+if [ -z "$LAPTOP_IP" ]; then
+  GW=$(ip route 2>/dev/null | awk '/default/{print $3; exit}')
+  [ -n "$GW" ] && LAPTOP_IP="$GW"
+fi
+# 3) hardcoded fallback
+[ -z "$LAPTOP_IP" ] && LAPTOP_IP=192.168.40.90
+
+# Key selection: prefer id_ed25519_laptop, fallback id_ed25519_uom, fallback id_ed25519
+SSH_KEY=""
+for candidate in $HOME/.ssh/id_ed25519_laptop $HOME/.ssh/id_ed25519_uom $HOME/.ssh/id_ed25519; do
+  if [ -f "$candidate" ]; then SSH_KEY="$candidate"; break; fi
+done
+
+# Port mapping: u0_a608 → 31415, u0_a217 → 31416, others → 31415
+WHO=$(whoami 2>/dev/null)
+case "$WHO" in
+  u0_a608) TUNNEL_PORT=31415 ;;
+  u0_a217) TUNNEL_PORT=31416 ;;
+  *) TUNNEL_PORT=31415 ;;
+esac
+
+SSHD_PORT=8022
+LAPTOP_PORT=22
+LAPTOP_USER=alpine
+
+# Cache valid check
+if [ -n "$LAPTOP_IP" ]; then
+  if timeout 5 ssh -o ConnectTimeout=3 -o BatchMode=yes -o StrictHostKeyChecking=no \
+    -i "$SSH_KEY" -p "$LAPTOP_PORT" "$LAPTOP_USER@$LAPTOP_IP" "echo ok" >/dev/null 2>&1; then
+    mkdir -p $(dirname "$CACHE") 2>/dev/null
+    echo "$LAPTOP_IP" > "$CACHE"
+  else
+    echo "WARN: cached IP $LAPTOP_IP unreachable, retrying..." >&2
+  fi
+fi
+
+exec ssh -o StrictHostKeyChecking=accept-new -o ServerAliveInterval=60 \
+  -o ServerAliveCountMax=3 -o ExitOnForwardFailure=yes \
+  -i "$SSH_KEY" -N -R "${TUNNEL_PORT}:127.0.0.1:${SSHD_PORT}" \
+  -p "${LAPTOP_PORT}" "${LAPTOP_USER}@${LAPTOP_IP}"
+TUNEOF
+    chmod +x "$_SVDIR/uom-tunnel/run"
+    cat > "$_SVDIR/uom-tunnel/log/run" << 'LOGEOF'
+#!/data/data/com.termux/files/usr/bin/sh
+exec svlogd -tt ./main
+LOGEOF
+    chmod +x "$_SVDIR/uom-tunnel/log/run"
+    log "  uom-tunnel: created (port ${_TUNNEL_PORT})"
+    runit_services_installed=1
+  else
+    log "  uom-tunnel: already exists"
+  fi
+
+  # Service: uom-idle-agent (polls for tasks)
+  if [ ! -d "$_SVDIR/uom-idle-agent" ]; then
+    mkdir -p "$_SVDIR/uom-idle-agent/log/main"
+    cat > "$_SVDIR/uom-idle-agent/run" << 'AGENTEOF'
+#!/data/data/com.termux/files/usr/bin/sh
+exec 2>&1
+INBOX=$HOME/.uom-agent/inbox/task.json
+STATUS=$HOME/.uom-agent/device-status.json
+
+while true; do
+  TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  if [ -f "$INBOX" ]; then
+    TASK_ID=$(cat "$INBOX" | jq -r .task_id 2>/dev/null)
+    PROMPT=$(cat "$INBOX" | jq -r .prompt)
+    BRANCH=$(cat "$INBOX" | jq -r .branch 2>/dev/null || echo "tmp/task")
+    echo "$TIMESTAMP TASK_RECEIVED task_id=$TASK_ID"
+    mkdir -p $HOME/.uom-agent/outbox
+    cd ~/src/universal-omni-master 2>/dev/null
+    git checkout -b "$BRANCH" 2>/dev/null || git checkout "$BRANCH" 2>/dev/null
+    if command -v opencode >/dev/null 2>&1; then
+      timeout 120 opencode run --auto --model opencode/north-mini-code-free \
+        "$PROMPT" > /tmp/task-result.txt 2>&1
+    else
+      echo "opencode not available" > /tmp/task-result.txt
+    fi
+    EXIT_CODE=$?
+    jq -n --arg tid "$TASK_ID" --arg out "$(cat /tmp/task-result.txt | head -100)" \
+      --arg ts "$TIMESTAMP" --argjson ec "$EXIT_CODE" \
+      "{task_id:\$tid,status:\"completed\",exit_code:\$ec,output:\$out,timestamp:\$ts}" \
+      > $HOME/.uom-agent/outbox/${TASK_ID}.json 2>/dev/null
+    rm -f "$INBOX"
+    echo "$TIMESTAMP TASK_DONE task_id=$TASK_ID exit=$EXIT_CODE"
+  else
+    jq -n --arg ts "$TIMESTAMP" --arg dev "$(hostname)" \
+      "{device:\$dev,state:\"idle\",timestamp:\$ts}" > "$STATUS" 2>/dev/null
+  fi
+  sleep 300
+done
+AGENTEOF
+    chmod +x "$_SVDIR/uom-idle-agent/run"
+    cat > "$_SVDIR/uom-idle-agent/log/run" << 'LOGEOF'
+#!/data/data/com.termux/files/usr/bin/sh
+exec svlogd -tt ./main
+LOGEOF
+    chmod +x "$_SVDIR/uom-idle-agent/log/run"
+    log "  uom-idle-agent: created"
+    runit_services_installed=1
+  else
+    log "  uom-idle-agent: already exists"
+  fi
+
+  log "Runit services setup complete"
+}
+
+install_runit_services
+
 # ── Section 7: SSH key generation ───────────────────────────────────────
 ssh_key_generated=0
 SSHD_USER="${UOM_SSH_USER:-$(whoami 2>/dev/null || echo "uom")}"
@@ -704,38 +871,48 @@ install_termux_boot() {
   cat > "$_BOOT_DIR/start-uom.sh" << 'BOOTEOF'
 #!/data/data/com.termux/files/usr/bin/sh
 # Termux:Boot auto-start for UOM
-# Starts: sshd, reverse tunnel, port guardian, tmux watchdog, phone orchestrator
-# QEMU watchdog is auto-started by uom-qemu-phone when QEMU launches
+# Uses runit services for process supervision
+# Services: uom-sshd, uom-tunnel, uom-idle-agent, (optional: uom-qemu)
 
-UOM_DIR="${HOME}/src/universal-omni-master"
+PREFIX=/data/data/com.termux/files/usr
+SVDIR=$PREFIX/var/service
 
-sleep 30
+export SVDIR
+export PATH=$PREFIX/bin:$PREFIX/sbin:$HOME/bin:$PATH
 
-# 1. SSH daemon
-if command -v sshd >/dev/null 2>&1; then
-  sshd 2>/dev/null || true
+# Essential environment for runit
+export HOME
+export LANG=${LANG:-C}
+export TMPDIR=${TMPDIR:-/tmp}
+
+sleep 20
+
+# Ensure required runit services exist, create if missing
+for svc in uom-sshd uom-tunnel uom-idle-agent; do
+  if [ ! -d "$SVDIR/$svc" ]; then
+    # Service will be created by the bootstrap installer
+    # This boot script only starts pre-existing services
+    true
+  fi
+done
+
+# Start all UOM services
+for svc in uom-sshd uom-tunnel uom-idle-agent; do
+  if [ -d "$SVDIR/$svc" ]; then
+    sv start "$svc" 2>/dev/null || true
+  fi
+done
+
+# Start QEMU if service exists and configured
+if [ -d "$SVDIR/uom-qemu" ]; then
+  sv start uom-qemu 2>/dev/null || true
 fi
-
-# 2. Reverse SSH tunnel (laptop → phone)
-cd "$UOM_DIR" 2>/dev/null && \
-  sh bin/uom-reverse-ssh.sh start &>/dev/null &
-
-# 3. Port guardian (IP/port drift detection)
-cd "$UOM_DIR" 2>/dev/null && \
-  sh bin/uom-port-guardian.sh start &>/dev/null &
-
-# 4. Tmux watchdog (session/process recovery)
-cd "$UOM_DIR" 2>/dev/null && \
-  nohup sh orchestrators/uom-tmux-watchdog.sh --daemon &>/dev/null &
-
-# 5. Phone orchestrator (task execution)
-cd "$UOM_DIR" 2>/dev/null && \
-  nohup sh tools/uom-orch-phone.sh &>/dev/null &
 BOOTEOF
 
   chmod 700 "$_BOOT_DIR/start-uom.sh"
   boot_script_installed=1
   log "Termux:Boot script installed at ${_BOOT_DIR}/start-uom.sh"
+  log "  Uses runit services (SVDIR=$SVDIR)"
   log "  IMPORTANT: Install Termux:Boot plugin and launch it once to activate."
 }
 
@@ -777,6 +954,7 @@ record_metadata() {
   "tunnel_port": ${TUNNEL_PORT},
   "repo_action": "$(json_escape "${repo_action}")",
   "boot_script_installed": ${boot_script_installed},
+  "runit_services_installed": ${runit_services_installed},
   "profile": "$(json_escape "${PROFILE}")",
   "ref": "$(json_escape "${REF}")",
   "test_root": "$(json_escape "${TEST_ROOT}")",
@@ -839,6 +1017,19 @@ run_verify() {
     else
       warn "Termux:Boot: NOT INSTALLED"
     fi
+  fi
+
+  # Check runit services
+  if [ "$IS_TERMUX" -eq 1 ] 2>/dev/null; then
+    _SVDIR="${PREFIX:-/data/data/com.termux/files/usr}/var/service"
+    for _svc in uom-sshd uom-tunnel uom-idle-agent; do
+      if [ -d "${TEST_ROOT:-}${_SVDIR}/$_svc" ]; then
+        log "Runit $_svc: PASS"
+      else
+        warn "Runit $_svc: MISSING"
+        _FAILURES=$((_FAILURES + 1))
+      fi
+    done
   fi
 
   # Check metadata

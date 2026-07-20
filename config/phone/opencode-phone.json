@@ -1,0 +1,23 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "opencode/north-mini-code-free",
+  "small_model": "opencode/north-mini-code-free",
+  "enabled_providers": ["opencode"],
+  "autoupdate": false,
+  "share": "disabled",
+  "compaction": {
+    "auto": true,
+    "prune": true,
+    "reserved": 4000
+  },
+  "permission": {
+    "*": "allow",
+    "question": "deny",
+    "bash": {
+      "*": "allow",
+      "git push": "deny",
+      "git push *": "deny",
+      "git send-pack *": "deny"
+    }
+  }
+}
