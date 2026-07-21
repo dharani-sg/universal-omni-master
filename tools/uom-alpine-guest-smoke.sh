@@ -61,7 +61,7 @@ check_loopback() {
 }
 
 check_sshd() {
-  pgrep -x sshd >/dev/null
+  pgrep sshd >/dev/null 2>&1 || pgrep sshd-session >/dev/null 2>&1
 }
 
 check_git() {

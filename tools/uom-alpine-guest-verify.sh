@@ -62,11 +62,13 @@ ENDJSON
 echo "$_MANIFEST" > "$DIAGDIR/manifest.json"
 
 # Write to stdout (and to OUTPUT if specified)
-echo "$_MANIFEST" > "${OUTPUT:-/dev/stdout}"
 if [ -n "$OUTPUT" ]; then
+  echo "$_MANIFEST" > "$OUTPUT"
   # Verify JSON is valid
   if command -v jq >/dev/null 2>&1; then
     jq -e . "$OUTPUT" >/dev/null 2>&1 || { echo "ERROR: invalid JSON written" >&2; exit 1; }
   fi
   echo "Manifest written to: $OUTPUT" >&2
+else
+  echo "$_MANIFEST"
 fi
