@@ -13,8 +13,8 @@
 set -e
 
 # ─── Configuration ───────────────────────────────────────────────────────────
-LAPTOP_HOST="192.168.107.90"
-PHONE1_HOST="192.168.107.170"
+LAPTOP_HOST="10.155.18.90"
+PHONE1_HOST="10.155.18.144"
 PHONE1_PORT="8022"
 PHONE1_USER="u0_a608"
 PHONE1_SSHKEY="/home/alpine/.ssh/id_ed25519_phone"
