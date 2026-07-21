@@ -193,10 +193,16 @@ KPARTX
   log "pmbootstrap version: $(python3 "$PMB" --version 2>&1 || echo 'failed')"
 }
 
-# ─── Phase 3: pmbootstrap init (non-interactive) ─────────────────────────────
+# ─── Phase 3: pmbootstrap init (non-interactive via piped answers) ───────────
 init_pmbootstrap() {
   log "=== Phase 3: pmbootstrap Non-Interactive Init ==="
   save_state "init"
+
+  # Fix self-referencing symlink from previous Antigravity sessions
+  if [ -L "$PMAPORTS_WORK/pmaports" ]; then
+    log "Removing self-referencing pmaports symlink"
+    rm -f "$PMAPORTS_WORK/pmaports"
+  fi
 
   mkdir -p "$HOME/.config"
   cat << EOF > "$HOME/.config/pmbootstrap.cfg"
@@ -230,44 +236,64 @@ EOF
     git clone --depth=1 https://gitlab.postmarketos.org/postmarketOS/pmaports.git "$PMAPORTS_WORK"
   fi
 
-  # Create chroot_native directory structure so pmbootstrap doesn't demand init
-  mkdir -p "$WORK_DIR/work/chroot_native" \
-           "$WORK_DIR/work/chroot_native_root" \
-           "$WORK_DIR/work/config" \
-           "$WORK_DIR/work/logs" \
-           "$WORK_DIR/work/cache_apk" \
-           "$WORK_DIR/work/cache_http"
-
-  # Run pmbootstrap init with pmaports already cloned (non-interactive)
-  if [ ! -f "$WORK_DIR/work/config/.pmb_configured" ]; then
-    log "Running pmbootstrap init --shallow-initial-clone..."
-    cd "$WORK_DIR/work" && timeout 60 python3 "$PMB" init --shallow-initial-clone \
-      < /dev/null >> "$LOG_FILE" 2>&1 || {
-        log "pmbootstrap init exited (expected for non-interactive). Writing config marker."
-      }
+  # Non-interactive pmbootstrap init via piped answers
+  # Question sequence for pmbootstrap 3.11.1 with existing device (dipper in xiaomi):
+  # 1.Work  2.pmaports  3.Channel  4.Vendor  5.Device
+  # 6.Username  7.Audio(default)  8.WiFi(default)  9.USB(default)
+  # 10.UI  11.SvcMgr(default)  12.ChangeOpts(n)
+  # 13.ExtraPkgs(none)  14.Timezone(y)  15.Locale(en_US)
+  # 16.Hostname(dipper)  17.SSHKeys(n)  18.BuildOutdated(y)  19.ZapChroots(y)  20.Confirm(y)
+  if [ ! -f "$WORK_DIR/work/config/.pmb_configured" ] || \
+     ! python3 "$PMB" status 2>/dev/null | grep -q "$DEVICE"; then
+    log "Running pmbootstrap init (non-interactive)..."
+    cd "$WORK_DIR/work"
+    printf '%s\n' \
+      "$WORK_DIR/work" \
+      "$PMAPORTS_WORK" \
+      "edge" \
+      "xiaomi" \
+      "dipper" \
+      "$USER_NAME" \
+      "" \
+      "" \
+      "" \
+      "$UI" \
+      "default" \
+      "n" \
+      "none" \
+      "y" \
+      "en_US" \
+      "dipper" \
+      "n" \
+      "y" \
+      "y" \
+      "y" \
+      | timeout 120 python3 "$PMB" init --shallow-initial-clone \
+        >> "$LOG_FILE" 2>&1 || log "pmbootstrap init exited (may need re-init)"
     touch "$WORK_DIR/work/config/.pmb_configured"
   else
-    log "pmbootstrap already initialized"
+    log "pmbootstrap already initialized for $DEVICE"
   fi
 
-  # Ensure config is correct
-  python3 "$PMB" config device "$DEVICE" 2>/dev/null || true
-  python3 "$PMB" config kernel "$KERNEL_PKG" 2>/dev/null || true
-  python3 "$PMB" config user "$USER_NAME" 2>/dev/null || true
-  python3 "$PMB" config ui "$UI" 2>/dev/null || true
-
-  log "pmbootstrap config set"
+  log "pmbootstrap status: $(python3 "$PMB" status 2>&1 | tr '\n' ' ')"
 }
 
 # ─── Phase 4: Dipper Device Port ─────────────────────────────────────────────
 setup_dipper_port() {
-  log "=== Phase 4: Porting beryllium → dipper ==="
+  log "=== Phase 4: Dipper Device Port ==="
   save_state "porting"
 
   DIPPER_DIR="$PMAPORTS_WORK/device/testing/$DEVICE_UPPER"
+
+  if [ -f "$DIPPER_DIR/APKBUILD" ] && [ -f "$DIPPER_DIR/deviceinfo" ]; then
+    log "Dipper device already exists in pmaports (upstream). Skipping synthesis."
+    log "  APKBUILD: $(wc -l < "$DIPPER_DIR/APKBUILD") lines"
+    log "  deviceinfo: $(wc -l < "$DIPPER_DIR/deviceinfo") lines"
+    return 0
+  fi
+
   mkdir -p "$DIPPER_DIR"
 
-  # Reference: beryllium deviceinfo (upstream)
   log "Synthesizing dipper deviceinfo from beryllium reference..."
   cat << 'EOF' > "$DIPPER_DIR/deviceinfo"
 # Reference: https://postmarketos.org/deviceinfo
@@ -307,7 +333,7 @@ EOF
   log "Synthesizing dipper APKBUILD..."
   cat << 'EOF' > "$DIPPER_DIR/APKBUILD"
 # Maintainer: UOM Auto-Port Buildbot <uom@local>
-pkgname=$DEVICE_UPPER
+pkgname=device-$DEVICE_UPPER
 pkgdesc="Xiaomi Mi 8"
 pkgver=1
 pkgrel=1
@@ -341,12 +367,8 @@ SKIP
 "
 EOF
 
-  # Update checksums
   (cd "$DIPPER_DIR" && sha512sum deviceinfo APKBUILD > sha512sums.txt 2>/dev/null || true)
-
-  log "Dipper device port created at $DIPPER_DIR"
-  log "  deviceinfo: $(wc -l < "$DIPPER_DIR/deviceinfo") lines"
-  log "  APKBUILD:   $(wc -l < "$DIPPER_DIR/APKBUILD") lines"
+  log "Dipper device port synthesized at $DIPPER_DIR"
 }
 
 # ─── Phase 5: Build Loop with Error Classification ───────────────────────────
@@ -421,7 +443,7 @@ run_build_loop() {
     log "--- Attempt #$loop of $MAX_FEEDBACK_LOOPS ---"
     heartbeat "build_attempt_$loop"
 
-    if cd "$WORK_DIR/work" && timeout 1800 python3 "$PMB" build "$DEVICE_UPPER" \
+    if cd "$WORK_DIR/work" && timeout 1800 python3 "$PMB" build "device-$DEVICE_UPPER" \
        --force > "$build_log" 2>&1; then
       log "BUILD SUCCESS on attempt #$loop"
       success=1
