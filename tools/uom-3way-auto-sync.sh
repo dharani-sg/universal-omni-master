@@ -6,8 +6,8 @@
 INTERVAL=${1:-180}
 REPO="/home/alpine/src/universal-omni-master"
 SSHKEY_PHONE="/home/alpine/.ssh/id_ed25519_phone"
-PIDFILE="/tmp/uom-3way-auto-sync.pid"
-LOGFILE="/tmp/uom-3way-auto-sync.log"
+PIDFILE="/home/alpine/src/universal-omni-master/.uom-agent/pids/3way-sync.pid"
+LOGFILE="/home/alpine/src/universal-omni-master/.uom-agent/logs/3way-sync.log"
 BUNDLE="/tmp/uom-3way-auto.bundle"
 
 PHONE1_HOST="10.155.18.144"
@@ -17,7 +17,7 @@ PHONE1_DIR="~/src/universal-omni-master"
 
 PHONE2_HOST="10.155.18.131"
 PHONE2_PORT="8022"
-PHONE2_USER="root"
+PHONE2_USER="u0_a217"
 PHONE2_DIR="~/src/universal-omni-master"
 
 echo $$ > "$PIDFILE"
@@ -66,7 +66,7 @@ while true; do
       log "Phone 2 ($PHONE2_HOST) unreachable"
     fi
   else
-    log_err "Failed to create git bundle"
+    log "ERROR: Failed to create git bundle"
   fi
 
   sleep "$INTERVAL"
