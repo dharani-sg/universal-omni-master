@@ -16,6 +16,10 @@
   <img src="https://img.shields.io/badge/Models-Free--tier%20rotation-EF4444?style=flat-square&logo=openai&logoColor=white" alt="Models">
   <img src="https://img.shields.io/badge/Sync-Git%20bundles-10B981?style=flat-square&logo=git&logoColor=white" alt="Sync">
   <img src="https://img.shields.io/badge/Cost-ZERO-000000?style=flat-square&logo=dollar&logoColor=white" alt="Zero">
+  <img src="https://img.shields.io/badge/Edge_AI-LOW--MEDIUM%20saturation-22C55E?style=flat-square&logo=linux&logoColor=white" alt="Edge AI">
+  <img src="https://img.shields.io/badge/Phone--Native-First--mover-3B82F6?style=flat-square&logo=android&logoColor=white" alt="Phone-Native">
+  <img src="https://img.shields.io/badge/Zero--Cost_Default-Differentiator-F59E0B?style=flat-square&logo=dollar&logoColor=white" alt="Zero-Cost">
+  <img src="https://img.shields.io/badge/POSIX--First-Moat-EF4444?style=flat-square&logo=gnubash&logoColor=white" alt="POSIX-First">
   <img src="https://img.shields.io/badge/License-MIT-22C55E?style=flat-square&logo=opensourceinitiative&logoColor=white" alt="MIT">
 </p>
 
@@ -165,6 +169,41 @@ sh orchestrators/uom-reconcile.sh --reselect-model   # Force model re-selection
 sh tools/uom-model-rotate.sh status                  # Show pool + history
 scripts/uom-generator.sh "write a POSIX sh function" # Just generate
 ```
+
+---
+
+## 📈 Monetization & ROI
+
+Research-backed monetization model for India (home) + Singapore (workplace). All figures in INR (₹) primary, SGD ($) secondary. [Full detail → `docs/ROADMAP.md`](docs/ROADMAP.md)
+
+### Three Revenue Scenarios
+
+| Scenario | Timeline | Revenue/mo (₹) | API Cost/mo (₹) | Net/mo (₹) | Net/mo (SGD) | Probability |
+|:---------|:---------|:---------------|:----------------|:-----------|:-------------|:------------|
+| 🟢 Conservative | 12 mo | ₹10,000 | ₹2,000 | ₹8,000 | $129 | 60% |
+| 🔵 Realistic | 18 mo | ₹1,00,000 | ₹8,000 | ₹92,000 | $1,484 | 35% |
+| 🟣 Optimistic | 24 mo | ₹5,00,000 | ₹40,000 | ₹4,60,000 | $7,419 | 5% |
+
+**PDF monetization tiers** [SOURCE: PDF pages 6, 12]: Edge Bootstrap ($0 CapEx → ₹12K-66K/mo yield, 80-90% margin), CUDA Station ($2,500-4,500 CapEx → ₹1L-2.9L/mo yield), Enterprise Studio ($6,500-10,000 CapEx → ₹3.7L-12.5L/mo yield).
+
+### API Cost per Tier
+
+| Tier | Models | Cost/Mo (₹) | Token Volume | Suitable For |
+|:-----|:-------|:-----------|:-------------|:------------|
+| Free | deepseek-v4-flash-free, openrouter/free | ₹0 | ~500K-2M | Solo dev, prototyping |
+| Edge | deepseek-v4-flash ($0.14/M miss) | ₹415-4,150 | ~5M-20M | 1-50 customers |
+| Mixed | deepseek-v4-pro + claude-sonnet-5 | ₹8,300-41,500 | ~50M-200M | 50-500 customers |
+| Enterprise | claude-opus-4.8 / fable-5 | ₹1.66L-8.3L | 500M+ | Enterprise contracts |
+
+> Prompt caching reduces input costs by up to 98% on compatible engines [PDF page 2]. Budget cap: **$5/month** for dev testing.
+
+### Billing Models [PDF page 6, 12]
+
+| Model | Example | Margin |
+|:------|:--------|:-------|
+| Credit-Based Utility (Dodo Payments) | 5 credits per code check | 80-90% |
+| Outcome-Based Performance | $0.50 per verified lead | 70-85% |
+| Sovereign MCP Server (per-query) | $0.01-0.10 per DB query | 60-80% |
 
 ---
 
@@ -398,16 +437,20 @@ sh bin/omni-saas run \
 | **PHASE16** | `verifier-feedback-loop` | Laptop verifier processes phone code + writes feedback | 🟡 PENDING |
 | **PHASE17** | `zen-loop-e2e` | End-to-end: phone generates → laptop verifies → phone receives | 🟡 PENDING |
 
-### 🏭 SaaS Factory Track
+### 🏭 SaaS Factory Track (Research-Backed)
 
-| Phase | Deliverable | Status |
-|:------|:------------|:-------|
-| S0 | Idea packet schema + research job runner | 📋 Planned |
-| S1 | Build swarm on OpenCode workers | 📋 Planned |
-| S2 | Quarantine QA certificates + soak hooks | 🔶 Partial |
-| S3 | Deploy adapters (Vercel/AWS/Docker) | 🔶 Hook-level |
-| S4 | Stripe product/price automation (human master account) | 📋 Planned |
-| S5 | Growth drafts + launch checklist | 📋 Planned |
+| Phase | Deliverable | Status | Human Gate | Budget | Revenue Path |
+|:------|:------------|:-------|:-----------|:-------|:-------------|
+| S0 | Idea packet schema + research job runner | 📋 Planned | — | $0 | — |
+| S1 | Build swarm on OpenCode mesh workers | 📋 Planned | Enable flag | $0 | — |
+| S2 | Quarantine QA certificates + 72h soak hooks | 🔶 Partial | Soak config | $0–10 | — |
+| S3 | Deploy adapters (Vercel/Dodo Payments) | 🔶 Hook-level | **HUMAN LAUNCH GATE** | $5–30 | Credit billing via Dodo |
+| S4 | Stripe product/price automation | 📋 Planned | **HUMAN FINANCIAL GATE** | $0 | Outcome-based billing |
+| S5 | Growth: newsletter, launch checklist | 📋 Planned | Content review | $0 | MCP server per-query |
+
+**Monetization models [PDF pages 6, 12]:** Credit-Based Utility (Dodo Payments), Outcome-Based Performance, Sovereign MCP Server endpoints.
+
+**Target yield [PDF page 12]:** Edge Bootstrap ₹12K-66K/mo → CUDA Station ₹1L-2.9L/mo → Enterprise ₹3.7L-12.5L/mo.
 
 ### 🔮 Future Horizon
 
@@ -418,8 +461,14 @@ sh bin/omni-saas run \
 | M35 | Observability: eBPF kernel telemetry, bpftrace, Tetragon |
 | M36 | Edge/IoT: Nix golden images, A/B OTA, dm-verity + Secure Boot |
 | M37 | Confidential: AMD SEV-SNP / Intel TDX / ARM CCA |
-| M38 | Protocol: MCP Server integration for AI assistants |
+| M38 | **MCP Server integration** — highest-priority future phase [directly enables per-query billing] |
 | M39–M43 | Bootloader, Federation, Power, OverlayFS, Trust |
+
+#### 🔮 cinai / AGI Horizon
+
+**Risk:** LOW now → HIGH in 18-24 months. If cinai-level autonomous AI emerges, human prompt-engineer orchestration is disrupted.
+
+**Opportunity [PDF pages 1, 14]:** UOM is explicitly designed to integrate with Cinai Studio and generative media. The edge mesh (hardware autonomy) and MCP server layer become **more** valuable as AGI scales. Position UOM as the sovereign edge layer beneath emerging AGI platforms.
 
 ---
 
@@ -504,6 +553,64 @@ Before enabling multi-swarm SaaS jobs:
 - Long quarantine on staging only
 - Human-approved launch
 - No paid models until metrics justify them
+
+---
+
+## ⚠️ Critical Pitfalls
+
+<details>
+<summary><b>10 documented risks from research — click to expand</b></summary>
+<br>
+
+| ID | Title | Severity | Mitigation |
+|:---|:------|:---------|:-----------|
+| P1 | **Hardware Cliff** — failing SATA corrupts QEMU disk | 🔴 HIGH | Replace SATA cable (₹200) — #1 ROI action |
+| P2 | **Free model availability** — OpenRouter tiers change | 🔴 HIGH | Maintain 6+ model fallback pool; $5/mo paid fallback |
+| P3 | **Solo non-developer bottleneck** — deep bugs stall pipeline | 🔴 HIGH | Define scope boundaries; outsource kernel work |
+| P4 | **Phone dependency** — Android Phantom Process Killer kills agents | 🔴 HIGH | ADB overrides [PDF page 5]; RPi 5 + VPS in Phase 2 |
+| P5 | **Market saturation** — visual no-code is red ocean [PDF page 14] | 🟡 MEDIUM | Target MCP servers, not consumer chatbots |
+| P6 | **QA factory cost** — 2-week soak exhausts free rate limits | 🟡 MEDIUM | Budget-gated DeepSeek V4 Flash ($10-30 for QA run) |
+| P7 | **Singapore income conflict** — S-Pass may restrict SaaS revenue | 🟡 MEDIUM | Review employment contract; start with sponsorship model |
+| P8 | **Agentic AI commoditization** — platforms build native orchestration | 🟡 MEDIUM | Moat is edge/POSIX/phone mesh, not LLM routing |
+| P9 | **Revenue timeline** — solo SaaS median $500 MRR at 14-22 mo | 🔴 HIGH | Start low-risk: Sponsors + MCP endpoints + consulting |
+| P10 | **cinai/AGI disruption** — autonomous AI disrupts intermediary role | 🟢→🔴 ESCALATING | Edge mesh + customer trust = AGI-proof moat |
+
+**Full analysis:** [`docs/RESEARCH-CACHE/reality-check.json`](docs/RESEARCH-CACHE/reality-check.json)
+
+</details>
+
+## 🛒 Suggested Hardware Upgrades
+
+<details>
+<summary><b>4-phase hardware roadmap — click to expand</b></summary>
+<br>
+
+**Phase 1: Immediate (Now–1 mo) — ₹3,000 (SGD $48)**
+
+| Item | Cost (₹) | Priority |
+|:-----|:---------|:---------|
+| SATA cable replacement | 200 | 🔴 CRITICAL |
+| 16GB DDR3L RAM upgrade | 1,500 | 🟠 HIGH |
+| 120GB SATA SSD (boot drive) | 1,300 | 🟠 HIGH |
+
+**Phase 2: Beta Launch (3-9 mo) — ₹20,000 (SGD $323)**
+- Raspberry Pi 5 (8GB) ₹8,000 — always-on ARM64 worker
+- 4TB External HDD ₹6,500 — Git bundle archive
+- Gigabit switch ₹1,500 — wired LAN stability
+- Hetzner VPS ₹360/mo — cloud relay
+
+**Phase 3: First Revenue (9-18 mo) — ₹80,000**
+- Mini PC N100 (16GB) ₹18,000 — replace HP Pavilion
+- Hetzner CPX21 VPS ₹2,000/mo — swarm factory cloud
+- UPS 600VA ₹4,000 — power cut protection
+
+**Phase 4: Scale (18-36 mo) — ₹2,00,000+**
+- RTX 4090 used (₹1.25L) or Mac Studio M4 Max (₹2.9L)
+- Only when API bills exceed ₹30K/mo
+
+**Full detail:** [`docs/ROADMAP.md#5-hardware-investment-phases`](docs/ROADMAP.md)
+
+</details>
 
 ---
 

@@ -1,0 +1,291 @@
+{
+  "generated": "2026-07-21",
+  "exchange_rates": {
+    "USD_INR": 83.0,
+    "USD_SGD": 1.34,
+    "SGD_INR": 62.0
+  },
+  "api_costs": {
+    "tier_0_free": {
+      "label": "Free Tier (current default)",
+      "models": [
+        "deepseek-v4-flash-free",
+        "openrouter/free",
+        "cohere/north-mini-code:free"
+      ],
+      "monthly_cost_usd": 0,
+      "monthly_cost_inr": 0,
+      "monthly_cost_sgd": 0,
+      "tokens_per_month": "~500K-2M (rate limited)",
+      "suitable_for": "solo dev, prototyping, demo, early beta",
+      "risk": "Rate limits hit under load. No SLA. Model availability varies.",
+      "source": "OpenRouter free tier \u2014 fetched 2026-07-21"
+    },
+    "tier_1_deepseek_edge": {
+      "label": "DeepSeek Edge (first paying customers)",
+      "models": [
+        "deepseek-v4-flash ($0.14/M miss, $0.0028/M hit, $0.28/M out)"
+      ],
+      "monthly_cost_usd_min": 5,
+      "monthly_cost_usd_max": 50,
+      "monthly_cost_inr_min": 415,
+      "monthly_cost_inr_max": 4150,
+      "monthly_cost_sgd_min": 6.7,
+      "monthly_cost_sgd_max": 67.0,
+      "tokens_per_month": "~5M-20M",
+      "suitable_for": "1-50 paying customers, basic SaaS workloads",
+      "risk": "Prompt caching essential to keep costs low. Budget cap $5/mo recommended [PDF Phase 1]",
+      "source": "PDF pages 2-3: DeepSeek V4 Flash pricing"
+    },
+    "tier_2_mixed": {
+      "label": "Mixed Tier (scaling \u2014 DeepSeek + Claude fallback)",
+      "models": [
+        "deepseek-v4-pro ($0.435/M miss)",
+        "deepseek-r1 ($0.55/M)",
+        "claude-sonnet-5 ($3/M)"
+      ],
+      "monthly_cost_usd_min": 100,
+      "monthly_cost_usd_max": 500,
+      "monthly_cost_inr_min": 8300,
+      "monthly_cost_inr_max": 41500,
+      "monthly_cost_sgd_min": 134.0,
+      "monthly_cost_sgd_max": 670.0,
+      "tokens_per_month": "~50M-200M",
+      "suitable_for": "50-500 customers, full swarm pipelines",
+      "risk": "Claude Sonnet 5 premium fallback ($10-15/M out) \u2014 use sparingly",
+      "source": "PDF pages 2-3: DeepSeek + Claude pricing table"
+    },
+    "tier_3_enterprise": {
+      "label": "Enterprise Tier",
+      "models": [
+        "claude-opus-4.8 ($5/M miss, $25/M out)",
+        "claude-fable-5 ($10/M miss, $50/M out)"
+      ],
+      "monthly_cost_usd_min": 2000,
+      "monthly_cost_usd_max": 10000,
+      "monthly_cost_inr_min": 166000,
+      "monthly_cost_inr_max": 830000,
+      "monthly_cost_sgd_min": 2680.0,
+      "monthly_cost_sgd_max": 13400.0,
+      "tokens_per_month": "500M+",
+      "suitable_for": "enterprise contracts, SLA-backed pipelines",
+      "risk": "Requires significant capital before revenue at this scale.",
+      "source": "PDF page 3: Claude Opus 4.8 and Fable 5 pricing"
+    }
+  },
+  "revenue_tiers": {
+    "phase_0_pre_launch": {
+      "label": "Pre-Launch (now \u2192 3 months)",
+      "mrr_inr_min": 0,
+      "mrr_inr_max": 0,
+      "mrr_sgd_min": 0,
+      "mrr_sgd_max": 0,
+      "mrr_usd_min": 0,
+      "mrr_usd_max": 0,
+      "customers": 0,
+      "revenue_sources": [
+        "none \u2014 building"
+      ],
+      "investment_required_inr": 0,
+      "net_monthly_inr": "0",
+      "realistic_probability": "100%",
+      "key_milestone": "Working UOM mesh stable, omni-saas Layer 3 hooks complete",
+      "source": "ESTIMATE: baseline"
+    },
+    "phase_1_edge_bootstrap": {
+      "label": "Edge Bootstrap (3-9 months \u2014 PDF Tier 1)",
+      "mrr_inr_min": 0,
+      "mrr_inr_max": 25000,
+      "mrr_sgd_min": 0,
+      "mrr_sgd_max": 403,
+      "mrr_usd_min": 0,
+      "mrr_usd_max": 300,
+      "customers": "0-5 (friends / open-source sponsors)",
+      "revenue_sources": [
+        "GitHub Sponsors (\u20b9500-2000/month from 2-5 sponsors)",
+        "Ko-fi / Buy Me a Coffee one-time (\u20b9200-500/transaction)",
+        "Patreon dev log tier (\u20b9100-500/month/patron)",
+        "MCP server endpoints (per-query billing \u2014 PDF model)"
+      ],
+      "investment_required_inr": 0,
+      "api_cost_inr": 0,
+      "net_monthly_inr": "0-25000",
+      "realistic_probability": "60%",
+      "pdf_monetization_tier": "Edge Bootstrap: $0 CapEx, $10-30/mo OpEx, $150-800/mo yield [PDF page 6, 12]",
+      "key_milestone": "First public demo. First sponsor. MCP server endpoint live.",
+      "source": "PDF page 6, 12: Edge Bootstrap tier ($0 CapEx, $150-800/mo yield)"
+    },
+    "phase_2_micro_saas": {
+      "label": "Micro-SaaS Credit Loops (6-15 months \u2014 PDF Edge Bootstrap scaling)",
+      "mrr_inr_min": 25000,
+      "mrr_inr_max": 66000,
+      "mrr_sgd_min": 403,
+      "mrr_sgd_max": 1065,
+      "mrr_usd_min": 301,
+      "mrr_usd_max": 795,
+      "customers": "5-25",
+      "revenue_sources": [
+        "Credit-based micro-SaaS billing via Dodo Payments [PDF model]",
+        "Monthly infra SaaS subscription: \u20b91500-3000/month/customer",
+        "Consulting (Singapore): SGD 100-200/hour for custom integrations",
+        "GitHub Sponsors growing: \u20b93000-8000/month",
+        "omni-saas factory beta access: \u20b92000-5000/month/seat"
+      ],
+      "investment_required_inr": 17000,
+      "api_cost_inr": "1700-12500",
+      "net_monthly_inr": "5000-42000 after API costs",
+      "realistic_probability": "35%",
+      "pdf_monetization_tier": "Edge Bootstrap \u2192 Mid-Tier: $0-2500 CapEx, $30-80/mo OpEx, $150-1200/mo yield",
+      "key_milestone": "omni-saas S0+S1 working. Dodo Payments integrated. First paying customer.",
+      "source": "PDF page 6, 12: Mid-Tier CUDA Station ($2,500-4,500 CapEx, $1,200-3,500/mo yield)"
+    },
+    "phase_3_cuda_station": {
+      "label": "CUDA Station / Swarm Factory (12-24 months \u2014 PDF Mid-Tier)",
+      "mrr_inr_min": 100000,
+      "mrr_inr_max": 290000,
+      "mrr_sgd_min": 1613,
+      "mrr_sgd_max": 4677,
+      "mrr_usd_min": 1205,
+      "mrr_usd_max": 3494,
+      "customers": "25-150",
+      "revenue_sources": [
+        "Private MCP server queries (per-query billing) [PDF model]",
+        "Swarm factory jobs (per-project): \u20b95000-30000/project",
+        "API reseller margin on model calls: \u20b92000-10000/month",
+        "Consulting Singapore market: SGD 200-500/hour",
+        "Multi-tenant MCP servers for enterprises"
+      ],
+      "investment_required_inr": 290000,
+      "api_cost_inr": 25000,
+      "net_monthly_inr": "75000-265000 after costs",
+      "realistic_probability": "15%",
+      "pdf_monetization_tier": "CUDA Station: $2,500-4,500 CapEx, $50-150/mo OpEx, $1,200-3,500/mo yield [PDF page 6]",
+      "key_milestone": "Full omni-saas S0-S4 pipeline. RTX 4090 or better online. Singapore consulting contracts.",
+      "source": "PDF page 6, 12: Mid-Tier CUDA Station pricing"
+    },
+    "phase_4_enterprise_mcp": {
+      "label": "Enterprise MCP / Sovereign Studio (24-36 months \u2014 PDF Enterprise Tier)",
+      "mrr_inr_min": 373500,
+      "mrr_inr_max": 1245000,
+      "mrr_sgd_min": 6024,
+      "mrr_sgd_max": 20081,
+      "mrr_usd_min": 4500,
+      "mrr_usd_max": 15000,
+      "customers": "150-500",
+      "revenue_sources": [
+        "Multi-tenant SaaS marketplace [PDF model]",
+        "White-label UOM mesh for other solo devs / micro-agencies",
+        "Swarm output as a service (research packs, build packs)",
+        "Enterprise MCP server subscriptions for regulated industries"
+      ],
+      "investment_required_inr": 830000,
+      "api_cost_inr": 83000,
+      "net_monthly_inr": "290000-1162000 after costs",
+      "realistic_probability": "5%",
+      "pdf_monetization_tier": "Enterprise Studio: $6,500-10,000 CapEx, $200-800/mo OpEx, $4,500-15,000/mo yield [PDF page 7, 12]",
+      "key_milestone": "Mac Studio M4 Max / dual GPU cluster. Regulated industry contracts. 70%+ gross margin.",
+      "source": "PDF page 7, 12: Enterprise Studio tier pricing"
+    }
+  },
+  "pdf_monetization_matrix": {
+    "edge_bootstrap": {
+      "capex_usd": 0,
+      "capex_inr": 0,
+      "capex_sgd": 0,
+      "opex_usd_month": "10-30",
+      "opex_inr_month": "830-2490",
+      "opex_sgd_month": "13.4-40.2",
+      "strategy": "Credit-based micro-SaaS, automated content generation, local research tasks",
+      "margin": "80-90%",
+      "yield_usd": "150-800",
+      "yield_inr": "12450-66400",
+      "yield_sgd": "201.0-1072.0",
+      "source": "PDF page 6, 12: Monetization & ROI Matrix"
+    },
+    "cuda_station": {
+      "capex_usd": "2500-4500",
+      "capex_inr": "207500-373500",
+      "capex_sgd": "3350.0-6030.0",
+      "opex_usd_month": "50-150",
+      "opex_inr_month": "4150-12450",
+      "opex_sgd_month": "67.0-201.0",
+      "strategy": "Private MCP server endpoints, local ComfyUI API hosting, rapid developer swarms",
+      "margin": "70-80%",
+      "yield_usd": "1200-3500",
+      "yield_inr": "99600-290500",
+      "yield_sgd": "1608.0-4690.0",
+      "source": "PDF page 6, 12: Monetization & ROI Matrix"
+    },
+    "enterprise_studio": {
+      "capex_usd": "6500-10000",
+      "capex_inr": "539500-830000",
+      "capex_sgd": "8710.0-13400.0",
+      "opex_usd_month": "200-800",
+      "opex_inr_month": "16600-66400",
+      "opex_sgd_month": "268.0-1072.0",
+      "strategy": "Multi-tenant SaaS marketplace, regulated legal/publishing database queries",
+      "margin": "60-70%",
+      "yield_usd": "4500-15000",
+      "yield_inr": "373500-1245000",
+      "yield_sgd": "6030.0-20100.0",
+      "source": "PDF page 7, 12: Monetization & ROI Matrix"
+    }
+  },
+  "roi_summary": {
+    "scenario_conservative": {
+      "label": "Conservative (most likely \u2014 PDF Edge Bootstrap)",
+      "timeline_months": 12,
+      "total_investment_inr": 5000,
+      "total_investment_sgd": 81,
+      "monthly_revenue_inr_at_target": 10000,
+      "monthly_revenue_sgd_at_target": 161,
+      "monthly_api_cost_inr": 2000,
+      "net_monthly_inr": 8000,
+      "net_monthly_sgd": 129,
+      "breakeven_months": 1,
+      "annual_net_inr": 96000,
+      "annual_net_sgd": 1548,
+      "roi_percent": "1820% on cash invested",
+      "note": "Achievable if first 5 paying customers reached at month 6. Matches PDF Edge Bootstrap yield ($150-800/mo)."
+    },
+    "scenario_realistic": {
+      "label": "Realistic (median \u2014 PDF CUDA Station transition)",
+      "timeline_months": 18,
+      "total_investment_inr": 25000,
+      "total_investment_sgd": 403,
+      "monthly_revenue_inr_at_target": 100000,
+      "monthly_revenue_sgd_at_target": 1613,
+      "monthly_api_cost_inr": 8000,
+      "net_monthly_inr": 92000,
+      "net_monthly_sgd": 1484,
+      "breakeven_months": 6,
+      "annual_net_inr": 1104000,
+      "annual_net_sgd": 17806,
+      "roi_percent": "4316% on cash invested",
+      "note": "Requires consistent shipping + Singapore consulting contracts. Approaches PDF Mid-Tier yield ($1,200-3,500/mo)."
+    },
+    "scenario_optimistic": {
+      "label": "Optimistic (top 10% \u2014 PDF Enterprise Studio)",
+      "timeline_months": 24,
+      "total_investment_inr": 100000,
+      "total_investment_sgd": 1613,
+      "monthly_revenue_inr_at_target": 500000,
+      "monthly_revenue_sgd_at_target": 8065,
+      "monthly_api_cost_inr": 40000,
+      "net_monthly_inr": 460000,
+      "net_monthly_sgd": 7419,
+      "breakeven_months": 3,
+      "annual_net_inr": 5520000,
+      "annual_net_sgd": 89032,
+      "roi_percent": "5420% on cash invested",
+      "note": "Requires enterprise contract or viral product launch. Matches PDF Enterprise yield ($4,500-15,000/mo)."
+    },
+    "singapore_context": {
+      "advantage": "Singapore S-Pass holder enables access to high-ticket consulting contracts (SGD 100-500/hr) unavailable in pure-India market.",
+      "risk": "Employment contract may restrict secondary income. Review MOM regulations before active SaaS monetization.",
+      "conversion_note": "All INR figures approximate. 1 SGD \u2248 62 INR (2026). Singapore yield potential 3-5x India yield for same effort.",
+      "source": "ESTIMATE: Singapore market rate comparison"
+    },
+    "warning": "Solo non-developer SaaS median MRR at 12 months is under $500/month globally. PDF's Edge Bootstrap yield ($150-800/mo) is the most likely first-year outcome. Do not skip to CUDA Station or Enterprise without first validating Edge Bootstrap revenue."
+  }
+}

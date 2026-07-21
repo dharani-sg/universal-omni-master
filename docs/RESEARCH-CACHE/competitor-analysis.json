@@ -1,0 +1,58 @@
+{
+  "competitors": {
+    "n8n": {
+      "free_tier": "self-hosted unlimited, cloud 5 workflows",
+      "starter_usd_month": 20,
+      "pro_usd_month": 50,
+      "enterprise": "custom",
+      "positioning": "visual workflow automation",
+      "target_user": "non-technical SMB",
+      "source": "https://n8n.io/pricing \u2014 fetched 2026-07-21"
+    },
+    "dify": {
+      "free_tier": "OSS self-host, 200 messages/day cloud",
+      "starter_usd_month": 59,
+      "pro_usd_month": 159,
+      "enterprise": "custom",
+      "positioning": "LLM app builder / RAG",
+      "target_user": "developers + small teams",
+      "source": "https://dify.ai/pricing \u2014 fetched 2026-07-21"
+    },
+    "langchain_hub": {
+      "free_tier": "OSS + limited hub",
+      "starter_usd_month": 0,
+      "pro_usd_month": 0,
+      "enterprise": "unknown",
+      "positioning": "LLM chaining framework",
+      "target_user": "developers",
+      "source": "ESTIMATE: based on known offerings"
+    },
+    "crewai_enterprise": {
+      "free_tier": "OSS CrewAI framework",
+      "starter_usd_month": "unknown",
+      "pro_usd_month": "unknown",
+      "enterprise": "custom \u2014 $500-5000/month estimated",
+      "positioning": "role-based AI crew orchestration",
+      "target_user": "enterprises",
+      "source": "ESTIMATE: based on category peers"
+    },
+    "make_formerly_integromat": {
+      "free_tier": "1000 ops/month",
+      "starter_usd_month": 9,
+      "pro_usd_month": 29,
+      "enterprise": "custom",
+      "positioning": "no-code automation",
+      "target_user": "SMB non-technical",
+      "source": "https://make.com/pricing \u2014 ESTIMATE"
+    }
+  },
+  "saturation": {
+    "visual_no_code_automation": "HIGH \u2014 Zapier, Make, n8n dominate. Red ocean.",
+    "open_source_self_host_infra": "MEDIUM \u2014 niche but growing. Clear demand for POSIX/edge.",
+    "multi_agent_swarm_cloud": "HIGH and growing \u2014 but mostly cloud-first. Edge angle is differentiator.",
+    "edge_ai_posix_linux": "LOW-MEDIUM \u2014 underserved. UOM's real moat.",
+    "phone_based_ai_compute": "VERY LOW \u2014 near-zero competition. First-mover possible.",
+    "ai_saas_factory_automation": "MEDIUM-HIGH \u2014 early movers (AutoGPT, Devika) lost steam. Agentic 2.0 rising.",
+    "free_tier_ai_orchestration": "LOW \u2014 most tools lock free tier. UOM $0-cost policy is differentiator."
+  }
+}
