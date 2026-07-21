@@ -55,10 +55,7 @@
         }
       ],
       "crewai_monthly_downloads": 10869951,
-      "autogen_monthly_downloads": 155839,
       "litellm_monthly_downloads": 659749558,
-      "npm_langchain_last_week": 2744558,
-      "npm_crewai_last_week": 82,
       "openrouter_free_model_count": 16,
       "openrouter_free_model_names": [
         "poolside/laguna-xs-2.1:free",
@@ -88,7 +85,7 @@
           "enterprise": "custom",
           "positioning": "visual workflow automation",
           "target_user": "non-technical SMB",
-          "source": "https://n8n.io/pricing \u2014 fetched 2026-07-21"
+          "source": "https://n8n.io/pricing \u2014 ESTIMATE if fetch failed"
         },
         "dify": {
           "free_tier": "OSS self-host, 200 messages/day cloud",
@@ -97,7 +94,7 @@
           "enterprise": "custom",
           "positioning": "LLM app builder / RAG",
           "target_user": "developers + small teams",
-          "source": "https://dify.ai/pricing \u2014 fetched 2026-07-21"
+          "source": "https://dify.ai/pricing \u2014 ESTIMATE"
         },
         "langchain_hub": {
           "free_tier": "OSS + limited hub",
@@ -106,7 +103,7 @@
           "enterprise": "unknown",
           "positioning": "LLM chaining framework",
           "target_user": "developers",
-          "source": "ESTIMATE: based on known offerings"
+          "source": "ESTIMATE"
         },
         "crewai_enterprise": {
           "free_tier": "OSS CrewAI framework",
@@ -139,77 +136,61 @@
     },
     "monetization_model": {
       "generated": "2026-07-21",
-      "exchange_rates": {
-        "USD_INR": 83.0,
-        "USD_SGD": 1.34,
-        "SGD_INR": 62.0
-      },
       "api_costs": {
         "tier_0_free": {
           "label": "Free Tier (current default)",
           "models": [
             "deepseek-v4-flash-free",
-            "openrouter/free",
-            "cohere/north-mini-code:free"
+            "north-mini-code-free",
+            "big-pickle via openrouter"
           ],
           "monthly_cost_usd": 0,
-          "monthly_cost_inr": 0,
-          "monthly_cost_sgd": 0,
           "tokens_per_month": "~500K-2M (rate limited)",
           "suitable_for": "solo dev, prototyping, demo, early beta",
           "risk": "Rate limits hit under load. No SLA. Model availability varies.",
-          "source": "OpenRouter free tier \u2014 fetched 2026-07-21"
+          "source": "ESTIMATE: OpenRouter free tier observed limits"
         },
-        "tier_1_deepseek_edge": {
-          "label": "DeepSeek Edge (first paying customers)",
+        "tier_1_startup": {
+          "label": "Startup Tier (first paying customers)",
           "models": [
-            "deepseek-v4-flash ($0.14/M miss, $0.0028/M hit, $0.28/M out)"
+            "claude-haiku-4-5",
+            "deepseek-v3",
+            "gemini-flash"
           ],
-          "monthly_cost_usd_min": 5,
-          "monthly_cost_usd_max": 50,
-          "monthly_cost_inr_min": 415,
-          "monthly_cost_inr_max": 4150,
-          "monthly_cost_sgd_min": 6.7,
-          "monthly_cost_sgd_max": 67.0,
+          "monthly_cost_usd_min": 20,
+          "monthly_cost_usd_max": 150,
           "tokens_per_month": "~5M-20M",
           "suitable_for": "1-50 paying customers, basic SaaS workloads",
-          "risk": "Prompt caching essential to keep costs low. Budget cap $5/mo recommended [PDF Phase 1]",
-          "source": "PDF pages 2-3: DeepSeek V4 Flash pricing"
+          "risk": "Cost spikes on long QA loops. Need hard budget caps.",
+          "source": "ESTIMATE: Anthropic/Google pricing pages 2026"
         },
-        "tier_2_mixed": {
-          "label": "Mixed Tier (scaling \u2014 DeepSeek + Claude fallback)",
+        "tier_2_growth": {
+          "label": "Growth Tier (scaling)",
           "models": [
-            "deepseek-v4-pro ($0.435/M miss)",
-            "deepseek-r1 ($0.55/M)",
-            "claude-sonnet-5 ($3/M)"
+            "claude-sonnet-4-6",
+            "gpt-4o-mini mix",
+            "deepseek-v3"
           ],
-          "monthly_cost_usd_min": 100,
-          "monthly_cost_usd_max": 500,
-          "monthly_cost_inr_min": 8300,
-          "monthly_cost_inr_max": 41500,
-          "monthly_cost_sgd_min": 134.0,
-          "monthly_cost_sgd_max": 670.0,
+          "monthly_cost_usd_min": 300,
+          "monthly_cost_usd_max": 1500,
           "tokens_per_month": "~50M-200M",
           "suitable_for": "50-500 customers, full swarm pipelines",
-          "risk": "Claude Sonnet 5 premium fallback ($10-15/M out) \u2014 use sparingly",
-          "source": "PDF pages 2-3: DeepSeek + Claude pricing table"
+          "risk": "Tight margin if price-to-cost ratio not calibrated.",
+          "source": "ESTIMATE"
         },
         "tier_3_enterprise": {
           "label": "Enterprise Tier",
           "models": [
-            "claude-opus-4.8 ($5/M miss, $25/M out)",
-            "claude-fable-5 ($10/M miss, $50/M out)"
+            "claude-opus-4-8",
+            "GPT-4o",
+            "custom fine-tunes"
           ],
           "monthly_cost_usd_min": 2000,
           "monthly_cost_usd_max": 10000,
-          "monthly_cost_inr_min": 166000,
-          "monthly_cost_inr_max": 830000,
-          "monthly_cost_sgd_min": 2680.0,
-          "monthly_cost_sgd_max": 13400.0,
           "tokens_per_month": "500M+",
           "suitable_for": "enterprise contracts, SLA-backed pipelines",
           "risk": "Requires significant capital before revenue at this scale.",
-          "source": "PDF page 3: Claude Opus 4.8 and Fable 5 pricing"
+          "source": "ESTIMATE"
         }
       },
       "revenue_tiers": {
@@ -217,8 +198,6 @@
           "label": "Pre-Launch (now \u2192 3 months)",
           "mrr_inr_min": 0,
           "mrr_inr_max": 0,
-          "mrr_sgd_min": 0,
-          "mrr_sgd_max": 0,
           "mrr_usd_min": 0,
           "mrr_usd_max": 0,
           "customers": 0,
@@ -226,206 +205,131 @@
             "none \u2014 building"
           ],
           "investment_required_inr": 0,
-          "net_monthly_inr": "0",
+          "net_monthly_inr": 0,
           "realistic_probability": "100%",
           "key_milestone": "Working UOM mesh stable, omni-saas Layer 3 hooks complete",
           "source": "ESTIMATE: baseline"
         },
-        "phase_1_edge_bootstrap": {
-          "label": "Edge Bootstrap (3-9 months \u2014 PDF Tier 1)",
+        "phase_1_early_beta": {
+          "label": "Early Beta (3-6 months)",
           "mrr_inr_min": 0,
-          "mrr_inr_max": 25000,
-          "mrr_sgd_min": 0,
-          "mrr_sgd_max": 403,
+          "mrr_inr_max": 5000,
           "mrr_usd_min": 0,
-          "mrr_usd_max": 300,
+          "mrr_usd_max": 60,
           "customers": "0-5 (friends / open-source sponsors)",
           "revenue_sources": [
             "GitHub Sponsors (\u20b9500-2000/month from 2-5 sponsors)",
             "Ko-fi / Buy Me a Coffee one-time (\u20b9200-500/transaction)",
-            "Patreon dev log tier (\u20b9100-500/month/patron)",
-            "MCP server endpoints (per-query billing \u2014 PDF model)"
+            "Patreon dev log tier (\u20b9100-500/month/patron)"
           ],
           "investment_required_inr": 0,
           "api_cost_inr": 0,
-          "net_monthly_inr": "0-25000",
+          "net_monthly_inr": "0-5000",
           "realistic_probability": "60%",
-          "pdf_monetization_tier": "Edge Bootstrap: $0 CapEx, $10-30/mo OpEx, $150-800/mo yield [PDF page 6, 12]",
-          "key_milestone": "First public demo. First sponsor. MCP server endpoint live.",
-          "source": "PDF page 6, 12: Edge Bootstrap tier ($0 CapEx, $150-800/mo yield)"
+          "key_milestone": "First public demo. First sponsor. README + docs polished.",
+          "source": "ESTIMATE: IndieHackers solo OSS benchmark 2024-2025"
         },
-        "phase_2_micro_saas": {
-          "label": "Micro-SaaS Credit Loops (6-15 months \u2014 PDF Edge Bootstrap scaling)",
-          "mrr_inr_min": 25000,
-          "mrr_inr_max": 66000,
-          "mrr_sgd_min": 403,
-          "mrr_sgd_max": 1065,
-          "mrr_usd_min": 301,
-          "mrr_usd_max": 795,
+        "phase_2_first_customers": {
+          "label": "First Paying Customers (6-12 months)",
+          "mrr_inr_min": 5000,
+          "mrr_inr_max": 30000,
+          "mrr_usd_min": 60,
+          "mrr_usd_max": 360,
           "customers": "5-25",
           "revenue_sources": [
-            "Credit-based micro-SaaS billing via Dodo Payments [PDF model]",
-            "Monthly infra SaaS subscription: \u20b91500-3000/month/customer",
-            "Consulting (Singapore): SGD 100-200/hour for custom integrations",
+            "Managed UOM setup service: \u20b92000-5000 one-time per customer",
+            "Monthly infra SaaS subscription: \u20b9500-1500/month/customer",
+            "Consulting: \u20b9500-1000/hour for custom integrations",
             "GitHub Sponsors growing: \u20b93000-8000/month",
-            "omni-saas factory beta access: \u20b92000-5000/month/seat"
+            "omni-saas factory beta access: \u20b91000-3000/month/seat"
           ],
-          "investment_required_inr": 17000,
+          "investment_required_inr": 5000,
           "api_cost_inr": "1700-12500",
-          "net_monthly_inr": "5000-42000 after API costs",
+          "net_monthly_inr": "3000-17500 after API costs",
           "realistic_probability": "35%",
-          "pdf_monetization_tier": "Edge Bootstrap \u2192 Mid-Tier: $0-2500 CapEx, $30-80/mo OpEx, $150-1200/mo yield",
-          "key_milestone": "omni-saas S0+S1 working. Dodo Payments integrated. First paying customer.",
-          "source": "PDF page 6, 12: Mid-Tier CUDA Station ($2,500-4,500 CapEx, $1,200-3,500/mo yield)"
+          "key_milestone": "omni-saas S0+S1 working. First customer paying for swarm output.",
+          "source": "ESTIMATE: comparable solo SaaS on IndieHackers at 12 months median"
         },
-        "phase_3_cuda_station": {
-          "label": "CUDA Station / Swarm Factory (12-24 months \u2014 PDF Mid-Tier)",
-          "mrr_inr_min": 100000,
-          "mrr_inr_max": 290000,
-          "mrr_sgd_min": 1613,
-          "mrr_sgd_max": 4677,
-          "mrr_usd_min": 1205,
-          "mrr_usd_max": 3494,
+        "phase_3_growth": {
+          "label": "Growth Phase (12-24 months)",
+          "mrr_inr_min": 30000,
+          "mrr_inr_max": 150000,
+          "mrr_usd_min": 360,
+          "mrr_usd_max": 1800,
           "customers": "25-150",
           "revenue_sources": [
-            "Private MCP server queries (per-query billing) [PDF model]",
+            "SaaS subscriptions (core product): \u20b915000-80000/month",
             "Swarm factory jobs (per-project): \u20b95000-30000/project",
             "API reseller margin on model calls: \u20b92000-10000/month",
-            "Consulting Singapore market: SGD 200-500/hour",
-            "Multi-tenant MCP servers for enterprises"
+            "Consulting / custom mesh setup: \u20b910000-30000/month",
+            "Training / docs access tier: \u20b91000-5000/month"
           ],
-          "investment_required_inr": 290000,
+          "investment_required_inr": 30000,
           "api_cost_inr": 25000,
-          "net_monthly_inr": "75000-265000 after costs",
+          "net_monthly_inr": "5000-125000 after costs",
           "realistic_probability": "15%",
-          "pdf_monetization_tier": "CUDA Station: $2,500-4,500 CapEx, $50-150/mo OpEx, $1,200-3,500/mo yield [PDF page 6]",
-          "key_milestone": "Full omni-saas S0-S4 pipeline. RTX 4090 or better online. Singapore consulting contracts.",
-          "source": "PDF page 6, 12: Mid-Tier CUDA Station pricing"
+          "key_milestone": "Full omni-saas S0-S4 pipeline. Product-market fit signal.",
+          "source": "ESTIMATE: top 15th percentile solo SaaS at 18 months"
         },
-        "phase_4_enterprise_mcp": {
-          "label": "Enterprise MCP / Sovereign Studio (24-36 months \u2014 PDF Enterprise Tier)",
-          "mrr_inr_min": 373500,
-          "mrr_inr_max": 1245000,
-          "mrr_sgd_min": 6024,
-          "mrr_sgd_max": 20081,
-          "mrr_usd_min": 4500,
-          "mrr_usd_max": 15000,
+        "phase_4_scale": {
+          "label": "Scale Phase (24-36 months)",
+          "mrr_inr_min": 150000,
+          "mrr_inr_max": 500000,
+          "mrr_usd_min": 1800,
+          "mrr_usd_max": 6000,
           "customers": "150-500",
           "revenue_sources": [
-            "Multi-tenant SaaS marketplace [PDF model]",
+            "Multi-seat enterprise subscriptions",
             "White-label UOM mesh for other solo devs / micro-agencies",
             "Swarm output as a service (research packs, build packs)",
-            "Enterprise MCP server subscriptions for regulated industries"
+            "Revenue share on Stripe products built by swarms"
           ],
-          "investment_required_inr": 830000,
-          "api_cost_inr": 83000,
-          "net_monthly_inr": "290000-1162000 after costs",
+          "investment_required_inr": 100000,
+          "api_cost_inr": 100000,
+          "net_monthly_inr": "50000-400000 after costs",
           "realistic_probability": "5%",
-          "pdf_monetization_tier": "Enterprise Studio: $6,500-10,000 CapEx, $200-800/mo OpEx, $4,500-15,000/mo yield [PDF page 7, 12]",
-          "key_milestone": "Mac Studio M4 Max / dual GPU cluster. Regulated industry contracts. 70%+ gross margin.",
-          "source": "PDF page 7, 12: Enterprise Studio tier pricing"
-        }
-      },
-      "pdf_monetization_matrix": {
-        "edge_bootstrap": {
-          "capex_usd": 0,
-          "capex_inr": 0,
-          "capex_sgd": 0,
-          "opex_usd_month": "10-30",
-          "opex_inr_month": "830-2490",
-          "opex_sgd_month": "13.4-40.2",
-          "strategy": "Credit-based micro-SaaS, automated content generation, local research tasks",
-          "margin": "80-90%",
-          "yield_usd": "150-800",
-          "yield_inr": "12450-66400",
-          "yield_sgd": "201.0-1072.0",
-          "source": "PDF page 6, 12: Monetization & ROI Matrix"
-        },
-        "cuda_station": {
-          "capex_usd": "2500-4500",
-          "capex_inr": "207500-373500",
-          "capex_sgd": "3350.0-6030.0",
-          "opex_usd_month": "50-150",
-          "opex_inr_month": "4150-12450",
-          "opex_sgd_month": "67.0-201.0",
-          "strategy": "Private MCP server endpoints, local ComfyUI API hosting, rapid developer swarms",
-          "margin": "70-80%",
-          "yield_usd": "1200-3500",
-          "yield_inr": "99600-290500",
-          "yield_sgd": "1608.0-4690.0",
-          "source": "PDF page 6, 12: Monetization & ROI Matrix"
-        },
-        "enterprise_studio": {
-          "capex_usd": "6500-10000",
-          "capex_inr": "539500-830000",
-          "capex_sgd": "8710.0-13400.0",
-          "opex_usd_month": "200-800",
-          "opex_inr_month": "16600-66400",
-          "opex_sgd_month": "268.0-1072.0",
-          "strategy": "Multi-tenant SaaS marketplace, regulated legal/publishing database queries",
-          "margin": "60-70%",
-          "yield_usd": "4500-15000",
-          "yield_inr": "373500-1245000",
-          "yield_sgd": "6030.0-20100.0",
-          "source": "PDF page 7, 12: Monetization & ROI Matrix"
+          "key_milestone": "Requires hire, or strong automation reducing manual ops to <4hr/week.",
+          "source": "ESTIMATE: top 5th percentile solo SaaS 30 months"
         }
       },
       "roi_summary": {
         "scenario_conservative": {
-          "label": "Conservative (most likely \u2014 PDF Edge Bootstrap)",
+          "label": "Conservative (most likely)",
           "timeline_months": 12,
           "total_investment_inr": 5000,
-          "total_investment_sgd": 81,
           "monthly_revenue_inr_at_target": 10000,
-          "monthly_revenue_sgd_at_target": 161,
           "monthly_api_cost_inr": 2000,
           "net_monthly_inr": 8000,
-          "net_monthly_sgd": 129,
           "breakeven_months": 1,
           "annual_net_inr": 96000,
-          "annual_net_sgd": 1548,
           "roi_percent": "1820% on cash invested",
-          "note": "Achievable if first 5 paying customers reached at month 6. Matches PDF Edge Bootstrap yield ($150-800/mo)."
+          "note": "Only achievable if first 5 paying customers reached at month 6"
         },
         "scenario_realistic": {
-          "label": "Realistic (median \u2014 PDF CUDA Station transition)",
+          "label": "Realistic (median path)",
           "timeline_months": 18,
           "total_investment_inr": 25000,
-          "total_investment_sgd": 403,
-          "monthly_revenue_inr_at_target": 100000,
-          "monthly_revenue_sgd_at_target": 1613,
+          "monthly_revenue_inr_at_target": 35000,
           "monthly_api_cost_inr": 8000,
-          "net_monthly_inr": 92000,
-          "net_monthly_sgd": 1484,
+          "net_monthly_inr": 27000,
           "breakeven_months": 6,
-          "annual_net_inr": 1104000,
-          "annual_net_sgd": 17806,
-          "roi_percent": "4316% on cash invested",
-          "note": "Requires consistent shipping + Singapore consulting contracts. Approaches PDF Mid-Tier yield ($1,200-3,500/mo)."
+          "annual_net_inr": 324000,
+          "roi_percent": "1196% on cash invested",
+          "note": "Requires consistent shipping + content presence (Shadow Narratives cross-promo helps)"
         },
         "scenario_optimistic": {
-          "label": "Optimistic (top 10% \u2014 PDF Enterprise Studio)",
+          "label": "Optimistic (top 10% scenario)",
           "timeline_months": 24,
           "total_investment_inr": 100000,
-          "total_investment_sgd": 1613,
-          "monthly_revenue_inr_at_target": 500000,
-          "monthly_revenue_sgd_at_target": 8065,
+          "monthly_revenue_inr_at_target": 200000,
           "monthly_api_cost_inr": 40000,
-          "net_monthly_inr": 460000,
-          "net_monthly_sgd": 7419,
+          "net_monthly_inr": 160000,
           "breakeven_months": 3,
-          "annual_net_inr": 5520000,
-          "annual_net_sgd": 89032,
-          "roi_percent": "5420% on cash invested",
-          "note": "Requires enterprise contract or viral product launch. Matches PDF Enterprise yield ($4,500-15,000/mo)."
+          "annual_net_inr": 1920000,
+          "roi_percent": "1820% on cash invested",
+          "note": "Requires enterprise contract or viral product launch"
         },
-        "singapore_context": {
-          "advantage": "Singapore S-Pass holder enables access to high-ticket consulting contracts (SGD 100-500/hr) unavailable in pure-India market.",
-          "risk": "Employment contract may restrict secondary income. Review MOM regulations before active SaaS monetization.",
-          "conversion_note": "All INR figures approximate. 1 SGD \u2248 62 INR (2026). Singapore yield potential 3-5x India yield for same effort.",
-          "source": "ESTIMATE: Singapore market rate comparison"
-        },
-        "warning": "Solo non-developer SaaS median MRR at 12 months is under $500/month globally. PDF's Edge Bootstrap yield ($150-800/mo) is the most likely first-year outcome. Do not skip to CUDA Station or Enterprise without first validating Edge Bootstrap revenue."
+        "warning": "Solo non-developer SaaS median MRR at 12 months is under $500/month globally. INR pricing gives competitive edge in Indian market. Singapore re-entry may unlock higher-ticket consulting contracts."
       }
     },
     "hardware_roadmap": {
@@ -436,7 +340,7 @@
         "total_value_inr": "~5000-8000 (depreciated hardware)",
         "blockers": [
           "4GB RAM limits QEMU guest performance and parallel workloads",
-          "Failing SATA cable causes I/O instability [PDF: critical infrastructure risk]",
+          "Failing SATA cable causes I/O instability",
           "i3-3217U (2012 CPU) bottlenecks any ML-adjacent workloads",
           "No NVMe on current laptop \u2014 all storage on spinning disk"
         ]
@@ -444,20 +348,17 @@
       "phase_1_immediate_under_5000_inr": {
         "timeline": "Now \u2014 1 month",
         "total_budget_inr": 3000,
-        "total_budget_sgd": 48,
         "investments": [
           {
             "item": "SATA Data + Power cable replacement",
             "cost_inr": 200,
-            "cost_sgd": 3.23,
             "priority": "CRITICAL",
-            "reason": "Eliminates I/O failures that corrupt QEMU disk images [PDF: hardware infrastructure risk]",
+            "reason": "Eliminates I/O failures that corrupt QEMU disk images",
             "where": "Amazon India / local electronics market"
           },
           {
             "item": "16GB DDR3L SO-DIMM RAM upgrade (HP Pavilion compatible)",
             "cost_inr": 1500,
-            "cost_sgd": 24.19,
             "priority": "HIGH",
             "reason": "Doubles QEMU capacity. Enables 2x guests + Zen Loop + verifier simultaneously",
             "where": "OLX / Amazon India / local PC shop",
@@ -466,32 +367,28 @@
           {
             "item": "120GB SSD (SATA) as boot drive",
             "cost_inr": 1300,
-            "cost_sgd": 20.97,
             "priority": "HIGH",
             "reason": "10x I/O improvement. QEMU disk images on SSD = dramatically faster guest boot",
             "where": "Amazon India \u2014 brands: WD Green, Kingston A400"
           }
         ],
-        "expected_uplift": "50-100% QEMU performance improvement. Eliminates data corruption risk.",
-        "pdf_reference": "PDF Phase 1: Foundation & Secure Initialization \u2014 budget cap $5/mo"
+        "expected_uplift": "50-100% QEMU performance improvement. Eliminates data corruption risk."
       },
       "phase_2_beta_launch_5000_30000_inr": {
         "timeline": "Months 3-9 (first revenue reinvestment)",
         "total_budget_inr": 20000,
-        "total_budget_sgd": 323,
         "investments": [
           {
             "item": "Raspberry Pi 5 (8GB) \u2014 always-on worker node",
             "cost_inr": 8000,
-            "cost_sgd": 129.03,
             "priority": "HIGH",
             "reason": "Replaces phones as reliable background worker. ARM64 native. 24/7 uptime. No battery drain.",
-            "where": "Robu.in / CanaKit India"
+            "where": "Robu.in / CanaKit India",
+            "note": "Better alternative to Phone1 for QEMU aarch64 workloads"
           },
           {
             "item": "4TB External HDD (USB 3.0) for artifact + bundle storage",
             "cost_inr": 6500,
-            "cost_sgd": 104.84,
             "priority": "MEDIUM",
             "reason": "Git bundle archive, QCOW2 image backups, research cache persistence",
             "where": "Amazon India \u2014 Seagate / WD Portable"
@@ -499,199 +396,162 @@
           {
             "item": "Gigabit Ethernet switch (5-port)",
             "cost_inr": 1500,
-            "cost_sgd": 24.19,
             "priority": "MEDIUM",
             "reason": "Wired LAN eliminates WiFi instability for Phone2 hotspot setup",
             "where": "Amazon India \u2014 TP-Link TL-SG105"
           },
           {
-            "item": "Managed VPS baseline (Hetzner CX11 \u2014 \u20ac3.99/month)",
-            "cost_inr_monthly": 360,
-            "cost_sgd_monthly": 5.81,
+            "item": "Managed VPS baseline (DigitalOcean/Hetzner $5/month)",
+            "cost_inr_monthly": 400,
             "priority": "MEDIUM",
             "reason": "Offload Git remote, webhook receiver, and light API relay away from phones",
-            "where": "Hetzner.com"
+            "where": "Hetzner (cheaper) \u2014 CX11 \u20ac3.99/month = ~\u20b9360/month"
           }
         ],
-        "expected_uplift": "Stable 24/7 mesh without phone battery dependency. Customer-grade uptime.",
-        "pdf_reference": "PDF Phase 2: Hardened Mobile Deployment & Optimizations \u2014 Mobile Node Setup"
+        "expected_uplift": "Stable 24/7 mesh without phone battery dependency. Customer-grade uptime."
       },
       "phase_3_first_revenue_30000_100000_inr": {
         "timeline": "Months 9-18 (reinvest from revenue)",
         "total_budget_inr": 80000,
-        "total_budget_sgd": 1290,
         "investments": [
           {
             "item": "Mini PC / NUC (Intel N100, 16GB RAM, 512GB NVMe)",
             "cost_inr": 18000,
-            "cost_sgd": 290.32,
             "priority": "HIGH",
-            "reason": "Replace HP Pavilion as primary. N100 = 4x performance, fanless, 8W TDP.",
-            "where": "Amazon India \u2014 Beelink Mini S12 Pro"
+            "reason": "Replace HP Pavilion as primary. N100 = 4x performance, fanless, 8W TDP. NVMe fast.",
+            "where": "Amazon India \u2014 Beelink Mini S12 Pro or MINISFORUM UN100",
+            "note": "This becomes the permanent coordinator. HP Pavilion \u2192 secondary test node."
           },
           {
             "item": "Upgraded VPS (4 vCPU, 8GB RAM) for swarm factory staging",
             "cost_inr_monthly": 2000,
-            "cost_sgd_monthly": 32.26,
             "priority": "HIGH",
             "reason": "Run Swarm B (Build) and Swarm C (QA) on cloud without touching home hardware",
-            "where": "Hetzner CPX21 ~\u20ac8/month"
+            "where": "Hetzner CPX21 ~\u20ac8/month, or Oracle Cloud Always Free (2 ARM64 VMs)"
           },
           {
             "item": "UPS (offline, 600VA) for laptop/mini PC",
             "cost_inr": 4000,
-            "cost_sgd": 64.52,
             "priority": "MEDIUM",
             "reason": "Tamil Nadu power cuts kill QEMU disk integrity. UPS = 20-min ride-out.",
             "where": "Amazon India \u2014 APC BX600C-IN"
           }
         ],
-        "expected_uplift": "Production-grade mesh. First customer SLA-able. Swarm factory can run full 2-4 week QA.",
-        "pdf_reference": "PDF Phase 3: Layer 3 Multi-Swarm SaaS Factory (Beta)"
+        "expected_uplift": "Production-grade mesh. First customer SLA-able. Swarm factory can run full 2-4 week QA."
       },
       "phase_4_scale_100000_plus_inr": {
         "timeline": "Months 18-36 (business reinvestment phase)",
         "total_budget_inr": 200000,
-        "total_budget_sgd": 3226,
         "investments": [
           {
-            "item": "Dedicated server (Hetzner AX41-NVMe) \u2014 6-core Ryzen, 64GB RAM",
+            "item": "Dedicated server (Hetzner AX41-NVMe) \u2014 6-core Ryzen, 64GB RAM, 2x512GB NVMe",
             "cost_inr_monthly": 7000,
-            "cost_sgd_monthly": 112.9,
             "priority": "HIGH",
             "reason": "Host multiple customer meshes and parallel swarm pipelines concurrently",
             "where": "Hetzner.com \u2014 AX41-NVMe ~\u20ac38/month"
           },
           {
-            "item": "RTX 4090 (used) \u2014 local GPU acceleration node [PDF Phase 2 checkpoint]",
-            "cost_inr": 125000,
-            "cost_sgd": 2016.13,
+            "item": "AI accelerator card (RX 6600 or RTX 3060) if local LLM needed",
+            "cost_inr": 30000,
             "priority": "LOW",
-            "reason": "$800-1200 used RTX 4090 for local LLM inference. Only if paid API costs exceed \u20b930K/month.",
-            "pdf_note": "PDF Phase 2: Hardware Checkpoint \u2014 Procure RTX 5060 Ti or used RTX 4090",
-            "where": "OLX India / used market"
+            "reason": "Only needed if paid API costs exceed \u20b930K/month. Keep free-tier policy as long as possible.",
+            "where": "Amazon India / OLX used market"
           }
         ],
-        "pdf_reference": "PDF Phase 4: Commercial Launch & MCP Server Scale \u2014 Mac Studio M4 Max ($3,499-3,699)",
-        "note": "Phase 4 hardware only unlocks if Phase 3 revenue targets are hit. No speculative purchase.",
-        "mac_studio_alternative": {
-          "item": "Mac Studio M4 Max (128GB) \u2014 Sovereign Node",
-          "cost_inr": 290000,
-          "cost_sgd": 4677,
-          "reason": "PDF page 4, 8: Optimal for unquantized 70B+ models at FP16. Silent, 120W peak.",
-          "when": "Only when enterprise MCP server revenue exceeds SGD 3,000/mo"
-        }
-      },
-      "pdf_api_pricing_reference": {
-        "deepseek_v4_flash": "$0.14/M input miss, $0.0028/M hit, $0.28/M output [PDF page 2-3]",
-        "deepseek_v4_pro": "$0.435/M input (promo), $0.003625/M hit, $0.87/M output [PDF page 2-3]",
-        "deepseek_r1": "$0.55/M input, $0.55/M hit, $2.19/M output [PDF page 2-3]",
-        "claude_sonnet_5_intro": "$2.00/M input, $0.20/M hit, $10.00/M output [PDF page 3]",
-        "claude_sonnet_5_standard": "$3.00/M input, $0.30/M hit, $15.00/M output [PDF page 3]",
-        "claude_opus_4_8": "$5.00/M input, $0.50/M hit, $25.00/M output [PDF page 3]",
-        "claude_fable_5": "$10.00/M input, $1.00/M hit, $50.00/M output [PDF page 3]",
-        "budget_cap_recommended": "$5.00/month for local developer testing [PDF Phase 1]",
-        "prompt_caching_savings": "Up to 98% input cost reduction on cache hits [PDF page 2]"
+        "note": "Phase 4 hardware only unlocks if Phase 3 revenue targets are hit. No speculative purchase."
       }
     },
     "reality_check": {
       "critical_pitfalls": [
         {
           "id": "P1",
-          "title": "The Hardware Cliff (SATA Cable Failure)",
+          "title": "The Hardware Cliff",
           "severity": "HIGH",
-          "description": "HP Pavilion 4GB RAM + failing SATA = production environment that corrupts its own disk. Every QEMU guest crash risks the QA artifacts and bundle state. [PDF: hardware infrastructure risk \u2014 Phase 1 checkpoint addresses this]",
-          "mitigation": "SATA cable replacement (\u20b9200) is the single highest-ROI action in the entire roadmap. [PDF Phase 1: Foundation & Secure Initialization]"
+          "description": "HP Pavilion 4GB RAM + failing SATA = production environment that corrupts its own disk. Every QEMU guest crash risks the QA artifacts and bundle state. The SATA cable is the #1 risk item. Fix it before any customer relies on this mesh.",
+          "mitigation": "SATA cable replacement (\u20b9200) is the single highest-ROI action in the entire roadmap."
         },
         {
           "id": "P2",
           "title": "Free Model Availability Is Not Guaranteed",
           "severity": "HIGH",
-          "description": "OpenRouter free tiers change without notice. deepseek-v4-flash-free, openrouter/free, and other free models may impose rate limits, disappear, or degrade. The entire Zen Loop depends on $0-cost models.",
-          "mitigation": "Maintain a model fallback pool of 6+ free models. Keep DeepSeek V4 Flash ($0.14/M miss) as lowest-cost paid fallback. Budget cap $5/mo as recommended in PDF Phase 1."
+          "description": "OpenRouter free tiers change without notice. deepseek-v4-flash-free, big-pickle, and other free models may impose rate limits, disappear, or degrade. The entire Zen Loop depends on $0-cost models. Any change breaks the pipeline.",
+          "mitigation": "Maintain a model fallback pool of 6+ free models. Implement cost-sentinel: abort if model shows any non-zero pricing. Keep paid-model code path dormant but ready."
         },
         {
           "id": "P3",
           "title": "Solo Non-Developer Bottleneck",
           "severity": "HIGH",
-          "description": "UOM is AI-generated code managed by a prompt engineer. When a bug requires deep C/kernel/assembly knowledge, the pipeline stalls. Time-to-fix can be 3-10x longer than a developer.",
-          "mitigation": "Define explicit scope boundaries in customer contracts. Stick to POSIX sh / Python / Markdown layer. Outsource kernel-level work to community."
+          "description": "UOM is AI-generated code managed by a prompt engineer. This is a strength (speed) and a risk (depth). When a bug requires deep C/kernel/assembly knowledge, or a customer asks for a feature outside LLM comfort zone, the pipeline stalls. Time-to-fix can be 3-10x longer than a developer.",
+          "mitigation": "Define explicit scope boundaries in customer contracts. Stick to POSIX sh / Python / Markdown layer. Outsource kernel-level work to community or defer."
         },
         {
           "id": "P4",
           "title": "Phone Dependency Is Not Customer-Grade",
           "severity": "HIGH",
-          "description": "Phone2 as hotspot + QEMU host + tunnel relay is a single point of failure. Android Phantom Process Killer (PDF page 5, 11) terminates background orchestrators. No customer SLA can be built on this.",
-          "mitigation": "PDF page 5: Configure ADB overrides (settings_enable_monitor_phantom_procs false, max_phantom_processes 2147483647). Phase 2 hardware (RPi 5 + VPS) removes phone from critical path."
+          "description": "Phone2 as a hotspot + QEMU host + tunnel relay is a single point of failure. If the battery swells, the phone breaks, or Android kills background processes, the entire mesh loses its gateway. No customer SLA can be built on this.",
+          "mitigation": "Phase 2 hardware investment (RPi 5 + VPS) removes phone dependency from critical path. Do not sign SLA before Phase 2 hardware is online."
         },
         {
           "id": "P5",
           "title": "Market Saturation in Visual AI Automation",
           "severity": "MEDIUM",
-          "description": "No-code automation (Zapier, Make, n8n) is saturated and well-funded. PDF recommendation: 'Avoid highly saturated consumer chatbot markets. Focus on specialized enterprise requirements.'",
-          "mitigation": "Position UOM as back-end mesh for builders, not UI tool for non-technicals. PDF: Target MCP server endpoints, private database archives, on-premises edge nodes."
+          "description": "The no-code automation market (Zapier, Make, n8n) is saturated and well-funded. Competing directly on features is a losing bet. UOM's edge is POSIX/edge/privacy-first \u2014 but that niche is smaller.",
+          "mitigation": "Position UOM as the back-end mesh for builders, not a UI tool for non-technicals. Target: developers, homelab power users, solo founders who want control without cloud lock-in."
         },
         {
           "id": "P6",
-          "title": "Multi-Week QA Factory Is Not Free On Rate Limits",
+          "title": "Multi-Week QA Factory Is Not Free",
           "severity": "MEDIUM",
-          "description": "Multi-swarm SaaS pipeline (Swarm A-D) requires weeks of QA. On free models with rate limits, a 2-week QA soak will exhaust daily limits multiple times.",
-          "mitigation": "Budget-gated paid-model mode for Swarm C (QA) only: DeepSeek V4 Flash at $0.14/M \u2014 ~$10-30 for 2-week QA run. Acceptable cost for quality assurance."
+          "description": "The multi-swarm SaaS pipeline (Swarm A-D) requires weeks of QA. On free models with rate limits, a 2-week QA soak on free tier will exhaust daily limits multiple times. The QA phase in practice will take 2-4x longer than on paid models.",
+          "mitigation": "Implement a budget-gated paid-model mode for Swarm C (QA) only. $10-30 for a 2-week QA run is acceptable. This is the one place where free-tier policy can be selectively relaxed."
         },
         {
           "id": "P7",
-          "title": "Singapore Work Permit + Income Declaration Conflict",
+          "title": "Singapore Work Permit + Income Declaration",
           "severity": "MEDIUM",
-          "description": "If Singapore S-Pass is active, running revenue-generating SaaS may conflict with employment contract or MOM regulations on secondary income.",
-          "mitigation": "Review employment contract before monetizing. Keep UOM as open-source with Patreon/sponsorship (generally allowed) vs. active SaaS contracts (may need employer clearance). Singapore consulting at SGD 100-500/hr may require declaration."
+          "description": "If Singapore S-Pass is approved and Dharani returns to employment, running a revenue-generating SaaS simultaneously may conflict with employment contract or MOM regulations on secondary income.",
+          "mitigation": "Review employment contract for IP and secondary income clauses before monetizing. Keep UOM as open-source with Patreon/sponsorship model (generally allowed) vs. active SaaS contracts (may need employer clearance)."
         },
         {
           "id": "P8",
-          "title": "Agentic AI Race Commoditizes the Stack",
+          "title": "agentic AI Race Commoditizes the Stack",
           "severity": "MEDIUM",
-          "description": "OpenAI, Google, Anthropic building native agent orchestration. By 2027, much of UOM's manual wiring (model routing, tool use) may be 1-click in major platforms.",
-          "mitigation": "UOM's moat is EDGE + POSIX + zero-cost + phone mesh layer \u2014 not LLM routing logic. PDF page 1: 'zero-cost remote model orchestration' and 'offline-first sovereign micro-clouds' are the differentiators."
+          "description": "OpenAI, Google, Anthropic, and Microsoft are all building native agent orchestration. By 2027, much of what UOM manually wires together (model routing, tool use, multi-step pipelines) may be 1-click in the major platforms.",
+          "mitigation": "UOM's moat is the EDGE + POSIX + zero-cost + phone mesh layer \u2014 not the LLM routing logic. The platform will commoditize; the hardware autonomy will not. Lean into the edge story."
         },
         {
           "id": "P9",
           "title": "Revenue Timeline Is Longer Than Expected",
           "severity": "HIGH",
-          "description": "Solo non-developer SaaS median time to $500 MRR globally is 14-22 months. PDF monetization matrix shows Edge Bootstrap at $150-800/mo yield \u2014 achievable but not quick.",
-          "mitigation": "Start monetizing earlier with low-risk revenue: GitHub Sponsors, MCP server endpoints (per-query billing), Singapore consulting. PDF: 'Credit-based micro-SaaS, automated content generation, local research tasks' as entry points."
+          "description": "Solo non-developer SaaS median time to $500 MRR globally is 14-22 months. In India, INR pricing gives competitive pricing power but a smaller absolute TAM. First paying customer typically takes 6-10 months from stable MVP.",
+          "mitigation": "Start monetizing earlier with low-risk revenue: GitHub Sponsors, consulting time, Shadow Narratives cross-promo. Do not depend on swarm factory revenue in the first 9 months."
         },
         {
           "id": "P10",
           "title": "cinai / AGI Disruption Risk",
-          "severity": "LOW-NOW \u2192 HIGH-LATER",
-          "description": "If cinai-level autonomous AI emerges within 18-24 months, the role of a human prompt-engineer orchestrating free models becomes redundant at infrastructure level. PDF page 1, 14: Position UOM alongside Cinai Studio and generative media pipelines.",
-          "mitigation": "Build customer lock-in through data portability and on-premise/edge value. PDF: 'Expose proprietary local databases or compute resources as secure MCP servers' \u2014 the edge mesh and customer trust layer become MORE valuable as AGI scales."
+          "severity": "LOW-NOW HIGH-LATER",
+          "description": "If cinai-level autonomous AI emerges within 18-24 months, the role of a human prompt-engineer orchestrating free models becomes redundant at the infrastructure level. The value shifts to: who owns the deployment stack and customer relationships.",
+          "mitigation": "Build customer lock-in through data portability and on-premise/edge value, not model quality. When AGI orchestrates itself, the edge mesh (UOM) and the customer trust layer become MORE valuable, not less."
         }
       ],
       "honest_expectations": {
-        "year_1_most_likely_outcome": "0-1 paying customers. \u20b90-25K MRR. PDF Edge Bootstrap yield ($150-800/mo) achievable with active MCP server endpoints. Strong open-source cred.",
-        "year_2_most_likely_outcome": "5-25 paying customers. \u20b925K-1L MRR. omni-saas factory in beta. Singapore consulting contracts (SGD 100-200/hr) as primary revenue driver.",
+        "year_1_most_likely_outcome": "0-1 paying customers. \u20b90-10K MRR. Strong open-source cred. Well-documented mesh. Active GitHub Sponsors funnel started.",
+        "year_2_most_likely_outcome": "5-25 paying customers. \u20b910K-50K MRR. omni-saas factory in beta. First consulting revenue from Singapore or Indian market.",
         "what_will_actually_kill_this": [
-          "Abandoning after 6 months of no revenue",
-          "Trying to compete with n8n or Zapier on their terms [PDF: avoid saturated consumer markets]",
+          "Abandoning the project after 6 months of no revenue",
+          "Trying to compete with n8n or Zapier on their terms",
           "Ignoring hardware stability (SATA cable) for feature building",
-          "Running out of free model access with no $5/mo paid fallback plan",
-          "Singapore employment conflicting with SaaS income [P7]",
-          "Android Phantom Process Killer terminating all background processes [PDF page 5]"
+          "Running out of free model access with no paid fallback plan",
+          "Singapore employment conflicting with SaaS income"
         ],
         "what_gives_this_the_best_chance": [
           "Shipping a working demo and posting on IndieHackers, HackerNews Show HN",
           "Shadow Narratives YouTube cross-promo as distribution channel",
-          "Niche positioning: POSIX AI mesh for homelab builders [PDF: low-medium saturation]",
-          "Singapore network providing first enterprise MCP server contracts",
-          "Keeping costs at $0 until revenue justifies paid models [PDF Phase 1: $5/mo budget cap]",
-          "Prompt caching to achieve 98% input cost reduction [PDF page 2]"
+          "Niche positioning: POSIX AI mesh for homelab builders",
+          "Singapore network providing first enterprise consulting contracts",
+          "Keeping costs at $0 until revenue justifies paid models"
         ]
-      },
-      "pdf_strategic_recommendations": [
-        "Implement Prompt Caching as a Core FinOps Strategy \u2014 up to 98% cost reduction [PDF page 14]",
-        "Apply Android Background Overrides During Mobile Setup \u2014 disable Phantom Process Killer [PDF page 5, 11, 14]",
-        "Target Niche, High-Value Monetization Pathways \u2014 MCP servers, cinai integration, enterprise [PDF page 14]"
-      ]
+      }
     }
   }
 }

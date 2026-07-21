@@ -6,7 +6,7 @@
     "total_value_inr": "~5000-8000 (depreciated hardware)",
     "blockers": [
       "4GB RAM limits QEMU guest performance and parallel workloads",
-      "Failing SATA cable causes I/O instability [PDF: critical infrastructure risk]",
+      "Failing SATA cable causes I/O instability",
       "i3-3217U (2012 CPU) bottlenecks any ML-adjacent workloads",
       "No NVMe on current laptop \u2014 all storage on spinning disk"
     ]
@@ -14,20 +14,17 @@
   "phase_1_immediate_under_5000_inr": {
     "timeline": "Now \u2014 1 month",
     "total_budget_inr": 3000,
-    "total_budget_sgd": 48,
     "investments": [
       {
         "item": "SATA Data + Power cable replacement",
         "cost_inr": 200,
-        "cost_sgd": 3.23,
         "priority": "CRITICAL",
-        "reason": "Eliminates I/O failures that corrupt QEMU disk images [PDF: hardware infrastructure risk]",
+        "reason": "Eliminates I/O failures that corrupt QEMU disk images",
         "where": "Amazon India / local electronics market"
       },
       {
         "item": "16GB DDR3L SO-DIMM RAM upgrade (HP Pavilion compatible)",
         "cost_inr": 1500,
-        "cost_sgd": 24.19,
         "priority": "HIGH",
         "reason": "Doubles QEMU capacity. Enables 2x guests + Zen Loop + verifier simultaneously",
         "where": "OLX / Amazon India / local PC shop",
@@ -36,32 +33,28 @@
       {
         "item": "120GB SSD (SATA) as boot drive",
         "cost_inr": 1300,
-        "cost_sgd": 20.97,
         "priority": "HIGH",
         "reason": "10x I/O improvement. QEMU disk images on SSD = dramatically faster guest boot",
         "where": "Amazon India \u2014 brands: WD Green, Kingston A400"
       }
     ],
-    "expected_uplift": "50-100% QEMU performance improvement. Eliminates data corruption risk.",
-    "pdf_reference": "PDF Phase 1: Foundation & Secure Initialization \u2014 budget cap $5/mo"
+    "expected_uplift": "50-100% QEMU performance improvement. Eliminates data corruption risk."
   },
   "phase_2_beta_launch_5000_30000_inr": {
     "timeline": "Months 3-9 (first revenue reinvestment)",
     "total_budget_inr": 20000,
-    "total_budget_sgd": 323,
     "investments": [
       {
         "item": "Raspberry Pi 5 (8GB) \u2014 always-on worker node",
         "cost_inr": 8000,
-        "cost_sgd": 129.03,
         "priority": "HIGH",
         "reason": "Replaces phones as reliable background worker. ARM64 native. 24/7 uptime. No battery drain.",
-        "where": "Robu.in / CanaKit India"
+        "where": "Robu.in / CanaKit India",
+        "note": "Better alternative to Phone1 for QEMU aarch64 workloads"
       },
       {
         "item": "4TB External HDD (USB 3.0) for artifact + bundle storage",
         "cost_inr": 6500,
-        "cost_sgd": 104.84,
         "priority": "MEDIUM",
         "reason": "Git bundle archive, QCOW2 image backups, research cache persistence",
         "where": "Amazon India \u2014 Seagate / WD Portable"
@@ -69,98 +62,68 @@
       {
         "item": "Gigabit Ethernet switch (5-port)",
         "cost_inr": 1500,
-        "cost_sgd": 24.19,
         "priority": "MEDIUM",
         "reason": "Wired LAN eliminates WiFi instability for Phone2 hotspot setup",
         "where": "Amazon India \u2014 TP-Link TL-SG105"
       },
       {
-        "item": "Managed VPS baseline (Hetzner CX11 \u2014 \u20ac3.99/month)",
-        "cost_inr_monthly": 360,
-        "cost_sgd_monthly": 5.81,
+        "item": "Managed VPS baseline (DigitalOcean/Hetzner $5/month)",
+        "cost_inr_monthly": 400,
         "priority": "MEDIUM",
         "reason": "Offload Git remote, webhook receiver, and light API relay away from phones",
-        "where": "Hetzner.com"
+        "where": "Hetzner (cheaper) \u2014 CX11 \u20ac3.99/month = ~\u20b9360/month"
       }
     ],
-    "expected_uplift": "Stable 24/7 mesh without phone battery dependency. Customer-grade uptime.",
-    "pdf_reference": "PDF Phase 2: Hardened Mobile Deployment & Optimizations \u2014 Mobile Node Setup"
+    "expected_uplift": "Stable 24/7 mesh without phone battery dependency. Customer-grade uptime."
   },
   "phase_3_first_revenue_30000_100000_inr": {
     "timeline": "Months 9-18 (reinvest from revenue)",
     "total_budget_inr": 80000,
-    "total_budget_sgd": 1290,
     "investments": [
       {
         "item": "Mini PC / NUC (Intel N100, 16GB RAM, 512GB NVMe)",
         "cost_inr": 18000,
-        "cost_sgd": 290.32,
         "priority": "HIGH",
-        "reason": "Replace HP Pavilion as primary. N100 = 4x performance, fanless, 8W TDP.",
-        "where": "Amazon India \u2014 Beelink Mini S12 Pro"
+        "reason": "Replace HP Pavilion as primary. N100 = 4x performance, fanless, 8W TDP. NVMe fast.",
+        "where": "Amazon India \u2014 Beelink Mini S12 Pro or MINISFORUM UN100",
+        "note": "This becomes the permanent coordinator. HP Pavilion \u2192 secondary test node."
       },
       {
         "item": "Upgraded VPS (4 vCPU, 8GB RAM) for swarm factory staging",
         "cost_inr_monthly": 2000,
-        "cost_sgd_monthly": 32.26,
         "priority": "HIGH",
         "reason": "Run Swarm B (Build) and Swarm C (QA) on cloud without touching home hardware",
-        "where": "Hetzner CPX21 ~\u20ac8/month"
+        "where": "Hetzner CPX21 ~\u20ac8/month, or Oracle Cloud Always Free (2 ARM64 VMs)"
       },
       {
         "item": "UPS (offline, 600VA) for laptop/mini PC",
         "cost_inr": 4000,
-        "cost_sgd": 64.52,
         "priority": "MEDIUM",
         "reason": "Tamil Nadu power cuts kill QEMU disk integrity. UPS = 20-min ride-out.",
         "where": "Amazon India \u2014 APC BX600C-IN"
       }
     ],
-    "expected_uplift": "Production-grade mesh. First customer SLA-able. Swarm factory can run full 2-4 week QA.",
-    "pdf_reference": "PDF Phase 3: Layer 3 Multi-Swarm SaaS Factory (Beta)"
+    "expected_uplift": "Production-grade mesh. First customer SLA-able. Swarm factory can run full 2-4 week QA."
   },
   "phase_4_scale_100000_plus_inr": {
     "timeline": "Months 18-36 (business reinvestment phase)",
     "total_budget_inr": 200000,
-    "total_budget_sgd": 3226,
     "investments": [
       {
-        "item": "Dedicated server (Hetzner AX41-NVMe) \u2014 6-core Ryzen, 64GB RAM",
+        "item": "Dedicated server (Hetzner AX41-NVMe) \u2014 6-core Ryzen, 64GB RAM, 2x512GB NVMe",
         "cost_inr_monthly": 7000,
-        "cost_sgd_monthly": 112.9,
         "priority": "HIGH",
         "reason": "Host multiple customer meshes and parallel swarm pipelines concurrently",
         "where": "Hetzner.com \u2014 AX41-NVMe ~\u20ac38/month"
       },
       {
-        "item": "RTX 4090 (used) \u2014 local GPU acceleration node [PDF Phase 2 checkpoint]",
-        "cost_inr": 125000,
-        "cost_sgd": 2016.13,
+        "item": "AI accelerator card (RX 6600 or RTX 3060) if local LLM needed",
+        "cost_inr": 30000,
         "priority": "LOW",
-        "reason": "$800-1200 used RTX 4090 for local LLM inference. Only if paid API costs exceed \u20b930K/month.",
-        "pdf_note": "PDF Phase 2: Hardware Checkpoint \u2014 Procure RTX 5060 Ti or used RTX 4090",
-        "where": "OLX India / used market"
+        "reason": "Only needed if paid API costs exceed \u20b930K/month. Keep free-tier policy as long as possible.",
+        "where": "Amazon India / OLX used market"
       }
     ],
-    "pdf_reference": "PDF Phase 4: Commercial Launch & MCP Server Scale \u2014 Mac Studio M4 Max ($3,499-3,699)",
-    "note": "Phase 4 hardware only unlocks if Phase 3 revenue targets are hit. No speculative purchase.",
-    "mac_studio_alternative": {
-      "item": "Mac Studio M4 Max (128GB) \u2014 Sovereign Node",
-      "cost_inr": 290000,
-      "cost_sgd": 4677,
-      "reason": "PDF page 4, 8: Optimal for unquantized 70B+ models at FP16. Silent, 120W peak.",
-      "when": "Only when enterprise MCP server revenue exceeds SGD 3,000/mo"
-    }
-  },
-  "pdf_api_pricing_reference": {
-    "deepseek_v4_flash": "$0.14/M input miss, $0.0028/M hit, $0.28/M output [PDF page 2-3]",
-    "deepseek_v4_pro": "$0.435/M input (promo), $0.003625/M hit, $0.87/M output [PDF page 2-3]",
-    "deepseek_r1": "$0.55/M input, $0.55/M hit, $2.19/M output [PDF page 2-3]",
-    "claude_sonnet_5_intro": "$2.00/M input, $0.20/M hit, $10.00/M output [PDF page 3]",
-    "claude_sonnet_5_standard": "$3.00/M input, $0.30/M hit, $15.00/M output [PDF page 3]",
-    "claude_opus_4_8": "$5.00/M input, $0.50/M hit, $25.00/M output [PDF page 3]",
-    "claude_fable_5": "$10.00/M input, $1.00/M hit, $50.00/M output [PDF page 3]",
-    "budget_cap_recommended": "$5.00/month for local developer testing [PDF Phase 1]",
-    "prompt_caching_savings": "Up to 98% input cost reduction on cache hits [PDF page 2]"
+    "note": "Phase 4 hardware only unlocks if Phase 3 revenue targets are hit. No speculative purchase."
   }
 }

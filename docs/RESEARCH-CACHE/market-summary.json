@@ -52,10 +52,7 @@
     }
   ],
   "crewai_monthly_downloads": 10869951,
-  "autogen_monthly_downloads": 155839,
   "litellm_monthly_downloads": 659749558,
-  "npm_langchain_last_week": 2744558,
-  "npm_crewai_last_week": 82,
   "openrouter_free_model_count": 16,
   "openrouter_free_model_names": [
     "poolside/laguna-xs-2.1:free",

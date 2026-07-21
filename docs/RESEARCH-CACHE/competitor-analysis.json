@@ -7,7 +7,7 @@
       "enterprise": "custom",
       "positioning": "visual workflow automation",
       "target_user": "non-technical SMB",
-      "source": "https://n8n.io/pricing \u2014 fetched 2026-07-21"
+      "source": "https://n8n.io/pricing \u2014 ESTIMATE if fetch failed"
     },
     "dify": {
       "free_tier": "OSS self-host, 200 messages/day cloud",
@@ -16,7 +16,7 @@
       "enterprise": "custom",
       "positioning": "LLM app builder / RAG",
       "target_user": "developers + small teams",
-      "source": "https://dify.ai/pricing \u2014 fetched 2026-07-21"
+      "source": "https://dify.ai/pricing \u2014 ESTIMATE"
     },
     "langchain_hub": {
       "free_tier": "OSS + limited hub",
@@ -25,7 +25,7 @@
       "enterprise": "unknown",
       "positioning": "LLM chaining framework",
       "target_user": "developers",
-      "source": "ESTIMATE: based on known offerings"
+      "source": "ESTIMATE"
     },
     "crewai_enterprise": {
       "free_tier": "OSS CrewAI framework",

@@ -2,98 +2,91 @@
   "critical_pitfalls": [
     {
       "id": "P1",
-      "title": "The Hardware Cliff (SATA Cable Failure)",
+      "title": "The Hardware Cliff",
       "severity": "HIGH",
-      "description": "HP Pavilion 4GB RAM + failing SATA = production environment that corrupts its own disk. Every QEMU guest crash risks the QA artifacts and bundle state. [PDF: hardware infrastructure risk \u2014 Phase 1 checkpoint addresses this]",
-      "mitigation": "SATA cable replacement (\u20b9200) is the single highest-ROI action in the entire roadmap. [PDF Phase 1: Foundation & Secure Initialization]"
+      "description": "HP Pavilion 4GB RAM + failing SATA = production environment that corrupts its own disk. Every QEMU guest crash risks the QA artifacts and bundle state. The SATA cable is the #1 risk item. Fix it before any customer relies on this mesh.",
+      "mitigation": "SATA cable replacement (\u20b9200) is the single highest-ROI action in the entire roadmap."
     },
     {
       "id": "P2",
       "title": "Free Model Availability Is Not Guaranteed",
       "severity": "HIGH",
-      "description": "OpenRouter free tiers change without notice. deepseek-v4-flash-free, openrouter/free, and other free models may impose rate limits, disappear, or degrade. The entire Zen Loop depends on $0-cost models.",
-      "mitigation": "Maintain a model fallback pool of 6+ free models. Keep DeepSeek V4 Flash ($0.14/M miss) as lowest-cost paid fallback. Budget cap $5/mo as recommended in PDF Phase 1."
+      "description": "OpenRouter free tiers change without notice. deepseek-v4-flash-free, big-pickle, and other free models may impose rate limits, disappear, or degrade. The entire Zen Loop depends on $0-cost models. Any change breaks the pipeline.",
+      "mitigation": "Maintain a model fallback pool of 6+ free models. Implement cost-sentinel: abort if model shows any non-zero pricing. Keep paid-model code path dormant but ready."
     },
     {
       "id": "P3",
       "title": "Solo Non-Developer Bottleneck",
       "severity": "HIGH",
-      "description": "UOM is AI-generated code managed by a prompt engineer. When a bug requires deep C/kernel/assembly knowledge, the pipeline stalls. Time-to-fix can be 3-10x longer than a developer.",
-      "mitigation": "Define explicit scope boundaries in customer contracts. Stick to POSIX sh / Python / Markdown layer. Outsource kernel-level work to community."
+      "description": "UOM is AI-generated code managed by a prompt engineer. This is a strength (speed) and a risk (depth). When a bug requires deep C/kernel/assembly knowledge, or a customer asks for a feature outside LLM comfort zone, the pipeline stalls. Time-to-fix can be 3-10x longer than a developer.",
+      "mitigation": "Define explicit scope boundaries in customer contracts. Stick to POSIX sh / Python / Markdown layer. Outsource kernel-level work to community or defer."
     },
     {
       "id": "P4",
       "title": "Phone Dependency Is Not Customer-Grade",
       "severity": "HIGH",
-      "description": "Phone2 as hotspot + QEMU host + tunnel relay is a single point of failure. Android Phantom Process Killer (PDF page 5, 11) terminates background orchestrators. No customer SLA can be built on this.",
-      "mitigation": "PDF page 5: Configure ADB overrides (settings_enable_monitor_phantom_procs false, max_phantom_processes 2147483647). Phase 2 hardware (RPi 5 + VPS) removes phone from critical path."
+      "description": "Phone2 as a hotspot + QEMU host + tunnel relay is a single point of failure. If the battery swells, the phone breaks, or Android kills background processes, the entire mesh loses its gateway. No customer SLA can be built on this.",
+      "mitigation": "Phase 2 hardware investment (RPi 5 + VPS) removes phone dependency from critical path. Do not sign SLA before Phase 2 hardware is online."
     },
     {
       "id": "P5",
       "title": "Market Saturation in Visual AI Automation",
       "severity": "MEDIUM",
-      "description": "No-code automation (Zapier, Make, n8n) is saturated and well-funded. PDF recommendation: 'Avoid highly saturated consumer chatbot markets. Focus on specialized enterprise requirements.'",
-      "mitigation": "Position UOM as back-end mesh for builders, not UI tool for non-technicals. PDF: Target MCP server endpoints, private database archives, on-premises edge nodes."
+      "description": "The no-code automation market (Zapier, Make, n8n) is saturated and well-funded. Competing directly on features is a losing bet. UOM's edge is POSIX/edge/privacy-first \u2014 but that niche is smaller.",
+      "mitigation": "Position UOM as the back-end mesh for builders, not a UI tool for non-technicals. Target: developers, homelab power users, solo founders who want control without cloud lock-in."
     },
     {
       "id": "P6",
-      "title": "Multi-Week QA Factory Is Not Free On Rate Limits",
+      "title": "Multi-Week QA Factory Is Not Free",
       "severity": "MEDIUM",
-      "description": "Multi-swarm SaaS pipeline (Swarm A-D) requires weeks of QA. On free models with rate limits, a 2-week QA soak will exhaust daily limits multiple times.",
-      "mitigation": "Budget-gated paid-model mode for Swarm C (QA) only: DeepSeek V4 Flash at $0.14/M \u2014 ~$10-30 for 2-week QA run. Acceptable cost for quality assurance."
+      "description": "The multi-swarm SaaS pipeline (Swarm A-D) requires weeks of QA. On free models with rate limits, a 2-week QA soak on free tier will exhaust daily limits multiple times. The QA phase in practice will take 2-4x longer than on paid models.",
+      "mitigation": "Implement a budget-gated paid-model mode for Swarm C (QA) only. $10-30 for a 2-week QA run is acceptable. This is the one place where free-tier policy can be selectively relaxed."
     },
     {
       "id": "P7",
-      "title": "Singapore Work Permit + Income Declaration Conflict",
+      "title": "Singapore Work Permit + Income Declaration",
       "severity": "MEDIUM",
-      "description": "If Singapore S-Pass is active, running revenue-generating SaaS may conflict with employment contract or MOM regulations on secondary income.",
-      "mitigation": "Review employment contract before monetizing. Keep UOM as open-source with Patreon/sponsorship (generally allowed) vs. active SaaS contracts (may need employer clearance). Singapore consulting at SGD 100-500/hr may require declaration."
+      "description": "If Singapore S-Pass is approved and Dharani returns to employment, running a revenue-generating SaaS simultaneously may conflict with employment contract or MOM regulations on secondary income.",
+      "mitigation": "Review employment contract for IP and secondary income clauses before monetizing. Keep UOM as open-source with Patreon/sponsorship model (generally allowed) vs. active SaaS contracts (may need employer clearance)."
     },
     {
       "id": "P8",
-      "title": "Agentic AI Race Commoditizes the Stack",
+      "title": "agentic AI Race Commoditizes the Stack",
       "severity": "MEDIUM",
-      "description": "OpenAI, Google, Anthropic building native agent orchestration. By 2027, much of UOM's manual wiring (model routing, tool use) may be 1-click in major platforms.",
-      "mitigation": "UOM's moat is EDGE + POSIX + zero-cost + phone mesh layer \u2014 not LLM routing logic. PDF page 1: 'zero-cost remote model orchestration' and 'offline-first sovereign micro-clouds' are the differentiators."
+      "description": "OpenAI, Google, Anthropic, and Microsoft are all building native agent orchestration. By 2027, much of what UOM manually wires together (model routing, tool use, multi-step pipelines) may be 1-click in the major platforms.",
+      "mitigation": "UOM's moat is the EDGE + POSIX + zero-cost + phone mesh layer \u2014 not the LLM routing logic. The platform will commoditize; the hardware autonomy will not. Lean into the edge story."
     },
     {
       "id": "P9",
       "title": "Revenue Timeline Is Longer Than Expected",
       "severity": "HIGH",
-      "description": "Solo non-developer SaaS median time to $500 MRR globally is 14-22 months. PDF monetization matrix shows Edge Bootstrap at $150-800/mo yield \u2014 achievable but not quick.",
-      "mitigation": "Start monetizing earlier with low-risk revenue: GitHub Sponsors, MCP server endpoints (per-query billing), Singapore consulting. PDF: 'Credit-based micro-SaaS, automated content generation, local research tasks' as entry points."
+      "description": "Solo non-developer SaaS median time to $500 MRR globally is 14-22 months. In India, INR pricing gives competitive pricing power but a smaller absolute TAM. First paying customer typically takes 6-10 months from stable MVP.",
+      "mitigation": "Start monetizing earlier with low-risk revenue: GitHub Sponsors, consulting time, Shadow Narratives cross-promo. Do not depend on swarm factory revenue in the first 9 months."
     },
     {
       "id": "P10",
       "title": "cinai / AGI Disruption Risk",
-      "severity": "LOW-NOW \u2192 HIGH-LATER",
-      "description": "If cinai-level autonomous AI emerges within 18-24 months, the role of a human prompt-engineer orchestrating free models becomes redundant at infrastructure level. PDF page 1, 14: Position UOM alongside Cinai Studio and generative media pipelines.",
-      "mitigation": "Build customer lock-in through data portability and on-premise/edge value. PDF: 'Expose proprietary local databases or compute resources as secure MCP servers' \u2014 the edge mesh and customer trust layer become MORE valuable as AGI scales."
+      "severity": "LOW-NOW HIGH-LATER",
+      "description": "If cinai-level autonomous AI emerges within 18-24 months, the role of a human prompt-engineer orchestrating free models becomes redundant at the infrastructure level. The value shifts to: who owns the deployment stack and customer relationships.",
+      "mitigation": "Build customer lock-in through data portability and on-premise/edge value, not model quality. When AGI orchestrates itself, the edge mesh (UOM) and the customer trust layer become MORE valuable, not less."
     }
   ],
   "honest_expectations": {
-    "year_1_most_likely_outcome": "0-1 paying customers. \u20b90-25K MRR. PDF Edge Bootstrap yield ($150-800/mo) achievable with active MCP server endpoints. Strong open-source cred.",
-    "year_2_most_likely_outcome": "5-25 paying customers. \u20b925K-1L MRR. omni-saas factory in beta. Singapore consulting contracts (SGD 100-200/hr) as primary revenue driver.",
+    "year_1_most_likely_outcome": "0-1 paying customers. \u20b90-10K MRR. Strong open-source cred. Well-documented mesh. Active GitHub Sponsors funnel started.",
+    "year_2_most_likely_outcome": "5-25 paying customers. \u20b910K-50K MRR. omni-saas factory in beta. First consulting revenue from Singapore or Indian market.",
     "what_will_actually_kill_this": [
-      "Abandoning after 6 months of no revenue",
-      "Trying to compete with n8n or Zapier on their terms [PDF: avoid saturated consumer markets]",
+      "Abandoning the project after 6 months of no revenue",
+      "Trying to compete with n8n or Zapier on their terms",
       "Ignoring hardware stability (SATA cable) for feature building",
-      "Running out of free model access with no $5/mo paid fallback plan",
-      "Singapore employment conflicting with SaaS income [P7]",
-      "Android Phantom Process Killer terminating all background processes [PDF page 5]"
+      "Running out of free model access with no paid fallback plan",
+      "Singapore employment conflicting with SaaS income"
     ],
     "what_gives_this_the_best_chance": [
       "Shipping a working demo and posting on IndieHackers, HackerNews Show HN",
       "Shadow Narratives YouTube cross-promo as distribution channel",
-      "Niche positioning: POSIX AI mesh for homelab builders [PDF: low-medium saturation]",
-      "Singapore network providing first enterprise MCP server contracts",
-      "Keeping costs at $0 until revenue justifies paid models [PDF Phase 1: $5/mo budget cap]",
-      "Prompt caching to achieve 98% input cost reduction [PDF page 2]"
+      "Niche positioning: POSIX AI mesh for homelab builders",
+      "Singapore network providing first enterprise consulting contracts",
+      "Keeping costs at $0 until revenue justifies paid models"
     ]
-  },
-  "pdf_strategic_recommendations": [
-    "Implement Prompt Caching as a Core FinOps Strategy \u2014 up to 98% cost reduction [PDF page 14]",
-    "Apply Android Background Overrides During Mobile Setup \u2014 disable Phantom Process Killer [PDF page 5, 11, 14]",
-    "Target Niche, High-Value Monetization Pathways \u2014 MCP servers, cinai integration, enterprise [PDF page 14]"
-  ]
+  }
 }
