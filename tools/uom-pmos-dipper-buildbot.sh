@@ -240,12 +240,15 @@ options="!check !archcheck"
 depends="
 	postmarketos-base
 	mkbootimg
-	soc-qcom-sdm845
-	soc-qcom-sdm845-ucm
+	alsa-ucm-conf-sdm845
+	soc-qcom
+	soc-qcom-modem
 	linux-postmarketos-qcom-sdm845
+	linux-firmware-qcom
+	linux-firmware-ath10k
 "
 makedepends="devicepkg-dev"
-subpackages="$pkgname-nonfree-firmware:nonfree_firmware"
+subpackages=""
 
 source="
 	deviceinfo
@@ -257,16 +260,6 @@ build() {
 
 package() {
 	devicepkg_package $startdir $pkgname
-}
-
-nonfree_firmware() {
-	pkgdesc="GPU, modem, venus and sensor firmware for Mi 8"
-	depends="
-		soc-qcom-sdm845-nonfree-firmware
-		soc-qcom-sdm845-modem
-		hexagonrpcd
-	"
-	mkdir "$subpkgdir"
 }
 
 sha512sums="
