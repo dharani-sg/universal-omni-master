@@ -1,0 +1,10 @@
+V14 Bootstrap Validation — 2026-07-21
+══════════════════════════════════════════════════════════════
+Endpoint             Status  Checks  Notes
+──────────────────────────────────────────────────────────────
+Laptop (localhost)   SKIP    -/10    SSH pubkey not configured for localhost (control node, not target)
+Phone1 Host          PASS    9/10    Kernel 4.9.337, 1078MB free, QEMU OK, 1 DNS warn
+Phone2 Host          PASS    8/10    Kernel 6.6.30, 1695MB free, QEMU OK, 2 warns (disk, DNS)
+Phone2 VM            PASS    9/10    Kernel 6.12.95, 1360MB free, Python 3.12, network OK, 1 warn (no QEMU)
+──────────────────────────────────────────────────────────────
+RESULT: 3/3 target endpoints PASS, 0 FAIL, 1 SKIP (laptop control node)
