@@ -1,44 +1,92 @@
-# UOM Current Session Status — 2026-07-21 (Antigravity & OpenCode)
+# UOM Current Session Status — 2026-07-21 (OpenCode Resume)
 
-> **Updated**: 2026-07-21T12:49:00+05:30
-> **Authors**: Antigravity Assistant & OpenCode CLI
-
----
-
-## 1. Active Topology & IP Assignment
-
-| Device | Subnet IP | SSH Port | User | Role / Status |
-|:-------|:----------|:---------|:-----|:--------------|
-| **Laptop** | `10.155.18.90` | local | `alpine` | Alpine Linux 3.24.1, postmarketOS build host |
-| **Phone 1 (Xiaomi Mi 8)** | `10.155.18.144` | `8022` | `u0_a608` | Termux host, postmarketOS dipper target, 3-way sync active |
-| **Phone 2 (Redmi 13C)** | `10.155.18.131` | `8022` | `root`/`u0_a217` | Hotspot host, OpenCode CLI refactoring session active |
-| **Phone 2 VM** | `127.0.0.1` | `22222` | `uom` | Alpine 3.21 musl, runit supervised, direct-kernel boot |
+> **Updated**: 2026-07-21T13:00:00+05:30
+> **Authors**: OpenCode CLI (post-Antigravity resume)
+> **Antigravity Session**: Quota exhausted at 12:49 IST — all work preserved
 
 ---
 
-## 2. Antigravity Session Status (pmOS Buildbot & 3-Way Sync)
+## 1. Active Topology & 3-Way Sync Matrix
 
-- **postmarketOS Buildbot**:
-  - `apk-tools-static-3.0.6-r0.apk` corrupt download issue **RESOLVED**.
-  - `pmbootstrap build device-xiaomi-dipper --force` **PASSED**.
-  - `pmbootstrap install --password uom` (`task-31`) actively running in background to generate `xiaomi-dipper` boot and rootfs images.
-- **Resilient 3-Way Auto-Sync Daemon**:
-  - `tools/uom-3way-auto-sync.sh` created & active (PID loop every 180s).
-  - Syncs git bundles across Laptop (`10.155.18.90`), Phone 1 (`10.155.18.144`), Phone 2 Host (`10.155.18.131`), and Phone 2 VM (`22222`).
-  - Ensures full state survival in case of laptop battery power failure.
+| Device | Subnet IP | SSH Port | User | Status | Last Contact |
+|:-------|:----------|:---------|:-----|:-------|:-------------|
+| **Laptop** | `10.155.18.90` | local | `alpine` | Build host, OpenCode session | NOW |
+| **Phone 1 (Xiaomi Mi 8)** | `10.155.18.144` | `8022` | `u0_a608` | WiFi connected via Phone2 hotspot | 12:55 ✓ |
+| **Phone 2 (Redmi 13C)** | `10.155.18.131` | `8022` | `root` | Hotspot host, OpenCode refactor | 12:55 ✓ |
+| **Phone 2 VM** | `127.0.0.1` | `22222` | `uom` | runit supervised (may need restart) | Pending |
 
----
-
-## 3. OpenCode CLI Session Status (Phone 2)
-
-- OpenCode CLI session actively running on Phone 2 (`10.155.18.131`).
-- non-disruptive fast-forward (`git merge --ff-only main-auto`) enabled for background git bundle syncs.
-- Phone 2 QEMU VM running supervised under runit.
+**3-Way Sync Daemon**: `tools/uom-3way-auto-sync.sh` (PID 1729) — active, 180s loop.
+**Old auto-sync**: `/tmp/auto-sync.sh` (deadd) — replaced by 3-way daemon.
 
 ---
 
-## 4. Next Actions
+## 2. postmarketOS Buildbot Status
 
-1. Wait for `pmbootstrap install` (`task-31`) image export completion.
-2. Launch postmarketOS buildbot daemon loop (`nohup sh tools/uom-pmos-dipper-buildbot.sh --loop &`).
-3. Maintain continuous 3-way resilient sync daemon loop (`tools/uom-3way-auto-sync.sh`).
+### ✅ Completed
+- `apk-tools-static-3.0.6-r0.apk` corrupt cache purged and re-downloaded successfully
+- `pmbootstrap build device-xiaomi-dipper --force` **PASSED** — `.apk` at `packages/edge/aarch64/`
+- `pmbootstrap install --password uom` **rootfs populated** — 3.2GB, 1073 packages installed
+- Boot files present: `vmlinuz` (16MB), `linux.efi` (16MB), `dtbs/`
+- Device package in upstream pmaports detected correctly (synthesis skipped)
+- Buildbot script (v2) heredoc bug fixed: `<<'EOF'` → `<<EOF` for `$DEVICE_UPPER` expansion
+
+### ⚠️ Issues
+- **No flashable `.img` file**: Install populated rootfs but boot image generation may not have run to completion. May need `pmbootstrap install --no-base` or manual `pmbootstrap export` to generate flashable image.
+- **Kernel 7.2-rc4 build died**: PID 20730, stopped at line 5183 (`drivers/video/hdmi.o`). No `vmlinuz` or `Image` output. Cross-compiler exists at `/mnt/kswarm-void/tmp/kernel-build/aarch64-linux-musl-cross/`.
+- **udevadm symbol errors**: QEMU user-mode systemd library incompatibility — may affect image generation.
+
+### Buildbot Script (tools/uom-pmos-dipper-buildbot.sh)
+- `DIPPER_DIR` corrected to `device-xiaomi-dipper` (matches upstream)
+- Upstream detection at line 288 correctly skips synthesis
+- `run_build_loop()` does `build device-xiaomi-dipper --force` + `install --password uom`
+- Loop mode (`--loop`) with 60s retry interval
+
+---
+
+## 3. 3-Way Auto-Sync Daemon (tools/uom-3way-auto-sync.sh)
+
+- **PID**: 1729 (restarted by OpenCode at 12:56)
+- **Interval**: 180s
+- **Sync targets**:
+  1. Phone 1 (10.155.18.144:8022, u0_a608) — git bundle + ff-only merge
+  2. Phone 2 Host (10.155.18.131:8022, root) — git bundle + ff-only merge
+  3. Phone 2 VM (127.0.0.1:22222, uom) — git bundle + ff-only merge
+- **Non-disruptive**: Uses `--ff-only` merge on remote — never conflicts with dirty working trees
+
+---
+
+## 4. Todo Queue
+
+| # | Priority | Task | Status |
+|---|----------|------|--------|
+| 1 | HIGH | Restart buildbot loop (`--loop` mode daemon) | ⏳ After install verification |
+| 2 | HIGH | Generate flashable image (manual `pmbootstrap export` or re-run install) | ⏳ |
+| 3 | MED | Restart kernel 7.2-rc4 cross-compile from where it died | 🔲 |
+| 4 | MED | Verify Phone2 VM (port 22222) reachability | 🔲 |
+| 5 | LOW | Clean stale buildbot state files | 🔲 |
+
+---
+
+## 5. Critical File Paths (Verified)
+
+```
+/home/alpine/src/universal-omni-master/
+├── tools/uom-pmos-dipper-buildbot.sh     # BUILD BOT SCRIPT (v2)
+├── tools/uom-3way-auto-sync.sh           # 3-WAY SYNC DAEMON
+├── docs/SESSION-STATUS-CURRENT.md        # THIS FILE
+└── .uom-agent/state.json                 # UOM agent state (epoch 5)
+
+/mnt/kswarm-void/tmp/pmos-buildbot/
+├── work/
+│   ├── chroot_rootfs_xiaomi-dipper/      # 3.2GB populated rootfs
+│   │   └── boot/{vmlinuz,linux.efi,dtbs/}
+│   ├── packages/edge/aarch64/
+│   │   └── device-xiaomi-dipper-1-r1.apk # Built successfully
+│   └── log.txt                           # 12K lines, 993KB install log
+├── logs/{build_attempt_1..4}.log
+└── .buildbot_{state,heartbeat,pid}
+```
+
+---
+
+> **Next**: Verify flashable image → start buildbot loop → push to main via 3-way sync
