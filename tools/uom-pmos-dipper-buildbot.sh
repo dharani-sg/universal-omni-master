@@ -283,7 +283,7 @@ setup_dipper_port() {
   log "=== Phase 4: Dipper Device Port ==="
   save_state "porting"
 
-  DIPPER_DIR="$PMAPORTS_WORK/device/testing/$DEVICE_UPPER"
+  DIPPER_DIR="$PMAPORTS_WORK/device/testing/device-$DEVICE_UPPER"
 
   if [ -f "$DIPPER_DIR/APKBUILD" ] && [ -f "$DIPPER_DIR/deviceinfo" ]; then
     log "Dipper device already exists in pmaports (upstream). Skipping synthesis."
@@ -331,8 +331,8 @@ deviceinfo_initfs_compression="zstd:fast"
 EOF
 
   log "Synthesizing dipper APKBUILD..."
-  cat << 'EOF' > "$DIPPER_DIR/APKBUILD"
-# Maintainer: UOM Auto-Port Buildbot <uom@local>
+  cat << EOF > "$DIPPER_DIR/APKBUILD"
+# Maintainer: UOM Auto-Port Buildbot <uom@universal-omni.org>
 pkgname=device-$DEVICE_UPPER
 pkgdesc="Xiaomi Mi 8"
 pkgver=1
@@ -345,7 +345,8 @@ depends="
 	postmarketos-base
 	mkbootimg
 	alsa-ucm-conf-sdm845
-	soc-qcom-sdm845
+	soc-qcom
+	soc-qcom-modem
 	linux-postmarketos-qcom-sdm845
 "
 makedepends="devicepkg-dev"
@@ -355,11 +356,11 @@ source="
 "
 
 build() {
-	devicepkg_build $startdir $pkgname
+	devicepkg_build \$startdir \$pkgname
 }
 
 package() {
-	devicepkg_package $startdir $pkgname
+	devicepkg_package \$startdir \$pkgname
 }
 
 sha512sums="
@@ -367,7 +368,7 @@ SKIP
 "
 EOF
 
-  (cd "$DIPPER_DIR" && sha512sum deviceinfo APKBUILD > sha512sums.txt 2>/dev/null || true)
+  python3 "$PMB" checksum "device-$DEVICE_UPPER"
   log "Dipper device port synthesized at $DIPPER_DIR"
 }
 
@@ -411,9 +412,8 @@ auto_fix() {
         "$DIPPER_DIR/deviceinfo"
       ;;
     *"sha512sums"*|*"checksum"*)
-      log "Resetting checksums to SKIP..."
-      sed -i 's/[0-9a-f]\{128\}/SKIP/g' "$DIPPER_DIR/sha512sums.txt" 2>/dev/null || true
-      echo -e "SKIP\nSKIP" > "$DIPPER_DIR/sha512sums.txt"
+      log "Running pmbootstrap checksum..."
+      python3 "$PMB" checksum "device-$DEVICE_UPPER"
       ;;
     *"kpartx"*)
       log "Ensuring kpartx wrapper is in PATH..."
@@ -470,7 +470,7 @@ run_build_loop() {
     log "=== Phase 6: Image Export ==="
     save_state "exporting"
     local install_log="$LOG_DIR/install.log"
-    if cd "$WORK_DIR/work" && timeout 600 python3 "$PMB" install > "$install_log" 2>&1; then
+    if cd "$WORK_DIR/work" && timeout 600 python3 "$PMB" install --password uom > "$install_log" 2>&1; then
       log "postmarketOS image generated!"
       log "Images at: $WORK_DIR/work/chroot_native/tmp/"
       heartbeat "build_complete"
