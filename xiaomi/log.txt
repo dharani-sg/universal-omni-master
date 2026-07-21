@@ -1,0 +1,9 @@
+
+
+(003593) [10:02:52] $ /mnt/kswarm-void/tmp/pmos-buildbot/pmbootstrap/pmbootstrap.py config aports
+(003593) [10:02:52] pmbootstrap v3.11.1 (Python 3.14.5 (main, Jun  9 2026, 08:17:28) [GCC 15.2.0])
+
+
+(003655) [10:03:11] $ /mnt/kswarm-void/tmp/pmos-buildbot/pmbootstrap/pmbootstrap.py checksum device-xiaomi-dipper
+(003655) [10:03:11] pmbootstrap v3.11.1 (Python 3.14.5 (main, Jun  9 2026, 08:17:28) [GCC 15.2.0])
+(003655) [10:03:11] % doas mkdir -p /home/alpine/src/universal-omni-master/xiaomi/chroot_native/dev

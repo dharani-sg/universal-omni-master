@@ -115,8 +115,45 @@ setup_tools() {
     (cd "$PMBOOTSTRAP_DIR" && git pull --ff-only || true)
   fi
 
-  export PATH="$PMBOOTSTRAP_DIR:$PATH"
+  # Create bin wrappers for host tools (e.g. kpartx dummy for package building)
+  mkdir -p "$WORK_DIR/bin"
+  if ! which kpartx >/dev/null 2>&1; then
+    log "Creating dummy kpartx wrapper in $WORK_DIR/bin..."
+    cat << 'EOF' > "$WORK_DIR/bin/kpartx"
+#!/bin/sh
+if [ "$1" = "-a" ] || [ "$1" = "-d" ] || [ "$1" = "-l" ]; then
+  exit 0
+fi
+echo "dummy kpartx"
+exit 0
+EOF
+    chmod +x "$WORK_DIR/bin/kpartx"
+  fi
+
+  export PATH="$WORK_DIR/bin:$PMBOOTSTRAP_DIR:$PATH"
   PMB="$PMBOOTSTRAP_DIR/pmbootstrap.py"
+
+  # Synthesize ~/.config/pmbootstrap.cfg if missing
+  mkdir -p "$HOME/.config"
+  cat << EOF > "$HOME/.config/pmbootstrap.cfg"
+[pmbootstrap]
+aports = $WORK_DIR/work/cache_git/pmaports
+arch = aarch64
+boot_size = 256
+ccache_size = 5G
+device = xiaomi-dipper
+extra_packages = none
+extra_space = 0
+hostname = dipper
+jobs = 2
+kernel = postmarketos-qcom-sdm845
+keymap = us
+locale = en_US.UTF-8
+timezone = UTC
+ui = phosh
+user = uom
+work = $WORK_DIR/work
+EOF
 
   log "pmbootstrap version: $($PMB --version 2>&1 || echo 'failed')"
 }
@@ -132,13 +169,20 @@ setup_dipper_port() {
     rm -rf "$PMAPORTS_WORK_DIR"
   fi
 
-  $PMB --work "$WORK_DIR/work" config pmaports_directory "$WORK_DIR/work/cache_git/pmaports" || true
-
+  # Pre-clone pmaports if not present
   mkdir -p "$WORK_DIR/work/cache_git"
   if [ ! -d "$PMAPORTS_WORK_DIR" ]; then
     log "Cloning pmaports from gitlab.postmarketos.org..."
     git clone --depth=1 https://gitlab.postmarketos.org/postmarketOS/pmaports.git "$PMAPORTS_WORK_DIR"
   fi
+
+  # Ensure symlink to default pmaports path
+  mkdir -p "$HOME/.local/var/pmbootstrap/cache_git"
+  ln -sf "$PMAPORTS_WORK_DIR" "$HOME/.local/var/pmbootstrap/cache_git/pmaports" || true
+
+  # Configure pmbootstrap with valid 3.11.1 keys
+  $PMB config work "$WORK_DIR/work" || true
+  $PMB config aports "$PMAPORTS_WORK_DIR" || true
 
   DIPPER_DIR="$PMAPORTS_WORK_DIR/device/testing/device-xiaomi-dipper"
   mkdir -p "$DIPPER_DIR"
@@ -238,14 +282,14 @@ EOF
 run_build_loop() {
   log "=== Phase 4: Automated Buildbot Feedback Loop ==="
 
-  PMB="$PMBOOTSTRAP_DIR/pmbootstrap.py --work $WORK_DIR/work"
+  PMB="$PMBOOTSTRAP_DIR/pmbootstrap.py"
 
   log "Configuring pmbootstrap non-interactively for xiaomi-dipper..."
-  $PMB config vendor xiaomi || true
   $PMB config device xiaomi-dipper || true
   $PMB config kernel postmarketos-qcom-sdm845 || true
   $PMB config user uom || true
   $PMB config ui phosh || true
+  $PMB config aports "$PMAPORTS_WORK_DIR" || true
 
   LOOP=1
   SUCCESS=0
@@ -262,7 +306,36 @@ run_build_loop() {
       log "✗ Build failed on attempt #$LOOP. Analyzing logs..."
       cat "$BUILD_LOG" | tail -25
 
-      if grep -q "sha512sums" "$BUILD_LOG"; then
+      if grep -q "pmbootstrap init" "$BUILD_LOG"; then
+        log "--> Refactoring: Regenerating ~/.config/pmbootstrap.cfg..."
+        mkdir -p "$HOME/.config"
+        cat << EOF > "$HOME/.config/pmbootstrap.cfg"
+[pmbootstrap]
+aports = $WORK_DIR/work/cache_git/pmaports
+arch = aarch64
+boot_size = 256
+ccache_size = 5G
+device = xiaomi-dipper
+extra_packages = none
+extra_space = 0
+hostname = dipper
+jobs = 2
+kernel = postmarketos-qcom-sdm845
+keymap = us
+locale = en_US.UTF-8
+timezone = UTC
+ui = phosh
+user = uom
+work = $WORK_DIR/work
+EOF
+
+      elif grep -q "pmaports dir not found" "$BUILD_LOG"; then
+        log "--> Refactoring: Linking pmaports directory to default cache path..."
+        mkdir -p "$HOME/.local/var/pmbootstrap/cache_git"
+        ln -sf "$PMAPORTS_WORK_DIR" "$HOME/.local/var/pmbootstrap/cache_git/pmaports" || true
+        $PMB config aports "$PMAPORTS_WORK_DIR" || true
+
+      elif grep -q "sha512sums" "$BUILD_LOG"; then
         log "--> Refactoring: Updating checksums..."
         (cd "$WORK_DIR/work/cache_git/pmaports/device/testing/device-xiaomi-dipper" && \
          sed -i 's/SKIP/00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000/g' APKBUILD)
