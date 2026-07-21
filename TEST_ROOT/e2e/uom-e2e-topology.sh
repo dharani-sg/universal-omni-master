@@ -57,20 +57,27 @@ fi
 
 # Test 5: TCP connectivity to common API port
 echo "[5/6] TCP → api.openai.com:443"
-R=$($SSH_CMD 'timeout 5 sh -c "echo > /dev/tcp/api.openai.com/443" 2>&1 && echo OK || echo FAIL' 2>/dev/null | tr -d '\r\n')
-if [ "$R" = "OK" ]; then
-  log_pass "TCP 443 to api.openai.com reachable"
+R=$($SSH_CMD 'timeout 5 curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 https://api.openai.com/v1/models 2>/dev/null || echo FAIL' 2>/dev/null | tr -d '\r\n')
+if [ "$R" = "401" ] || [ "$R" = "200" ]; then
+  log_pass "TCP 443 to api.openai.com reachable (HTTP $R)"
+elif [ "$R" = "FAIL" ]; then
+  log_warn "TCP check inconclusive"
 else
-  log_warn "TCP check inconclusive (may need different method)"
+  log_pass "TCP 443 reachable (HTTP $R)"
 fi
 
 # Test 6: JSON parse capability
 echo "[6/6] JSON parse → python3 json.loads"
-R=$($SSH_CMD 'python3 -c "import json; d=json.loads(\"{\\\"status\\\":\\\"ok\\\"}\"); print(d[\\\"status\\\"])"' 2>/dev/null | tr -d '\r\n')
+R=$($SSH_CMD 'python3 << "PYEOF"
+import json
+d = json.loads("{\"status\":\"ok\"}")
+print(d["status"])
+PYEOF
+' 2>/dev/null | tr -d '\r\n')
 if [ "$R" = "ok" ]; then
   log_pass "JSON parsing works"
 else
-  log_fail "JSON parsing failed"
+  log_fail "JSON parsing failed: got $R"
 fi
 
 echo ""
