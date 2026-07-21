@@ -1,0 +1,45 @@
+{
+  "created": "2026-07-21T10:42:00Z",
+  "priority": "PHONE1_NATIVE_DIPPER",
+  "lanes": {
+    "A": "PHONE1_HARDWARE_EXCLUSIVE",
+    "B": "LAPTOP_BUILD",
+    "C": "QEMU_USERSPACE",
+    "D": "SAFE_SUPPORT"
+  },
+  "queue": [
+    {"id": "N0", "title": "Freeze unrelated tracks and checkpoint state", "status": "in_progress"},
+    {"id": "N1", "title": "Build immutable manifest and backup of dipper artifacts", "status": "pending"},
+    {"id": "N2", "title": "Audit exact provenance of xiaomi-dipper build", "status": "pending"},
+    {"id": "N3", "title": "Capture authoritative Mi 8 hardware/partition/boot inventory", "status": "pending"},
+    {"id": "N4", "title": "Build beryllium-vs-dipper compatibility matrix", "status": "pending"},
+    {"id": "N5", "title": "Select safe dipper kernel strategy", "status": "pending"},
+    {"id": "N6", "title": "Build minimal headless dipper candidate A", "status": "pending"},
+    {"id": "N7", "title": "Build mainline dipper candidate B", "status": "pending"},
+    {"id": "N8", "title": "Validate rootfs and UOM userspace in QEMU", "status": "pending"},
+    {"id": "N9", "title": "Create non-destructive native boot test package", "status": "pending"},
+    {"id": "N10", "title": "Human safety gate before any fastboot action", "status": "pending"},
+    {"id": "N11", "title": "Temporary native boot and early-log capture", "status": "pending"},
+    {"id": "N12", "title": "Establish USB debug shell / USB networking / SSH", "status": "pending"},
+    {"id": "N13", "title": "Native headless hardware validation", "status": "pending"},
+    {"id": "N14", "title": "Native headless reliability soak", "status": "pending"},
+    {"id": "N15", "title": "Install and validate native OpenCode on Phone1", "status": "pending"},
+    {"id": "N16", "title": "Convert Phone1 into independent SOLO UOM node", "status": "pending"},
+    {"id": "N17", "title": "Validate SOLO, DUAL and TRIPLE orchestration", "status": "pending"},
+    {"id": "N18", "title": "Decide persistent postmarketOS installation strategy", "status": "pending"},
+    {"id": "N19", "title": "Add display and touchscreen support", "status": "pending"},
+    {"id": "N20", "title": "Add audio, GPU, charging, sensors and modem incrementally", "status": "pending"},
+    {"id": "N21", "title": "Update bootstrap/docs/widgets for native Phone1", "status": "pending"},
+    {"id": "N22", "title": "Reconcile Git through bundle manifests", "status": "pending"},
+    {"id": "N23", "title": "Commit source/docs/tests and write native-port report", "status": "pending"}
+  ],
+  "frozen_tracks": [
+    "Phone2 permanent QEMU parity",
+    "generic vanilla 7.2-rc4 kernel compilation",
+    "UI/display work",
+    "audio/modem work",
+    "automatic trident task execution",
+    "pmOS flashing",
+    "unrelated SaaS work"
+  ]
+}

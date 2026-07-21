@@ -3,6 +3,31 @@ _STAGE
 omni-monolith.sh
 *.tmp.*
 /tmp/
+
+# Large binary images — NEVER commit (power-loss safety)
+*.img
+*.raw
+*.qcow2
+*.dtb
+*.dtbo
+boot.img
+initramfs
+vmlinuz
+linux.efi
+*.bundle
+uom-vm/
+
+# Build work directories — large, never commit
+uom-artifact-vault/
+.mnt/
+*.qcow2.*
+qemu-*.log
+
+# Artifact vault for pmOS builds
+uom-artifact-vault/
+
+# Recovery state with large references
+.uom-agent/recovery/post-powerloss-*
 # Editor/OS noise
 *.swp
 *~
