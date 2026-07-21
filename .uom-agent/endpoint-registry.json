@@ -1,11 +1,12 @@
 {
   "schema_version": 1,
-  "run_id": "overnight-triple-20260719T173255Z",
-  "updated_at": "2026-07-19T18:13:00Z",
-  "network_mode": "lan",
+  "run_id": "quality-v5-20260720",
+  "updated_at": "2026-07-20T15:30:00Z",
+  "network_mode": "hotspot",
+  "hotspot_ssid": "Redmi 13C",
   "laptop": {
     "hostname": "alpine-laptop",
-    "ip": "192.168.40.90",
+    "ip": "10.155.18.90",
     "ssh_port": 22,
     "ssh_user": "alpine",
     "opencode_path": "/home/alpine/.opencode/bin/opencode",
@@ -14,22 +15,32 @@
   },
   "phone1": {
     "hostname": "phone1-qemu",
-    "ip": "192.168.40.207",
+    "ip": "10.155.18.244",
     "ssh_port": 8022,
     "ssh_user": "u0_a608",
-    "qemu_jump": "ssh -J u0_a608@192.168.40.207:8022 uom@127.0.0.1 -p 2222",
+    "qemu_jump": "ssh -J u0_a608@10.155.18.244:8022 uom@127.0.0.1 -p 2222",
     "opencode_status": "DEGRADED",
     "opencode_issue": "musl SIGPWR thread hang, no sudo for gcompat",
     "status": "degraded"
   },
   "phone2": {
     "hostname": "phone2-termux",
-    "ip": "192.168.40.157",
+    "ip": "10.155.18.131",
     "ssh_port": 8022,
-    "ssh_user": "u0_a608",
-    "opencode_status": "BROKEN",
-    "opencode_issue": "lildax ET_EXEC rejected by Android linker",
+    "ssh_user": "u0_a217",
+    "qemu_jump": "ssh -J u0_a217@10.155.18.131:8022 uom@127.0.0.1 -p 22222",
+    "opencode_status": "VM_BOOTING",
+    "opencode_issue": "doas.conf pending rewrite — GRUB intercept needed",
     "ssh_to_laptop_user": "alpine",
-    "status": "active_ssh_only"
+    "status": "qemu-active"
+  },
+  "phone2_vm": {
+    "hostname": "uom-phone2-qemu",
+    "ip": "127.0.0.1",
+    "ssh_port": 22222,
+    "ssh_user": "uom",
+    "ssh_host_key_fingerprint": "SHA256:MYk3f25xo53lD7TPVBNxVNNamhcpPk2dZaINXSXoF2Y",
+    "status": "booting-ssh-down",
+    "issue": "doas auth broken — :wheel group syntax unrecognized"
   }
 }

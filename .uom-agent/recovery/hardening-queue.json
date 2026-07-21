@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "created": "2026-07-20T15:10:00Z",
+  "previous_commit": "194f9f2",
+  "provisional_passes_corrected": [
+    {
+      "id": "Q10",
+      "previous_verdict": "PASS",
+      "corrected_verdict": "FALSE_POSITIVE",
+      "reason": "No TEST_ROOT fixture ever ran in the session",
+      "replacement": "H11: Bootstrap validation in TEST_ROOT"
+    },
+    {
+      "id": "Q11",
+      "previous_verdict": "PASS",
+      "corrected_verdict": "PROVISIONAL",
+      "reason": "Phone2 VM absent; Phone1 VM local OpenCode blocked; gate D tunnel was down at test time; gate E ran on live image",
+      "replacement": "H12: Real end-to-end gates with final topology"
+    },
+    {
+      "id": "Q12",
+      "previous_verdict": "PASS",
+      "corrected_verdict": "PROVISIONAL",
+      "reason": "Not a controlled 30-min soak with periodic probes; used accumulated hours as substitute",
+      "replacement": "H13: Fresh 60-min controlled soak"
+    }
+  ],
+  "true_state": {
+    "laptop": "LOCAL_NATIVE",
+    "phone1_termux": "PROXY_TO_LAPTOP",
+    "phone1_vm": "VM_LOCAL_BLOCKED (OpenCode installed but hangs; futex deadlock)",
+    "phone2_termux": "RELAY_CAPABLE (glibc binary incompatible with musl; relay-to-laptop)",
+    "phone2_vm": "NOT_YET_BUILT"
+  },
+  "blocks": [
+    "H0: Correct provisional passes",
+    "H1: Build reusable Alpine guest toolbox",
+    "H2: Install toolbox in Phone1 VM",
+    "H3: Phone1 VM OpenCode diagnostic matrix",
+    "H4: Decide Phone1 VM agent mode",
+    "H5: Build golden clone + sanitize pipeline",
+    "H6: Create Phone2 VM from clone OR reject",
+    "H7: Mirror shared UOM tooling across Alpine systems",
+    "H8: api_wrapper.py + model-rotate integration",
+    "H9: Widget verification",
+    "H10: Network auto-adapt refactor",
+    "H11: Bootstrap validation in TEST_ROOT",
+    "H12: Real E2E gates",
+    "H13: Fresh 60-min controlled soak",
+    "H14: Commit + final report"
+  ]
+}

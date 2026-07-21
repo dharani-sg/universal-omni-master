@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "created": "2026-07-20T16:45:00Z",
+  "session": "post-reboot-hotspot-recovery",
+  "network_mode": "phone2_hotspot",
+  "endpoints": {
+    "laptop": {
+      "ip": "10.155.18.90",
+      "ssid": "Redmi 13C",
+      "ssh_port": 22,
+      "user": "alpine",
+      "head": "671a101",
+      "branch": "main"
+    },
+    "phone1_termux": {
+      "ip": "10.155.18.244",
+      "ssh_port": 8022,
+      "user": "u0_a608",
+      "fingerprint": "1gmMocnr4nGw79xsJc/l0LR012LamRj6Uxl985G/q7I",
+      "host_key_verified": true,
+      "services": {
+        "uom-sshd": "run",
+        "uom-tunnel": "run",
+        "uom-idle-agent": "run",
+        "uom-qemu": "run"
+      },
+      "boot_script": "uom-services.sh",
+      "laptop_ip": "10.155.18.90",
+      "device_id": "phone1-termux"
+    },
+    "phone1_vm": {
+      "ssh_port": 2222,
+      "user": "uom",
+      "hostname": "uom-phone-qemu",
+      "smoke": "15/15 PASS",
+      "relay": "P1_VM_RELAY_OK",
+      "relay_mode": "direct_ssh_to_laptop",
+      "git_head": "194f9f2",
+      "laptop_ip": "10.155.18.90",
+      "device_id": "phone1-vm"
+    },
+    "phone2_termux": {
+      "ip": "10.155.18.131",
+      "ssh_port": 8022,
+      "user": "u0_a217",
+      "fingerprint": "1gmMocnr4nGw79xsJc/l0LR012LamRj6Uxl985G/q7I",
+      "host_key_verified": true,
+      "services": {
+        "uom-sshd": "run",
+        "uom-tunnel": "run",
+        "uom-idle-agent": "run",
+        "uom-qemu": "down"
+      },
+      "boot_script": "uom-services.sh",
+      "laptop_ip": "10.155.18.90",
+      "device_id": "phone2-termux",
+      "disk_issue": "866M overlay 100% full, /data has 46GB free"
+    },
+    "phone2_vm": {
+      "status": "NOT_RUNNING",
+      "image": "415M (refcount error, no golden backup on Phone2)",
+      "golden_on_phone1": "671M (too large for Phone2 866M overlay)",
+      "ssh_port": 22222,
+      "needs": "healthy image + runit service + identity sanitization"
+    }
+  },
+  "completed": [
+    "P0: Post-reboot checkpoint",
+    "P1: Phone2 discovered at 10.155.18.131, fingerprint verified",
+    "P2: Phone2 services recovered (uom-sshd/tunnel/idle-agent=run)",
+    "P3: Phone1 discovered at 10.155.18.244, fingerprint verified",
+    "P4: Phone1 services all running, QEMU+VM up",
+    "P5: Phone1 VM relay P1_VM_RELAY_OK confirmed",
+    "P6: Phone1 VM smoke 15/15 PASS (LO_UP fix deployed)"
+  ],
+  "pending": [
+    "P7: Phone2 QCOW2 — refcount error, no golden backup, 671M too large for overlay",
+    "P8: Phone2 VM setup",
+    "P9: Verifier JSON duplicate lines fix",
+    "P10-P19: API, network, widgets, bootstrap, git, gates, soak, commit"
+  ],
+  "critical_findings": [
+    "Phone1 VM smoke 15/15 PASS after LO_UP fix",
+    "Phone1 VM relay P1_VM_RELAY_OK (direct SSH to laptop)",
+    "Phone2 disk 100% full —866M Termux overlay, /data has 46GB",
+    "Phone2 QCOW2 has refcount error (cluster 6624)",
+    "Phone2 has no golden backup — Phone1 golden (671M) won't fit in866M overlay",
+    "Phone2 VM was NOT stuck — console shows it booted to login prompt",
+    "Old 192.168.40.x IPs completely stale — discovered via hotspot network",
+    "Verifier JSON has duplicate lines (each field appears twice)"
+  ]
+}

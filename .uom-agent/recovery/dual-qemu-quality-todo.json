@@ -1,0 +1,244 @@
+{
+  "schema_version": 1,
+  "created": "2026-07-20T16:10:00Z",
+  "source_sessions": [
+    "previous-H1-H14 (provisional, partially false)",
+    "hardening-queue.json H0-H14 (corrected)",
+    "R0-R19 quality coordinator prompt (most authoritative)"
+  ],
+  "evidence_based_state": {
+    "laptop": {
+      "status": "LOCAL_NATIVE",
+      "head": "671a101",
+      "branch": "main",
+      "note": "toolchain scripts exist, uncommitted smoke/verify/toolbox added"
+    },
+    "phone1_termux": {
+      "status": "PROXY_TO_LAPTOP",
+      "endpoint": "u0_a608@192.168.40.207:8022",
+      "tunnel_port": 31415,
+      "note": "reachable, runit services operational"
+    },
+    "phone1_vm": {
+      "status": "TOOLBOX_INSTALLED_OPENCODE_BLOCKED",
+      "endpoint": "uom@127.0.0.1:2222 (via Phone1 Termux)",
+      "smoke": "14/15 PASS (1 FAIL unknown, verify JSON malformed)",
+      "opencode": "REPRODUCIBLE_STARTUP_HANG (futex livelock, musl+QEMU)",
+      "relay_wrapper": "BROKEN (~/bin/opencode is 0 bytes)"
+    },
+    "phone2_termux": {
+      "status": "REACHABLE",
+      "endpoint": "u0_a217@192.168.40.157:8022",
+      "tunnel_port": 31416,
+      "qemu": "10.2.1 installed, 41GB free, 5.6GB RAM, 8 cores"
+    },
+    "phone2_vm": {
+      "status": "QEMU_RUNNING_SSH_UNCONFIRMED",
+      "qemu_pid": 32134,
+      "ssh_port": 22222,
+      "image": "415MB (UNKNOWN provenance, NOT golden clone)",
+      "golden_on_phone1": "647MB (verified clean, never transferred to Phone2)",
+      "note": "may be stuck at OpenRC hardware driver scan"
+    }
+  },
+  "corrected_false_positives": [
+    {"id": "H2", "claimed": "DONE", "corrected": "14/15 PASS — not complete, verify JSON broken, eval bug in smoke script"},
+    {"id": "H3", "claimed": "DONE", "corrected": "Futex hang observed but ADR not written, relay wrapper broken, no clean-HOME matrix completed"},
+    {"id": "H4", "claimed": "in-progress", "corrected": "Phone2 image unknown provenance, golden never transferred, SSH unconfirmed"},
+    {"id": "Q10", "previous_verdict": "PASS", "corrected": "FALSE_POSITIVE — no TEST_ROOT fixture ever ran"},
+    {"id": "Q11", "previous_verdict": "PASS", "corrected": "PROVISIONAL — Phone2 absent, Phone1 VM OpenCode blocked, tunnel was down"},
+    {"id": "Q12", "previous_verdict": "PASS", "corrected": "PROVISIONAL — not a controlled 30-min soak, used accumulated hours"}
+  ],
+  "critical_blocks": [
+    "CRITICAL: Phone1 VM relay wrapper ~/bin/opencode is 0 bytes — inference broken",
+    "CRITICAL: Phone2 QEMU launcher not runit-supervised — dies on terminal close",
+    "CRITICAL: Phone2 image 415MB vs golden 647MB — different images, unknown provenance",
+    "CRITICAL: -nographic multiplexes monitor+console — caused (qemu) prompt hang",
+    "CRITICAL: Smoke test uses eval \"$@\" — unsafe quoting",
+    "CRITICAL: Verifier output has duplicate opening braces — JSON malformed",
+    "CRITICAL: Phone2 VM identity duplication risk — hostname/machine-id/SSH keys not sanitized"
+  ],
+  "queue": [
+    {
+      "id": "R0",
+      "title": "Observe currently running Phone2 QEMU PID 32134",
+      "status": "pending",
+      "depends_on": [],
+      "max_wait": "10 min",
+      "description": "Do not start another QEMU. Inspect PID, start time, command, image, port 22222 listener, console log, stdout/stderr, memory/CPU use. Poll every 15s."
+    },
+    {
+      "id": "R1",
+      "title": "Repair toolbox verifier + resolve Phone1 14/15 smoke",
+      "status": "pending",
+      "depends_on": [],
+      "max_wait": "30 min",
+      "description": "Capture full verifier+smoke output (no head pipe). Validate JSON with jq -e. Refactor smoke: remove eval, use dedicated predicates, output one valid JSON doc, human logs to stderr. Distinguish guest-only from laptop-only. Require PASS=15/15 or explicit SKIP with reason."
+    },
+    {
+      "id": "R2",
+      "title": "Architecture-aware Alpine guest package manifests",
+      "status": "pending",
+      "depends_on": [],
+      "max_wait": "30 min",
+      "description": "Create config/alpine-guest/packages-required.txt and packages-optional.txt. Required: bash, ca-certificates, curl, jq, git, openssh, rsync, tmux, python3, py3-pip, file, util-linux, coreutils, findutils, iproute2, iputils, bind-tools, procps, strace, lsof, socat, netcat-openbsd, tcpdump, logrotate, tzdata. Optional: build-base, gdb, htop, vim, nano. Create profile-phone-vm.json and profile-laptop.json."
+    },
+    {
+      "id": "R3",
+      "title": "Complete Phone1 VM toolbox from manifests",
+      "status": "pending",
+      "depends_on": ["R1", "R2"],
+      "max_wait": "30 min",
+      "description": "Deploy repaired scripts+manifests. Run installer --check, installer --apply, verifier, smoke. Verify persistent after controlled reboot. Require 15/15."
+    },
+    {
+      "id": "R4",
+      "title": "Phone1 OpenCode diagnostic matrix (no pipeline masking)",
+      "status": "pending",
+      "depends_on": ["R3"],
+      "max_wait": "90 min",
+      "description": "Quarantine ~/bin/opencode (0 bytes). Use absolute binary. Test 9 scenarios: A)existing HOME, B)fresh HOME no config no cache, C)existing with cache renamed, D)plugins disabled, E)empty OPENCODE_CONFIG_DIR, F)binary from repo root, G)binary from empty dir, H)TTY vs non-TTY, I)QEMU CPU/memory baseline. Use pipefail. Save stdout/stderr/process list/logs/strace for each. Classify: REPRODUCIBLE_STARTUP_HANG / CONFIG_STATE_FAILURE / CACHE_FAILURE / PLUGIN_FAILURE / QEMU_RUNTIME_INCOMPATIBILITY / MUSL_RUNTIME_INCOMPATIBILITY / UNKNOWN. Write ADR after 2 clean-HOME reproductions."
+    },
+    {
+      "id": "R5",
+      "title": "Quarantine and audit Phone2 QEMU image",
+      "status": "pending",
+      "depends_on": ["R0"],
+      "max_wait": "45 min",
+      "description": "After safe QEMU stop: preserve as uom-phone.prequality-UTC.qcow2, record SHA-256, qemu-info --output=json, qemu-img check (capture real exit code), inspect console history, compare virtual/cluster/backing, compare against Phone1 golden SHA. Classify: PARTIAL_COPY / OLD_CLONE / INDEPENDENT_INSTALL / CORRUPT / UNKNOWN."
+    },
+    {
+      "id": "R6",
+      "title": "Decide Phone2 image (retain or replace)",
+      "status": "pending",
+      "depends_on": ["R5"],
+      "max_wait": "10 min",
+      "description": "If healthy independent: retain+configure. If healthy clone: sanitize before integration. If bad/unknown: archive and replace from offline Phone1 golden via qemu-img convert (never stream-copy live)."
+    },
+    {
+      "id": "R7",
+      "title": "Convert Phone2 QEMU to foreground runit-supervised service",
+      "status": "pending",
+      "depends_on": ["R6"],
+      "max_wait": "40 min",
+      "description": "Replace bash launcher with runit exec (no &). Use -display none + -monitor unix:socket + -serial file. Create device.env with UOM_VM_CPUS=2, UOM_VM_MEMORY_MB=1536 (start conservative). Include finish script with 15s delay. Make every script read UOM_VM_SSH_PORT. Verify single QEMU PID, stable start time, console progress, SSH."
+    },
+    {
+      "id": "R8",
+      "title": "Sanitize Phone2 guest identity",
+      "status": "pending",
+      "depends_on": ["R7"],
+      "max_wait": "15 min",
+      "description": "Reset hostname to uom-phone2-qemu, regenerate machine-id, regenerate SSH host keys, set UOM device ID to phone2-vm, clear inbox/outbox/leases/logs/stale PIDs, remove cached endpoints. Update known_hosts after key rotation. Verify root login disabled, password auth disabled, doas correct."
+    },
+    {
+      "id": "R9",
+      "title": "Install and verify toolbox inside Phone2 VM",
+      "status": "pending",
+      "depends_on": ["R2", "R8"],
+      "max_wait": "30 min",
+      "description": "Deploy same manifests+scripts. Run check/apply/verify/smoke then reboot. Require valid JSON, all applicable checks pass, persistent state, stable QEMU PID, SSH after reboot."
+    },
+    {
+      "id": "R10",
+      "title": "Test OpenCode independently inside Phone2 VM",
+      "status": "pending",
+      "depends_on": ["R9", "R4"],
+      "max_wait": "60 min",
+      "description": "Install OpenCode officially. Run same diagnostic matrix as R4. Do NOT assume Phone2=Phone1 (different kernel/QEMU/memory/image). Classify: LOCAL_VM_WORKING / REPRODUCIBLE_STARTUP_HANG / PROXY_REQUIRED / UNKNOWN. Compare binary SHA+runtime against Phone1. If both fail clean-HOME: evaluate glibc aarch64 guest via ADR."
+    },
+    {
+      "id": "R11",
+      "title": "Mirror shared UOM tooling (source/config only)",
+      "status": "pending",
+      "depends_on": ["R3", "R9"],
+      "max_wait": "30 min",
+      "description": "Create versioned shared guest profile. Synchronize via Git bundles: source scripts, package manifests, config templates, tests, widget templates, endpoint schemas. Never sync binaries, /usr, machine-id, SSH keys, auth, logs, leases. Verify HEADs match after manifest-verified bundle round trip."
+    },
+    {
+      "id": "R12",
+      "title": "API wrapper + model rotation verification",
+      "status": "pending",
+      "depends_on": ["R11"],
+      "max_wait": "30 min",
+      "description": "Test api_wrapper.py, model-rotate.sh, opencode-zen-free, opencode-zen-smart, NETWORK_CODE_POLICY.md using offline fixtures. Test: 429 with Retry-After, 503 retry, timeout, cooldown persistence, free-model fallback, all free models unavailable, paid provider accidentally configured. Only verified zero-cost models. Sequential fallback + circuit breakers. No rotation to evade quotas."
+    },
+    {
+      "id": "R13",
+      "title": "Host/guest network responsibility refactor",
+      "status": "pending",
+      "depends_on": ["R11"],
+      "max_wait": "30 min",
+      "description": "Termux hosts: Wi-Fi changes, endpoint discovery, reverse tunnels, wake locks, physical network watchdog. Guests: SSH, task execution, local diagnostics, reading host-generated endpoint registry. Do NOT scan /24 from QEMU. Create shared endpoint registry schema. Pin identities with stable HostKeyAlias. Reuse existing uom-port-guardian.sh, uom-ip-discover.sh, etc."
+    },
+    {
+      "id": "R14",
+      "title": "Profile-aware widgets on both phones",
+      "status": "pending",
+      "depends_on": ["R8", "R13"],
+      "max_wait": "30 min",
+      "description": "Audit both phones for 6 widgets: 00-UOM-Status, 20-UOM-Guest-Shell, 30-UOM-Zen-Console, 40-UOM-Host-Console, 50-UOM-Logs, 90-UOM-Stop. Generate from ~/.config/uom/device.env. Phone2 Guest-Shell must use port 22222. Verify existence, executable bit, syntax, behavior. Interactive widgets not marked failed for remaining open."
+    },
+    {
+      "id": "R15",
+      "title": "Bootstrap validation under isolated TEST_ROOT profiles",
+      "status": "pending",
+      "depends_on": ["R9", "R14"],
+      "max_wait": "30 min",
+      "description": "Run real isolated tests for phone1-vm, phone2-vm, phone-relay-only profiles. Verify: apply twice, correct SVDIR, uom-sv helper, QEMU foreground service, device.env, boot script, widgets, toolbox manifests, no-network behavior, no Termux:Boot behavior, existing-config backup, no secrets, no push."
+    },
+    {
+      "id": "R16",
+      "title": "Manifest-verified Git bundle sync",
+      "status": "pending",
+      "depends_on": ["R11"],
+      "max_wait": "30 min",
+      "description": "Create bundle manifest with device ID, repo ID, source branch, base/head commit, destination, SHA-256, timestamp. Verify manifest+checksum+git bundle verify. Fetch into namespaced refs. Fast-forward only. Install and test deny-all pre-push hook in every active repo. No real push."
+    },
+    {
+      "id": "R17",
+      "title": "Final dual-QEMU topology gates",
+      "status": "pending",
+      "depends_on": ["R12", "R13", "R14", "R15", "R16"],
+      "max_wait": "30 min",
+      "description": "Test: Laptop only, L+P1, L+P2, L+both, P1+P2 without laptop (if possible), both VMs headless, one VM unavailable, network transition, model cooldown, interrupted bundle transfer. Do not classify proxy-to-laptop as independent local OpenCode."
+    },
+    {
+      "id": "R18",
+      "title": "Fresh controlled 60-minute soak",
+      "status": "pending",
+      "depends_on": ["R17"],
+      "max_wait": "70 min",
+      "description": "Start only after all gates pass. Probe every minute: both QEMU PIDs+start times, runit service states, VM SSH, CPU/memory/swap, disk, console errors, tunnel states, queue/lease state, package verifier state, Git refs, model cooldowns, widget status, no duplicate QEMU, no restart storm. Require 60 consecutive minutes with zero unexplained failures. Record in JSONL."
+    },
+    {
+      "id": "R19",
+      "title": "Commit intended source changes + truthful report",
+      "status": "pending",
+      "depends_on": ["R18"],
+      "max_wait": "20 min",
+      "description": "Stage source/config/docs/tests only. Never stage runtime state, auth, bundles, images, logs. Run git diff --check, syntax tests, fixture tests, secret scan, direct pre-push hook test. Write reports/UOM-DUAL-QEMU-QUALITY-20260720.md with truthful modes and remaining limits. git commit only. NO git push."
+    }
+  ],
+  "hard_rules": [
+    "NO git push, git send-pack, gh pr create, or remote writes",
+    "NO paid models — only opencode/big-pickle, north-mini-code-free, deepseek-v4-flash-free",
+    "Bounded SSH timeouts on every remote call (minimum timeout 30)",
+    "PID + start-time verified before any process signal",
+    "NO git reset --hard or git clean -fd on work in progress",
+    "NO StrictHostKeyChecking=no — use accept-new + stable known_hosts",
+    "NO clone or transfer a live QCOW2 image",
+    "NO mark gate PASS without captured command output + exit code",
+    "NO run physical-network scanning from inside QEMU guests",
+    "NO sync binaries between x86_64/aarch64/musl/Bionic environments",
+    "NO mirror Phone1 OpenCode problems blindly to Phone2",
+    "NO overwrite Phone2 image until provenance understood",
+    "NO commit runtime state, QCOW2 files, credentials, logs, auth data",
+    "Keep deny-all pre-push hook active in every repository"
+  ],
+  "progress_policy": {
+    "before_long_operation": "Print TIME TO WAIT: approximately <range> for <operation>, MAXIMUM WAIT: <deadline>, SUCCESS CONDITION: <observable evidence>",
+    "during_wait": "Print heartbeat every 15-30s: WAITING: operation=<name> elapsed=<seconds> observation=<last state>",
+    "never_use": "Unbounded sleep"
+  }
+}
