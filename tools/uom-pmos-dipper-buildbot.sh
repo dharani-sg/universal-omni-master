@@ -479,6 +479,13 @@ run_build_loop() {
     else
       log_err "Image export failed"
       tail -20 "$install_log" >> "$LOG_FILE"
+      # Auto-fix DTB errors in deviceinfo
+      if grep -q "Unable to find.*dtb" "$install_log" 2>/dev/null; then
+        log "Auto-fix: DTB not found — switching to beryllium-tianma DTB"
+        sed -i 's|deviceinfo_dtb=.*|deviceinfo_dtb="qcom/sdm845-xiaomi-beryllium-tianma"|g' \
+          "$DIPPER_DIR/deviceinfo" 2>/dev/null || true
+      fi
+      return 1
     fi
   else
     log_err "All $MAX_FEEDBACK_LOOPS build attempts failed"
