@@ -68,7 +68,7 @@ fi
 # 6. Network outbound
 echo "[6/10] Network outbound"
 NET=$($SSH_CMD 'ping -c1 -W5 1.1.1.1 2>&1 | tail -1' 2>/dev/null | tr -d '\r\n')
-if echo "$NET" | grep -q "rtt\|time="; then
+if echo "$NET" | grep -q "rtt\|time=\|round-trip"; then
   log_pass "Outbound OK ($NET)"
 else
   log_fail "No outbound network"
