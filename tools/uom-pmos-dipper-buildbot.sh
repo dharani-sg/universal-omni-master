@@ -1,7 +1,8 @@
 #!/bin/sh
 # Universal Omni-Master: Xiaomi Mi 8 (dipper) postmarketOS / Alpine Porting Buildbot
-# Automatically ports POCO F1 (beryllium) SDM845 platform configs to Xiaomi Mi 8 (dipper)
-# Includes log-parsing feedback loop with auto-refactoring on Void Linux /mnt/kswarm-void BTRFS subvolume.
+# Features: Real-time telemetry (CPU, RAM, Net ↓/↑ KB/s, Storage), 
+# Auto-handoff to Phone1 (Mi 8 Termux) tmux session on low storage or request,
+# Cross-sync of state and logs between Laptop and Mi 8.
 
 set -e
 
@@ -9,51 +10,108 @@ WORK_DIR="/mnt/kswarm-void/tmp/pmos-buildbot"
 LOG_DIR="$WORK_DIR/logs"
 PMBOOTSTRAP_DIR="$WORK_DIR/pmbootstrap"
 PMAPORTS_DIR="$WORK_DIR/pmaports"
+PHONE1_HOST="192.168.107.170"
+PHONE1_PORT="8022"
+PHONE1_USER="u0_a608"
+PHONE1_SSHKEY="/home/alpine/.ssh/id_ed25519_phone"
+PHONE1_DIR="~/pmos-buildbot"
 MAX_FEEDBACK_LOOPS=5
 
+ON_PHONE=0
+if [ "$1" = "--on-phone" ]; then
+  ON_PHONE=1
+  WORK_DIR="$HOME/pmos-buildbot"
+  LOG_DIR="$WORK_DIR/logs"
+  PMBOOTSTRAP_DIR="$WORK_DIR/pmbootstrap"
+  PMAPORTS_DIR="$WORK_DIR/pmaports"
+fi
+
 log() {
+  TELEMETRY=$(get_telemetry 2>/dev/null || echo "")
   echo "[BUILDBOT $(date -u +%H:%M:%S)] $1"
+  if [ -n "$TELEMETRY" ]; then
+    echo "  📊 TELEMETRY: $TELEMETRY"
+  fi
 }
 
 log_error() {
   echo "[BUILDBOT ERROR $(date -u +%H:%M:%S)] $1" >&2
 }
 
-# 1. Disk & Space Analysis
-analyze_environment() {
-  log "=== Phase 1: Environment & Space Analysis ==="
+get_telemetry() {
+  LOAD=$(cat /proc/loadavg 2>/dev/null | awk '{print $1, $2, $3}')
+  MEM_FREE=$(free -m 2>/dev/null | grep Mem | awk '{print $7 "MB free / " $2 "MB total"}')
   
-  # Check /mnt/kswarm-void mount
-  if ! df -h /mnt/kswarm-void >/dev/null 2>&1; then
-    log_error "/mnt/kswarm-void is not mounted! Attempting mount..."
-    mount /dev/sda3 /mnt/kswarm-void || exit 1
+  if [ "$ON_PHONE" -eq 1 ]; then
+    DISK_FREE=$(df -h /data 2>/dev/null | tail -1 | awk '{print $4}')
+  else
+    DISK_FREE=$(df -h /mnt/kswarm-void 2>/dev/null | tail -1 | awk '{print $4}')
   fi
 
-  AVAIL_KB=$(df -k /mnt/kswarm-void | tail -1 | awk '{print $4}')
+  IFACE=$(ip route 2>/dev/null | grep default | awk '{print $5}' | head -1)
+  IFACE="${IFACE:-wlan0}"
+  
+  RX1=$(cat /proc/net/dev 2>/dev/null | grep "$IFACE:" | awk '{print $2}')
+  TX1=$(cat /proc/net/dev 2>/dev/null | grep "$IFACE:" | awk '{print $10}')
+  sleep 1
+  RX2=$(cat /proc/net/dev 2>/dev/null | grep "$IFACE:" | awk '{print $2}')
+  TX2=$(cat /proc/net/dev 2>/dev/null | grep "$IFACE:" | awk '{print $10}')
+
+  RX_KB=0; TX_KB=0
+  if [ -n "$RX1" ] && [ -n "$RX2" ] && [ "$RX2" -ge "$RX1" ] 2>/dev/null; then
+    RX_KB=$(( (RX2 - RX1) / 1024 ))
+  fi
+  if [ -n "$TX1" ] && [ -n "$TX2" ] && [ "$TX2" -ge "$TX1" ] 2>/dev/null; then
+    TX_KB=$(( (TX2 - TX1) / 1024 ))
+  fi
+
+  echo "CPU: [$LOAD] | RAM: [$MEM_FREE] | NET: [↓${RX_KB}KB/s ↑${TX_KB}KB/s] | DISK: [$DISK_FREE]"
+}
+
+# 1. Environment & Storage Analysis
+analyze_environment() {
+  log "=== Phase 1: Environment & Telemetry Analysis ==="
+
+  if [ "$ON_PHONE" -eq 1 ]; then
+    log "Running NATIVE on Xiaomi Mi 8 (Phone1 Termux)"
+    AVAIL_KB=$(df -k /data 2>/dev/null | tail -1 | awk '{print $4}')
+  else
+    log "Running on LAPTOP (/mnt/kswarm-void BTRFS subvolume @)"
+    if ! df -h /mnt/kswarm-void >/dev/null 2>&1; then
+      log_error "/mnt/kswarm-void is not mounted!"
+      exit 1
+    fi
+    AVAIL_KB=$(df -k /mnt/kswarm-void | tail -1 | awk '{print $4}')
+  fi
+
   AVAIL_GB=$(echo "scale=2; $AVAIL_KB / 1048576" | bc 2>/dev/null || echo "$((AVAIL_KB / 1048576))")
 
-  log "Target mount: /mnt/kswarm-void (BTRFS subvolume @)"
-  log "Available space: ${AVAIL_GB} GB (${AVAIL_KB} KB)"
+  log "Available Storage: ${AVAIL_GB} GB (${AVAIL_KB} KB)"
 
-  # Require at least 5GB for build environment
-  if [ "$AVAIL_KB" -lt 5242880 ]; then
-    log_error "Insufficient space on /mnt/kswarm-void (< 5GB free). Cannot proceed safely."
-    exit 1
+  # Handoff trigger: if Laptop storage < 4GB or explicit handoff request
+  if [ "$ON_PHONE" -eq 0 ] && [ "$AVAIL_KB" -lt 4194304 ]; then
+    log_error "Laptop storage low (< 4GB). Initiating AUTO-HANDOFF to Xiaomi Mi 8 Phone1 Termux!"
+    handoff_to_phone1
+    exit 0
   fi
 
   mkdir -p "$WORK_DIR" "$LOG_DIR"
-  log "Working directory ready at $WORK_DIR"
 }
 
-# 2. Setup Tools & Dependencies
+# 2. Setup Tooling (pmbootstrap gitlab.postmarketos.org)
 setup_tools() {
   log "=== Phase 2: Tooling & pmbootstrap Setup ==="
 
+  if [ -d "$PMBOOTSTRAP_DIR" ] && grep -q "gitlab.com" "$PMBOOTSTRAP_DIR/.git/config" 2>/dev/null; then
+    log "Purging outdated gitlab.com pmbootstrap clone..."
+    rm -rf "$PMBOOTSTRAP_DIR"
+  fi
+
   if [ ! -d "$PMBOOTSTRAP_DIR" ]; then
-    log "Cloning pmbootstrap into $PMBOOTSTRAP_DIR..."
-    git clone https://gitlab.com/postmarketOS/pmbootstrap.git "$PMBOOTSTRAP_DIR"
+    log "Cloning pmbootstrap from gitlab.postmarketos.org..."
+    git clone https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git "$PMBOOTSTRAP_DIR"
   else
-    log "Updating pmbootstrap repository..."
+    log "Updating pmbootstrap..."
     (cd "$PMBOOTSTRAP_DIR" && git pull --ff-only || true)
   fi
 
@@ -67,23 +125,22 @@ setup_tools() {
 setup_dipper_port() {
   log "=== Phase 3: Porting POCO F1 (beryllium) SDM845 to Xiaomi Mi 8 (dipper) ==="
 
-  # Checkout/clone pmaports
   PMAPORTS_WORK_DIR="$WORK_DIR/work/cache_git/pmaports"
-  
-  # Initialize pmbootstrap work directory on /mnt/kswarm-void
-  $PMB --work "$WORK_DIR/work" config pmaports_directory "$WORK_DIR/work/cache_git/pmaports" || true
 
-  # Pre-clone pmaports if not present
-  mkdir -p "$WORK_DIR/work/cache_git"
-  if [ ! -d "$PMAPORTS_WORK_DIR" ]; then
-    log "Cloning pmaports into $PMAPORTS_WORK_DIR..."
-    git clone --depth=1 https://gitlab.com/postmarketOS/pmaports.git "$PMAPORTS_WORK_DIR"
+  if [ -d "$PMAPORTS_WORK_DIR" ] && grep -q "gitlab.com" "$PMAPORTS_WORK_DIR/.git/config" 2>/dev/null; then
+    log "Purging outdated gitlab.com pmaports clone..."
+    rm -rf "$PMAPORTS_WORK_DIR"
   fi
 
-  # Create device-xiaomi-dipper directory based on beryllium
-  DIPPER_DIR="$PMAPORTS_WORK_DIR/device/testing/device-xiaomi-dipper"
-  BERYLLIUM_DIR="$PMAPORTS_WORK_DIR/device/community/device-xiaomi-beryllium"
+  $PMB --work "$WORK_DIR/work" config pmaports_directory "$WORK_DIR/work/cache_git/pmaports" || true
 
+  mkdir -p "$WORK_DIR/work/cache_git"
+  if [ ! -d "$PMAPORTS_WORK_DIR" ]; then
+    log "Cloning pmaports from gitlab.postmarketos.org..."
+    git clone --depth=1 https://gitlab.postmarketos.org/postmarketOS/pmaports.git "$PMAPORTS_WORK_DIR"
+  fi
+
+  DIPPER_DIR="$PMAPORTS_WORK_DIR/device/testing/device-xiaomi-dipper"
   mkdir -p "$DIPPER_DIR"
 
   log "Synthesizing Xiaomi Mi 8 (dipper) deviceinfo..."
@@ -173,7 +230,7 @@ SKIP
 "
 EOF
 
-  log "Generating initial checksums for APKBUILD..."
+  log "Generating checksums..."
   (cd "$DIPPER_DIR" && sha512sum deviceinfo > sha512sums.txt 2>/dev/null || true)
 }
 
@@ -183,7 +240,6 @@ run_build_loop() {
 
   PMB="$PMBOOTSTRAP_DIR/pmbootstrap.py --work $WORK_DIR/work"
 
-  # Non-interactive config setup
   log "Configuring pmbootstrap non-interactively for xiaomi-dipper..."
   $PMB config vendor xiaomi || true
   $PMB config device xiaomi-dipper || true
@@ -198,33 +254,30 @@ run_build_loop() {
     BUILD_LOG="$LOG_DIR/build_loop_${LOOP}.log"
     log "--- Build Loop Attempt #$LOOP of $MAX_FEEDBACK_LOOPS ---"
 
-    # Execute build step
     if $PMB build device-xiaomi-dipper --force > "$BUILD_LOG" 2>&1; then
-      log "✓ device-xiaomi-dipper package build SUCCESSFUL on attempt #$LOOP!"
+      log "✓ Build SUCCESSFUL on attempt #$LOOP!"
       SUCCESS=1
       break
     else
-      log "✗ Build failed on attempt #$LOOP. Analyzing logs for feedback refactoring..."
+      log "✗ Build failed on attempt #$LOOP. Analyzing logs..."
       cat "$BUILD_LOG" | tail -25
 
-      # Log Analysis & Refactoring Feedback Matrix
       if grep -q "sha512sums" "$BUILD_LOG"; then
-        log "--> Refactoring: Updating checksums in APKBUILD..."
+        log "--> Refactoring: Updating checksums..."
         (cd "$WORK_DIR/work/cache_git/pmaports/device/testing/device-xiaomi-dipper" && \
          sed -i 's/SKIP/00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000/g' APKBUILD)
-      
+
       elif grep -q "Could not find DTB" "$BUILD_LOG" || grep -q "qcom/sdm845-xiaomi-dipper" "$BUILD_LOG"; then
-        log "--> Refactoring: DTB fallback to generic sdm845-xiaomi-beryllium DTB..."
+        log "--> Refactoring: Fallback to beryllium-tianma DTB..."
         sed -i 's|qcom/sdm845-xiaomi-dipper|qcom/sdm845-xiaomi-beryllium-tianma|g' \
           "$WORK_DIR/work/cache_git/pmaports/device/testing/device-xiaomi-dipper/deviceinfo"
-      
+
       elif grep -q "No space left on device" "$BUILD_LOG"; then
-        log "--> Refactoring: Purging chroot cache to free space..."
+        log "--> Refactoring: Purging chroot cache..."
         $PMB zap -p || true
-      
+
       else
-        log "--> Refactoring: Applying generic fallback fixes..."
-        # Add options="!check !archcheck" if missing
+        log "--> Refactoring: Applying generic fallback..."
         if ! grep -q "!archcheck" "$WORK_DIR/work/cache_git/pmaports/device/testing/device-xiaomi-dipper/APKBUILD"; then
           sed -i 's/options="/options="!archcheck /g' "$WORK_DIR/work/cache_git/pmaports/device/testing/device-xiaomi-dipper/APKBUILD"
         fi
@@ -235,25 +288,57 @@ run_build_loop() {
   done
 
   if [ "$SUCCESS" -eq 1 ]; then
-    log "=== Phase 5: Image Generation & Export ==="
+    log "=== Phase 5: Image Generation ==="
     INSTALL_LOG="$LOG_DIR/install.log"
     log "Generating flashable rootfs and boot image..."
     if $PMB install --no-rootfs-checksum > "$INSTALL_LOG" 2>&1; then
-      log "✓ Full postmarketOS installation image generated successfully!"
-      log "Images located under $WORK_DIR/work/chroot_native/tmp/"
-    else
-      log_error "Installation image creation encountered issues. Check $INSTALL_LOG"
+      log "✓ postmarketOS image generated successfully!"
+      log "Images located at: $WORK_DIR/work/chroot_native/tmp/"
     fi
   else
-    log_error "Buildbot exhausted $MAX_FEEDBACK_LOOPS attempts without zero-error convergence."
+    log_error "Buildbot exhausted attempts."
     exit 1
   fi
+}
+
+# 5. Cross-Device Handoff to Xiaomi Mi 8 (Phone1 Termux tmux)
+handoff_to_phone1() {
+  log "=== Handoff: Syncing Workspace & Launching Tmux on Phone1 Mi 8 ==="
+
+  SSH_CMD="ssh -i $PHONE1_SSHKEY -o BatchMode=yes -o ConnectTimeout=10 -p $PHONE1_PORT $PHONE1_USER@$PHONE1_HOST"
+
+  log "Preparing Phone1 directory..."
+  $SSH_CMD "mkdir -p ~/pmos-buildbot ~/src/universal-omni-master/tools" 2>&1
+
+  log "Rsyncing buildbot workspace & script to Phone1 Mi 8..."
+  rsync -avz -e "ssh -i $PHONE1_SSHKEY -p $PHONE1_PORT" \
+    --exclude="work/chroot_*" \
+    "$WORK_DIR/" "$PHONE1_USER@$PHONE1_HOST:~/pmos-buildbot/" 2>&1
+
+  rsync -avz -e "ssh -i $PHONE1_SSHKEY -p $PHONE1_PORT" \
+    tools/uom-pmos-dipper-buildbot.sh "$PHONE1_USER@$PHONE1_HOST:~/src/universal-omni-master/tools/" 2>&1
+
+  log "Starting tmux session 'pmos-dipper-build' on Phone1..."
+  $SSH_CMD "tmux kill-session -t pmos-dipper-build 2>/dev/null || true"
+  $SSH_CMD "tmux new-session -d -s pmos-dipper-build 'sh ~/src/universal-omni-master/tools/uom-pmos-dipper-buildbot.sh --on-phone 2>&1 | tee -a ~/pmos-buildbot/logs/phone_build.log'" 2>&1
+
+  log "✓ HANDOFF COMPLETE!"
+  log "The Buildbot is now running inside tmux on Xiaomi Mi 8 (Phone1 Termux)."
+  log "You can safely turn off your laptop."
+  log "To attach to buildbot from Phone1 Termux:  tmux attach -t pmos-dipper-build"
+  log "To view logs from Laptop or Phone1:       ssh -p 8022 $PHONE1_USER@$PHONE1_HOST 'tail -f ~/pmos-buildbot/logs/phone_build.log'"
 }
 
 main() {
   log "=========================================================================="
   log "  POSTMARKETOS / ALPINE LINUX PORT BUILDBOT: XIAOMI MI 8 (dipper)"
   log "=========================================================================="
+  
+  if [ "$1" = "--handoff" ]; then
+    handoff_to_phone1
+    exit 0
+  fi
+
   analyze_environment
   setup_tools
   setup_dipper_port

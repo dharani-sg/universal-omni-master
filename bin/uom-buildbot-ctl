@@ -1,0 +1,45 @@
+#!/bin/sh
+# Universal Omni-Master Buildbot Controller & Cross-Device Monitor
+# Control and view live telemetry on Laptop or Phone1 Xiaomi Mi 8
+
+set -e
+
+PHONE1_HOST="192.168.107.170"
+PHONE1_PORT="8022"
+PHONE1_USER="u0_a608"
+PHONE1_SSHKEY="/home/alpine/.ssh/id_ed25519_phone"
+
+SSH_CMD="ssh -i $PHONE1_SSHKEY -o BatchMode=yes -o ConnectTimeout=5 -p $PHONE1_PORT $PHONE1_USER@$PHONE1_HOST"
+
+case "$1" in
+  status)
+    echo "=== BUILDBOT STATUS ==="
+    echo "--- Laptop Process ---"
+    pgrep -fa uom-pmos-dipper-buildbot.sh || echo "No active laptop buildbot process."
+    echo ""
+    echo "--- Phone1 Xiaomi Mi 8 Tmux Sessions ---"
+    $SSH_CMD "tmux list-sessions 2>/dev/null || echo 'No active tmux sessions on Phone1'"
+    ;;
+  logs)
+    echo "=== LIVE BUILDBOT LOGS ==="
+    if pgrep -f uom-pmos-dipper-buildbot.sh >/dev/null 2>&1; then
+      echo "Tailing Laptop Buildbot logs..."
+      tail -f /mnt/kswarm-void/tmp/pmos-buildbot/logs/build_loop_*.log /mnt/kswarm-void/tmp/pmos-buildbot/logs/*.log 2>/dev/null || true
+    else
+      echo "Tailing Phone1 Xiaomi Mi 8 Buildbot logs..."
+      $SSH_CMD "tail -f ~/pmos-buildbot/logs/phone_build.log ~/pmos-buildbot/logs/*.log 2>/dev/null"
+    fi
+    ;;
+  handoff)
+    echo "=== INITIATING HANDOFF TO XIAOMI MI 8 PHONE1 ==="
+    /home/alpine/src/universal-omni-master/tools/uom-pmos-dipper-buildbot.sh --handoff
+    ;;
+  attach)
+    echo "=== ATTACHING TO TMUX ON PHONE1 ==="
+    ssh -i $PHONE1_SSHKEY -p $PHONE1_PORT -t $PHONE1_USER@$PHONE1_HOST "tmux attach -t pmos-dipper-build"
+    ;;
+  *)
+    echo "Usage: uom-buildbot-ctl {status|logs|handoff|attach}"
+    exit 1
+    ;;
+esac
