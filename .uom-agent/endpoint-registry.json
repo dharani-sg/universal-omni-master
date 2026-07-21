@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "run_id": "native-dipper-20260721",
-  "updated_at": "2026-07-21T10:50:00Z",
-  "network_mode": "hotspot",
+  "updated_at": "2026-07-21T21:00:00Z",
+  "network_mode": "phone2-hotspot",
   "hotspot_ssid": "Redmi 13C",
   "laptop": {
     "hostname": "hp-pavilion",
@@ -17,40 +17,24 @@
   },
   "phone1": {
     "hostname": "mi8-dipper",
-    "ip": "10.155.18.144",
+    "ip": "10.155.18.1",
     "ssh_port": 8022,
     "ssh_user": "u0_a608",
     "model": "MI 8",
     "device": "dipper",
     "android_kernel": "4.9.337-perf",
-    "qemu_jump": "ssh -J u0_a608@10.155.18.144:8022 uom@127.0.0.1 -p 2222",
-    "ssh_fingerprint": "SHA256:MaH/lDm8Zd4j4edKzQqlyk6UzjgcUs+VKMtcJZSO4GM",
     "role": "PRIMARY_TARGET_NATIVE_DIPPER",
-    "qemu_status": "running-no-ssh-access",
-    "opencode_status": "PENDING_NATIVE_INSTALL",
-    "status": "active-primary"
+    "status": "active"
   },
   "phone2": {
     "hostname": "redmi13c-gale",
     "ip": "10.155.18.131",
     "ssh_port": 8022,
     "ssh_user": "u0_a217",
-    "model": "23106RN0DA",
+    "model": "Redmi 13C",
     "device": "gale",
     "android_kernel": "6.6.30-android15",
-    "qemu_jump": "ssh -J u0_a217@10.155.18.131:8022 uom@127.0.0.1 -p 22222",
-    "ssh_fingerprint": "SHA256:Hy+3MZgGc3d/bn46BzZ/G5lAn5mIsD63oSrOOLpTzfo",
-    "role": "TEMPORARY_RELAY_HOTSPOT_TEST_WORKER",
-    "qemu_status": "running-no-ssh-access",
-    "opencode_status": "VM_BOOTING",
-    "status": "support"
-  },
-  "phone2_vm": {
-    "hostname": "uom-phone2-qemu",
-    "ip": "127.0.0.1",
-    "ssh_port": 22222,
-    "ssh_user": "uom",
-    "qemu_monitor_socket": "phone2:~/.uom-agent/tmp/monitor.sock",
-    "status": "running-ssh-auth-pending"
+    "role": "HOTSPOT_RELAY",
+    "status": "active"
   }
 }
