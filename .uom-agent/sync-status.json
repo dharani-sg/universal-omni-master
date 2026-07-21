@@ -1,13 +1,21 @@
 {
-  "timestamp": "2026-07-20T06:08:37Z",
+  "timestamp": "2026-07-21T10:50:00Z",
+  "mode": "3-way-bundle",
   "laptop": {
-    "sha": "5d68be87f491ddfcea2eba3f64a63939e02f22da",
-    "branch": "main"
+    "sha": "ce409dc",
+    "branch": "main",
+    "status": "synced"
   },
   "phone1": {
-    "sha": "unreachable"
+    "sha": "86129b0",
+    "status": "behind-1-commit",
+    "identity": "u0_a608@10.155.18.144:8022",
+    "model": "MI 8 / dipper"
   },
   "phone2": {
-    "sha": "unreachable"
+    "sha": "86129b0",
+    "status": "behind-1-commit",
+    "identity": "u0_a217@10.155.18.131:8022",
+    "model": "Redmi 13C / gale"
   }
 }
