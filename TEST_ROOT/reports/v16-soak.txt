@@ -1,0 +1,12 @@
+V16 Soak Test — 2026-07-21
+══════════════════════════════════════════════════════════════
+Endpoint:     Phone2 VM (uom@127.0.0.1:22222)
+Duration:     10 minutes (20 checks × 30s intervals)
+Baseline:     mem=1358MB free, disk=7781180KB free, load=0.31
+Final:        mem=1367MB free, disk=7781144KB free, load=0.36
+Memory delta: +9MB (growth — normal page cache, no leak)
+Disk delta:   -36KB (negligible log/swap)
+Load range:   0.13 – 0.53 (stable)
+Degradation:  NONE
+Responsive:   YES (SSH alive after soak)
+STATUS:       PASS

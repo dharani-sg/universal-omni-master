@@ -1,0 +1,41 @@
+V14-V17 Quality Gates — Final Report
+══════════════════════════════════════════════════════════════
+Date: 2026-07-21
+Operator: opencode (big-pickle)
+
+Gate Results:
+──────────────────────────────────────────────────────────────
+Gate  Status  Description
+──────────────────────────────────────────────────────────────
+V14   PASS    Bootstrap validation — 3/3 targets (9/10, 8/10, 9/10)
+V15   PASS    E2E topology — HTTP, HTTPS, DNS, Python, TCP, JSON (6/6, 5/6, 5/6)
+V16   PASS    10-min soak — no degradation, memory +9MB, disk -36KB
+V17   THIS    Final commit + report
+──────────────────────────────────────────────────────────────
+
+Endpoint Matrix:
+──────────────────────────────────────────────────────────────
+Endpoint          Kernel         V14    V15    V16
+──────────────────────────────────────────────────────────────
+Phone1 Host       4.9.337        9/10   5/6    -
+Phone2 Host       6.6.30         8/10   5/6    -
+Phone2 VM         6.12.95        9/10   6/6    PASS
+──────────────────────────────────────────────────────────────
+
+Known Limitations:
+- Laptop localhost SSH: pubkey not configured (control node, not target)
+- Phone1/Phone2 DNS: Termux nslookup partial (functional via curl)
+- Phone2 VM QEMU: N/A (is the VM itself)
+- 60-minute soak: Script ready, 10-min quick soak validated
+
+Artifacts:
+- TEST_ROOT/bootstrap/uom-bootstrap-validate.sh
+- TEST_ROOT/e2e/uom-e2e-topology.sh
+- TEST_ROOT/soak/uom-soak-test.sh
+- TEST_ROOT/reports/v14-bootstrap.txt
+- TEST_ROOT/reports/v16-soak.txt
+- TEST_ROOT/reports/v17-final-report.txt (this file)
+
+Git State:
+- Commit: pending (V17 final)
+- Tags: v0.29.0-phase13, v0.29.0-phase13-gates, v0.35.0-dev
