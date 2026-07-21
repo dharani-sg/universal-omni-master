@@ -568,7 +568,11 @@ infinite_loop() {
 
     log "Iteration #$iteration failed — cleaning up and retrying in 60s..."
     cd "$WORK_DIR/work" && python3 "$PMB" zap -p 2>/dev/null || true
-    rm -rf "$WORK_DIR/work/chroot_native"
+    # Unmount any leftover bind mounts before removing chroot
+    mount | grep "$WORK_DIR/work/chroot_" | awk '{print $3}' | sort -r 2>/dev/null | while read m; do
+      doas umount "$m" 2>/dev/null || sudo umount "$m" 2>/dev/null || true
+    done
+    rm -rf "$WORK_DIR/work/chroot_native" "$WORK_DIR/work/chroot_rootfs"* "$WORK_DIR/work/chroot_buildroot"* 2>/dev/null || true
     sleep 60
     iteration=$((iteration + 1))
   done
