@@ -1,0 +1,30 @@
+V9: OpenCode Futex Hang — Relay-Only Mode Resolution
+══════════════════════════════════════════════════════════════
+Date: 2026-07-21
+
+Problem: OpenCode binary hangs on musl libc + QEMU aarch64 due to futex syscall
+         incompatibility. Cannot run natively on Phone2 VM.
+
+Solution: Relay-only mode — Phone2 VM relays all LLM calls via SSH to laptop.
+
+Implementation:
+  1. Created ~/.config/uom/device.env with UOM_RELAY_MODE=relay-only
+  2. Generated ed25519 SSH key on VM (uom@uom-phone2-qemu)
+  3. Added VM pubkey to laptop ~/.ssh/authorized_keys
+  4. Added VM pubkey to Phone2 host ~/.ssh/authorized_keys
+  5. Injected host keys for laptop (192.168.107.90:22) and Phone2 host (192.168.107.157:8022)
+     into VM ~/.ssh/known_hosts
+
+Relay Verification:
+  VM → Laptop (192.168.107.90:22):     PASS (RELAY_VIA_LAPTOP_PASS)
+  VM → Phone2 Host (192.168.107.157:8022): PASS (RELAY_HOST_PASS)
+
+Config Location: ~/.config/uom/device.env on Phone2 VM
+
+Key Settings:
+  UOM_RELAY_MODE="relay-only"
+  UOM_OPENCODE_ENABLED="false"
+  UOM_OPENCODE_REASON="musl+QEMU futex hang — use relay-only"
+  UOM_OPENCODE_FALLBACK="ssh-to-laptop"
+
+STATUS: PASS — Relay-only mode confirmed, LLM calls route through laptop.
