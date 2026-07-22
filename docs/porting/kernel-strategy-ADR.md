@@ -1,8 +1,8 @@
 # Architecture Decision Record: Kernel Strategy for Mi 8 (Dipper) Headless
 
-## Status: ACCEPTED
+## Status: ACCEPTED (corrected 2026-07-21)
 ## Date: 2026-07-21
-## Decision: Use 7.1-rc1 kernel + 7.2-rc4 USB role switch architecture
+## Decision: Use 7.1-rc1 kernel with configfs USB gadget userspace
 
 ---
 
@@ -74,37 +74,52 @@ We are building a trustable native headless Linux for Phone1 (Xiaomi Mi 8 / dipp
 - No regression risk from 7.2-rc4 changes
 - DTS from MR !102 is tested
 
-### Use 7.2-rc4 USB role switch architecture in initramfs
+### Use configfs USB gadget userspace (pmaports pattern)
 **Rationale**:
-- Cleaner code (no extcon dependency)
-- Better maintainability
-- Uses `usb_role_switch` API (built into 7.1-rc1 kernel)
-- Future-proof for kernel upgrades
+- configfs is built into 7.1-rc1 kernel (`CONFIG_CONFIGFS_FS=y`)
+- USB function modules (ACM, ECM, NCM, RNDIS) are loadable
+- UDC (USB Device Controller) written last to activate gadget
+- ACM serial shell on ttyGS0 is the debug interface
+- No telnetd or network echo service needed
+- Reference: pmaports `init_functions.sh` (`setup_usb_network_configfs`, `setup_usb_acm_configfs`)
+
+### Defer 7.2-rc4 kernel upgrade
+**Rationale**:
+- 7.2-rc4 DWC3 changes (removes extcon, adds glue.h, cleaner driver) are a future kernel-upgrade candidate
+- No dipper DTS in 7.2-rc4 (only beryllium, polaris)
+- 7.1-rc1 has all needed USB gadget support built-in
+- No initramfs script can replace kernel DWC3 internals
 
 ### Defer 7.2-rc4 full kernel upgrade
 **Rationale**:
 - No dipper DTS in 7.2-rc4
 - Risk of regression in other drivers
 - Can upgrade later once USB networking is proven
+- 7.2-rc4 DWC3 improvements remain a future kernel-upgrade candidate
 
 ## Consequences
 
 ### Positive
 - Reliable boot path (7.1-rc1)
-- Clean USB gadget architecture (7.2-rc4 style)
+- Clean USB gadget architecture (configfs userspace)
 - Auditable, mainline kernel
 - No proprietary blobs for USB
+- Reference implementation from pmaports
 
 ### Negative
-- Two kernel versions to track (7.1-rc1 boot, 7.2-rc4 arch)
+- Function modules must be loaded in initramfs
+- No ECM/NCM unless modules decompressed from .ko.zst
 - May need to update initramfs when upgrading to 7.2-rc4
 
 ### Risks
 - 7.2-rc4 may have USB regressions (mitigated by using 7.1-rc1)
 - pmOS initramfs may need updates for newer kernels
+- Module loading bugs (wrong filenames, missing .ko extension) — fixed in K4
 
 ## Next Steps
-1. Test USB networking with current setup
-2. Prove ACM serial + RNDIS work
-3. Consider 7.2-rc4 kernel upgrade after USB is stable
-4. Add WiFi in initramfs (second layer)
+1. Fix initramfs module loader (modprobe + correct filenames)
+2. Build ACM-only test image (modprobe + acm.usb0 + auto-reboot)
+3. Prove ACM serial shell works
+4. Build ECM/NCM network test image
+5. Consider 7.2-rc4 kernel upgrade after USB is stable
+6. Add WiFi in initramfs (second layer)

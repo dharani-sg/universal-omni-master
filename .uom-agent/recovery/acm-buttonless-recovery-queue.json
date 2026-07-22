@@ -1,0 +1,21 @@
+{
+  "queue": "acm-buttonless-recovery",
+  "updated": "2026-07-22T02:02:30Z",
+  "phone_serial": "af4aa323",
+  "phone_state": "QUALCOMM_ONLY",
+  "usb_id": "05c6:f000",
+  "phases": {
+    "K14": {"status": "completed", "result": "QUALCOMM_ONLY"},
+    "K15": {"status": "skipped", "reason": "no ADB"},
+    "K16": {"status": "completed", "result": "build_running_pid_7897"},
+    "K17": {"status": "completed", "result": "PASS"},
+    "K18": {"status": "completed", "result": "awaiting_approval_token"},
+    "K19": {"status": "pending", "prerequisite": "phone_in_fastboot_or_adb + approval_token"},
+    "K20": {"status": "pending"},
+    "K21": {"status": "pending"}
+  },
+  "next_action": "recover phone from QUALCOMM_ONLY, then provide approval token",
+  "recovery_note": "Unplug USB, wait 10s, replug. Try VOL_DOWN+plug if buttons freed. Wait for battery drain as last resort.",
+  "boot_partition": "untouched",
+  "crdroid_recovery_path": "intact"
+}

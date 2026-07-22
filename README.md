@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/UNIVERSAL--OMNI--MASTER-v0.35.0--dev-6C3FBF?style=for-the-badge&logo=atom&logoColor=white" alt="UOM">
+  <img src="https://img.shields.io/badge/UNIVERSAL--OMNI--MASTER-v0.36.0--dev-6C3FBF?style=for-the-badge&logo=atom&logoColor=white" alt="UOM">
 </p>
 
 <h1 align="center">UNIVERSAL OMNI-MASTER</h1>
@@ -479,14 +479,17 @@ universal-omni-master/
 ├── bin/                     # CLI entrypoints (uom-*, omni-*)
 ├── orchestrators/           # Long-running control plane daemons
 ├── tools/                   # Libraries, discovery, guest toolbox, SaaS helpers
+│   └── uom-cross-distro-deploy.sh  # Cross-distro deployment tool
 ├── scripts/                 # Generators, verifiers, tests (32 test files)
 ├── install/                 # Bootstrap chains (3-stage hardened)
 ├── config/
 │   ├── phone/               # Phone OpenCode/runtime profiles
+│   ├── cross-distro/        # Deploy manifest, tool SHA-256 checksums
 │   ├── alpine-guest/        # Guest package manifests
 │   └── saas/                # Multi-swarm schemas + stage contracts
 ├── docs/                    # Architecture + operations (45+ docs)
 ├── tests/                   # Test suites (72-assertion harness)
+│   └── grub/                # GRUB kernel ordering fixtures
 ├── security/                # Hardening + firewall + hooks
 ├── artifacts/               # Local-only job outputs (gitignored)
 └── .uom-agent/              # Runtime state (gitignored)

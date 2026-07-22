@@ -1,0 +1,20 @@
+GRUB_DISTRIBUTOR="Alpine"
+GRUB_SAVEDEFAULT="true"
+
+GRUB_TIMEOUT_STYLE=menu
+GRUB_TIMEOUT=10
+GRUB_RECORDFAIL_TIMEOUT=10
+GRUB_DEFAULT=alpine-top
+
+GRUB_THEME="/boot/grub/themes/nord/theme.txt"
+GRUB_GFXMODE="1366x768x32,auto"
+GRUB_GFXPAYLOAD_LINUX=keep
+
+GRUB_TERMINAL_INPUT="console gfxterm"
+
+GRUB_CMDLINE_LINUX_DEFAULT="loglevel=4 mitigations=off intel_idle.max_cstate=1 i915.enable_dc=0 libata.force=noncq,3.0Gbps ahci.mobile_lpm_policy=0 i8042.nokbd snd_hda_intel.power_save=0 snd_hda_intel.power_save_controller=N pcie_aspm=off usbcore.autosuspend=-1 random.trust_cpu=on"
+GRUB_CMDLINE_LINUX=""
+
+GRUB_DISABLE_RECOVERY="false"
+GRUB_DISABLE_SUBMENU="false"
+GRUB_DISABLE_OS_PROBER=false
