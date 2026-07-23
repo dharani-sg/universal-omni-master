@@ -26,6 +26,21 @@ Evidence level: ANDROID_RUNTIME or COMMUNITY_REPORT (not NATIVE_TESTED on mainli
 | GPU (Adreno 630) | L5 | freedreno + a630 firmware |
 | Sensors (BMI160, etc.) | L4 | iio drivers needed |
 
+## L0 Evidence (2026-07-22 — NATIVE_TESTED on mainline 7.1.0-rc1-sdm845)
+
+| Finding | Evidence Level | Detail |
+|---------|---------------|--------|
+| D4 (boot) | NATIVE_TESTED | Kernel boots on real hardware via `fastboot boot` |
+| usb_f_acm | HARDWARE_INCOMPATIBLE | DWC3 register lockup, 100% reproducible on bind to UDC. PMIC power cycle required. |
+| usb_f_ncm | CANDIDATE | Stock pmOS init uses NCM successfully (phone returns at ~198s). Custom init path unverified. |
+| ABL watchdog | NATIVE_TESTED | ~51s on minimal init (no USB activity). Extends to ~198s with USB enumeration. |
+| Software watchdog | OBSOLETE | ABL provides hardware-level safety. Userspace timer cannot survive hard hang. |
+
+**Consequences:**
+- ACM is permanently banned from all dipper images
+- No software watchdog timer in init (ABL is the real watchdog)
+- L0 path: NCM only (T1→T3→T4 per bringup ladder)
+
 ## QUEUE R — UT Xenial Reference Harvest
 
 Read-only reference tasks. No build impact. Mine facts from UT dipper artifacts.

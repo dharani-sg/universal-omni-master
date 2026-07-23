@@ -4,7 +4,7 @@ LOG=/tmp/uom-diag.log
 KMSG=/dev/kmsg
 CONFIGFS=/sys/kernel/config/usb_gadget
 GADGET_DIR=$CONFIGFS/g1
-TEST_ID="UOM-DIPPER-DIAG-$(date +%s 2>/dev/null || echo 0)"
+TEST_ID="UOM-DIPPER-NCM-$(date +%s 2>/dev/null || echo 0)"
 say(){ echo "[diag] $*" > "$KMSG" 2>/dev/null||true; echo "[diag] $*" >> "$LOG" 2>/dev/null||true; }
 die(){
   say "FATAL: $*"
@@ -20,7 +20,7 @@ die(){
   sleep 30
   while :; do :; done
 }
-say "=== UOM DIPPER DIAG v1.0 ==="
+say "=== UOM DIPPER NCM v3 ==="
 say "Test-ID: $TEST_ID"
 mount -t proc none /proc 2>/dev/null||die "proc"
 mount -t sysfs none /sys 2>/dev/null||die "sysfs"
@@ -37,6 +37,8 @@ case "$C" in *xiaomi,dipper*) say "DIPPER CONFIRMED" ;; *) die "NOT DIPPER: $C" 
 case "$M" in *headless*) say "HEADLESS CONFIRMED" ;; *) say "WARNING: may not be headless" ;; esac
 # Watchdog: ABL is the hardware watchdog (~51s). No software timer needed.
 [ -c /dev/watchdog0 ] && say "HW WATCHDOG AVAILABLE" || say "HW WATCHDOG UNAVAILABLE (ABL is sufficient)"
+say "KERNEL CMDLINE: $(cat /proc/cmdline)"
+say "OOPS_PANIC CHECK: $(cat /proc/cmdline | grep -o 'oops=panic' || echo 'NOT SET')"
 depmod -a 2>&1 | say
 modprobe libcomposite 2>&1 | say||say "libcomposite modprobe returned $?"
 mount -t configfs none /sys/kernel/config 2>&1 | say||say "configfs mount returned $?"
@@ -57,57 +59,53 @@ else
   if [ -d "$GADGET_DIR" ]; then
     say "Removing stale gadget"
     echo "" >"$GADGET_DIR/UDC" 2>/dev/null
-    rm -f "$GADGET_DIR/configs/c.1/acm.usb0" 2>/dev/null
+    rm -f "$GADGET_DIR/configs/c.1/ncm.usb0" 2>/dev/null
     rmdir "$GADGET_DIR/configs/c.1/strings/0x409" 2>/dev/null||true
     rmdir "$GADGET_DIR/configs/c.1" 2>/dev/null||true
-    rmdir "$GADGET_DIR/functions/acm.usb0" 2>/dev/null||true
+    rmdir "$GADGET_DIR/functions/ncm.usb0" 2>/dev/null||true
     rmdir "$GADGET_DIR/strings/0x409" 2>/dev/null||true
     rmdir "$GADGET_DIR" 2>/dev/null||true
   fi
-  mkdir "$GADGET_DIR" 2>&1 | say||{ say "FATAL: cannot create gadget dir"; die "gadget dir"; }
+  mkdir "$GADGET_DIR" ||{ say "FATAL: cannot create gadget dir"; die "gadget dir"; }
   echo "0x18D1" >"$GADGET_DIR/idVendor" 2>&1 | say
   echo "0xD001" >"$GADGET_DIR/idProduct" 2>&1 | say
   mkdir "$GADGET_DIR/strings/0x409" 2>/dev/null||true
   echo "UOM" >"$GADGET_DIR/strings/0x409/manufacturer"
-  echo "DipperDiag" >"$GADGET_DIR/strings/0x409/product" 2>/dev/null||true
+  echo "DipperNCM" >"$GADGET_DIR/strings/0x409/product" 2>/dev/null||true
   mkdir "$GADGET_DIR/configs/c.1" 2>/dev/null||true
-  echo "ACM serial" >"$GADGET_DIR/configs/c.1/strings/0x409/configuration" 2>/dev/null||true
-  mkdir "$GADGET_DIR/functions/acm.usb0" 2>/dev/null||true
-  ln -s "$GADGET_DIR/functions/acm.usb0" "$GADGET_DIR/configs/c.1" 2>/dev/null||say "symlink failed"
+  echo "NCM network" >"$GADGET_DIR/configs/c.1/strings/0x409/configuration" 2>/dev/null||true
+  mkdir "$GADGET_DIR/functions/ncm.usb0" 2>/dev/null||true
+  ln -s "$GADGET_DIR/functions/ncm.usb0" "$GADGET_DIR/configs/c.1" 2>/dev/null||say "symlink failed"
   echo "$UDC" >"$GADGET_DIR/UDC" 2>&1 | say||say "UDC bind returned $?"
 fi
-TTY=""
-for i in $(seq 1 15); do
-  [ -c /dev/ttyGS0 ] && TTY=1 && break
+say "WAITING FOR NETWORK INTERFACE (30s)"
+IFACE=""
+for i in $(seq 1 30); do
+  IFACE=$(ip link 2>/dev/null | grep -o 'usb[0-9]*' | head -1)
+  [ -n "$IFACE" ] && break
   sleep 1
 done
-[ -n "$TTY" ] && say "ttyGS0 PRESENT" || say "ttyGS0 NOT FOUND"
-if [ -c /dev/ttyGS0 ]; then
-  (
-    echo "=== UOM DIPPER DIAG ===" >/dev/ttyGS0 2>/dev/null
-    echo "Test-ID: $TEST_ID" >/dev/ttyGS0 2>/dev/null
-    echo "Compatible: $C" >/dev/ttyGS0 2>/dev/null
-    echo "Model: $M" >/dev/ttyGS0 2>/dev/null
-    echo "Board-ID: $B" >/dev/ttyGS0 2>/dev/null
-    echo "UDC: $UDC" >/dev/ttyGS0 2>/dev/null
-    uname -a >/dev/ttyGS0 2>/dev/null
-    cat /proc/cmdline >/dev/ttyGS0 2>/dev/null
-    echo "Ready for UOM_HOST_ACK:$TEST_ID" >/dev/ttyGS0 2>/dev/null
-    read -t 30 HOST_MSG </dev/ttyGS0 2>/dev/null
-    if echo "$HOST_MSG" | grep -q "UOM_HOST_ACK:$TEST_ID" 2>/dev/null; then
-      echo "UOM_D5_PASS" >/dev/ttyGS0 2>/dev/null
-      touch /run/uom-dipper-diag/HOST_ACK
-      say "D5 PASS - HOST ACK"
-    else
-      echo "ACK mismatch: ${HOST_MSG:-timeout}" >/dev/ttyGS0 2>/dev/null
-    fi
-  ) &
+if [ -n "$IFACE" ]; then
+  say "NCM INTERFACE: $IFACE"
+  ifconfig "$IFACE" 192.168.2.2 netmask 255.255.255.0 up 2>&1 | say
+  say "INTERFACE_CONFIGURED: $IFACE 192.168.2.2"
+  touch /run/uom-dipper-diag/NCM_IFACE_UP
+  echo "=== UOM DIPPER NCM ===" >/dev/kmsg
+  echo "Test-ID: $TEST_ID" >/dev/kmsg
+  echo "Interface: $IFACE, IP: 192.168.2.2" >/dev/kmsg
+  echo "Compatible: $C" >/dev/kmsg
+  echo "Model: $M" >/dev/kmsg
+  echo "UDC: $UDC" >/dev/kmsg
+  touch /run/uom-dipper-diag/HOST_READY
+  for i in $(seq 1 60); do
+    ping -c 1 -W 1 192.168.2.1 2>/dev/null && { touch /run/uom-dipper-diag/HOST_ACK; say "HOST REACHABLE via ICMP"; break; }
+    sleep 1
+  done
+else
+  say "NO NCM INTERFACE FOUND"
+  ls -la /sys/class/net/ 2>&1 | say
+  ls -la /sys/kernel/config/usb_gadget/g1/ 2>&1 | say
 fi
-say "WAITING FOR HANDSHAKE (60s)"
-for i in $(seq 1 60); do
-  [ -f /run/uom-dipper-diag/HOST_ACK ] && break
-  sleep 1
-done
 if [ -f /run/uom-dipper-diag/HOST_ACK ]; then
   say "D5 PASS - host acknowledged"
   sleep 30
