@@ -1,49 +1,36 @@
 # Session Resume — Dipper L0 USB Gadget
 
-## Last Updated: 2026-07-23T00:00:00Z
+## Last Updated: 2026-07-23T22:25:00+05:30
 
-### Phase: L0 — USB Gadget Enumeration
-### Status: BLOCKED — No gadget enumerates on host
+### Phase: L0 — USB Gadget Enumeration (Day 3)
+### Status: **T1 FAIL** — D4 PASS, no host gadget; phone auto-recovered via ABL ~62s
 
 ### Device State
-- **ADB**: device (af4aa323)
+- **ADB**: device (af4aa323) — back on Android after T1
 - **Fastboot**: none
-- **Kernel under test**: 7.1.0-rc1-sdm845
-- **Phone OS**: CRDROID 11.6 (Android 15), kernel 4.9.337-perf
+- **Last test**: `fastboot boot /tmp/l0_t1_ncm_boot.img` OKAY, no `18d1:d001`, no `usb0`
 
-### Last Image Tested
-- `l0_ncm_v2_boot.img` (NCM v2.1, minimal ramdisk)
-- fastboot boot OKAY, 21s disconnect, no `usb0`
-- Phone returned to Android automatically
+### T1 Result (one-liner)
+`fastboot boot` OK → ~54s USB dark → ADB back at +62s. Idle ABL path. NCM never enumerated.
 
-### Key Blockers
-1. ACM causes 100% reproducible DWC3 lockup — cannot use
-2. All gadget function drivers are modules (=m), NOT built-in
-3. Module loading (kmod + zstd) in initramfs is unverified on target
-4. No debug output — no UART, no framebuffer console, no pstore
+### Artifacts
+| Item | Path |
+|------|------|
+| Test log | `/tmp/uom-t1-test-20260723-221836.log` |
+| Host watch | `/tmp/uom-host-ncm-watch.log` |
+| Boot image | `/tmp/l0_t1_ncm_boot.img` (SHA f085ace7…) |
+| Report | `docs/L0-PROGRESS-REPORT-20260723.md` |
+| Builder | `tools/uom-build-l0-t1.sh` |
+| Init | `tools/init_l0_ncm_t1.sh` |
 
-### Next Actions (Tomorrow)
+### Next Actions
+1. Stock pmOS init baseline with same kernel+headless DTB (does host ever see gadget?)
+2. T1b: RNDIS-first / explicit `modprobe usb_f_ncm u_ether` before configfs mkdir
+3. Kernel built-in composite+NCM (drop module path)
+4. pstore/ramoops for post-mortem
 
-**1. Verify module loading works**
-- Build minimal init that loads evdev.ko, check success via GPIO/vibrator
-
-**2. Rebuild kernel with built-in gadget drivers**
-- Set CONFIG_USB_LIBCOMPOSITE=y, CONFIG_USB_F_NCM=y
-- Eliminates modprobe dependency
-
-**3. Add debug visibility**
-- Enable CONFIG_FB_SIMPLE, CONFIG_FRAMEBUFFER_CONSOLE
-- Configure pstore/ramoops
-
-**4. Try RNDIS**
-- usb_f_rndis.ko.zst exists as alternative to NCM
-
-### Session Reports
-- L0 progress: `docs/L0-PROGRESS-REPORT-20260722.md`
-- Session detail: `docs/SESSION-20260722-DIPPER-L0.md`
-- Hardware limits: `docs/porting/dipper-hardware-limits.md`
-
-### Triple Sync Targets
-- Laptop: `/home/alpine/src/universal-omni-master/`
-- Phone1 (SSH): `u0_a217@10.118.201.92:8022`
-- GitHub: `https://github.com/dharani-sg/universal-omni-master.git`
+### Key Blockers (updated)
+1. ACM → DWC3 lockup (HARDWARE_INCOMPATIBLE)
+2. Custom NCM init still produces **zero host USB** (T1 confirmed)
+3. No serial / no pstore — blind without host enumeration
+4. All gadget function drivers = modules

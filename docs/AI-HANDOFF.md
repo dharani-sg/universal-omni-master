@@ -10,8 +10,8 @@
 - Phone: Xiaomi Mi 8 / CrDroid Android 15 / Termux ARM64 (192.168.40.207:8022)
 - Active agent: laptop (current session)
 - Phone heartbeat: watchdog running, tunnel UP — dual-agent alive
-- Current task: M30-termux-native — omni-project-start menu completed → cloud-only redirect + Zen loop reconciler active
-- Model: opencode/deepseek-v4-flash-free (pure cloud, no local LLM)
+- Current task: L0 Dipper USB Gadget Bringup (NCM T1 tests)
+- Model: opencode/big-pickle (pure cloud, no local LLM)
 - AI arch: cloud-only — all generation via `opencode` stdin pipe, no ollama/sudo/binaries
 - Takeover count: 1 (phone took over during laptop idle, previously resolved)
 
@@ -470,4 +470,4 @@ jq '.active_agent="laptop"' .uom-agent/state.json > "${TMPDIR:-/tmp}/uom-s.json"
 git add -A && git commit -m "handback: laptop resumed control" && git push
 ```
 
-<!-- last-sync: 2026-07-17T18:00:00Z -->
+<!-- last-handoff: 2026-07-24T12:00:00+05:30 - L0 Dipper USB Gadget phase -->
