@@ -6,12 +6,12 @@
 
 <p align="center">
   <strong>POSIX-Hardened Multi-Device AI Control Plane</strong><br>
-  <em>Triple-node mesh · Free-model orchestration · Network drift recovery · Multi-swarm SaaS factory (Layer 3)</em>
+  <em>Dual-agent mesh · Free-model orchestration · Network drift recovery · Multi-swarm SaaS factory (Layer 3)</em>
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Shell-POSIX%20sh-1E1E2E?style=flat-square&logo=gnubash&logoColor=white" alt="POSIX">
-  <img src="https://img.shields.io/badge/Topology-Laptop%2BPhone1%2BPhone2-F59E0B?style=flat-square&logo=android&logoColor=white" alt="Triple">
+  <img src="https://img.shields.io/badge/Topology-Laptop%2BDipper-F59E0B?style=flat-square&logo=android&logoColor=white" alt="Dual">
   <img src="https://img.shields.io/badge/Guests-QEMU%20Alpine-3B82F6?style=flat-square&logo=qemu&logoColor=white" alt="QEMU">
   <img src="https://img.shields.io/badge/Models-Free--tier%20rotation-EF4444?style=flat-square&logo=openai&logoColor=white" alt="Models">
   <img src="https://img.shields.io/badge/Sync-Git%20bundles-10B981?style=flat-square&logo=git&logoColor=white" alt="Sync">
@@ -48,7 +48,7 @@
 | 🔄 **Zen Loop Pipeline** | Cloud code generation with 4-model free rotation + 6-step reconcile |
 | 🌐 **Network Drift Resilience** | 5-method IP discovery + port guardian + SHA256 fingerprint |
 | 💻 **QEMU Workloads** | Rootless aarch64 VMs on phones for isolated AI processing |
-| 🔀 **3-Node State Sync** | Git-based state machine across laptop, phone1, phone2 |
+| 🔀 **Dual-Node State Sync** | Git-based state machine across laptop and dipper |
 | 🏭 **SaaS Factory (L3)** | Multi-swarm workload layer: research → build → QA → deploy |
 
 ### What UOM Is NOT
@@ -85,22 +85,21 @@
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                        UNIVERSAL OMNI-MASTER v0.35.0-dev                │
+│                        UNIVERSAL OMNI-MASTER v0.36.0-dev                │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                         │
 │  ┌─────────────────────────┐       ┌─────────────────────────┐         │
-│  │    LAPTOP (Primary)     │◄─────►│    PHONE1 (Secondary)   │         │
-│  │    Alpine Linux         │ SSH   │    Termux / Android 15  │         │
-│  │    opencode v1.18.3     │ 8022  │    QEMU aarch64 guest   │         │
-│  │    Coordinator + Git    │       │    Worker + VM host     │         │
+│  │    LAPTOP (Primary)     │◄─────►│    DIPPER (Portable)    │         │
+│  │    Alpine Linux         │ SSH   │    Termux / postmarketOS │         │
+│  │    opencode v1.18.3     │ 8022  │    Worker + VM host     │         │
+│  │    Coordinator + Git    │       │    Mobile worker        │         │
 │  └───────────┬─────────────┘       └───────────┬─────────────┘         │
 │              │                                  │                       │
-│              │       ┌──────────────────┐       │                       │
-│              │       │   PHONE2         │       │                       │
-│              │       │   WiFi Hotspot   │       │                       │
-│              │       │   Termux + SSH   │       │                       │
-│              │       │   Worker node    │       │                       │
-│              │       └──────────────────┘       │                       │
+│              │      ┌─────────────────────┐     │                       │
+│              │      │  Future:            │     │                       │
+│              │      │  generic N-node     │     │                       │
+│              │      │  mesh (OPTIONAL)    │     │                       │
+│              │      └─────────────────────┘     │                       │
 │              │                                  │                       │
 │  ┌───────────▼──────────────────────────────────▼─────────────────┐    │
 │  │             Git (Shared State Store via GitHub)                │    │
@@ -118,9 +117,9 @@
 
 | Node | Role | Device | SDK | Status |
 |:-----|:-----|:-------|:----|:-------|
-| 🔴 Phone2 | Hotspot / Gateway | Redmi Note 23106RN0DA | 35 | 🟢 UP |
 | 🔵 Laptop | Primary Agent + Git Hub | HP Pavilion 15-n010tx | — | 🟢 UP |
-| 🟡 Phone1 | Secondary + QEMU Host | Xiaomi Mi 8 (dipper) | 35 | 🟡 DEGRADED |
+| 🟡 Dipper | Portable worker (Termux / target postmarketOS) | Xiaomi Mi 8 (dipper) | 35 | 🟡 PORTING_TARGET |
+| ⚪ Future Node | Generic N-node mesh (OPTIONAL/TBD) | — | — | ❌ DISABLED |
 
 > ⚠️ All IPs are **dynamic**. Use `tools/uom-ip-discover.sh` for discovery. Never hardcode.
 
@@ -211,12 +210,12 @@ Research-backed monetization model for India (home) + Singapore (workplace). All
 
 | Mode | When | Coordinator | Workers |
 |:-----|:-----|:------------|:--------|
-| 🟢 `SOLO` | Only laptop reachable | Laptop | Local only |
-| 🔵 `DUAL_L_P1` | Laptop + Phone1 | Laptop | Phone1 host/VM |
-| 🔵 `DUAL_L_P2` | Laptop + Phone2 | Laptop | Phone2 host/VM |
-| 🟣 `TRIPLE` | Laptop + both phones | Laptop | Both phones |
-| 🟡 `PEER_PHONES` | Phones only | Phone1 preferred | Phone2 |
-| 🔴 `DEGRADED_PROXY` | Guest OpenCode broken | Laptop | Phone relays to laptop |
+| 🟢 `SOLO_LAPTOP` | Only laptop reachable | Laptop | Local only |
+| 🔵 `DUAL_LAPTOP_DIPPER_TERMUX` | Laptop + dipper (Termux) | Laptop | Dipper host/VM |
+| 🔵 `DUAL_LAPTOP_DIPPER_PMOS` | Laptop + dipper (postmarketOS) | Laptop | Dipper native worker |
+| 🔴 `DEGRADED_PROXY` | Guest OpenCode broken | Laptop | Dipper relays to laptop |
+| ⚪ `N_NODE_MESH_OPTIONAL` | Generic future expansion | Laptop | TBD (disabled by default) |
+| 🟡 `DIPPER_SOLO_PMOS` | Dipper only (postmarketOS native) | Dipper | Local only |
 
 ### Truthful Agent Labels
 
@@ -225,9 +224,11 @@ A phone that only relays OpenCode to the laptop is **NOT** an independent local 
 | Label | Meaning |
 |:------|:--------|
 | `LOCAL_NATIVE` | Runs opencode natively on device |
+| `LOCAL_NATIVE_TERMUX` | Runs opencode inside Termux (Android) |
 | `LOCAL_PROOT` | Runs opencode inside proot-distro |
 | `LOCAL_VM` | Runs opencode inside QEMU guest |
 | `PROXY_TO_LAPTOP` | Relays inference to laptop via SSH |
+| `PORTING_TARGET` | Device is a porting target (no native runtime yet) |
 | `BLOCKED` | Cannot run opencode (Android restriction) |
 
 ---
@@ -364,9 +365,9 @@ sh bin/omni-saas run \
 | `uom-ssh-phone.sh` | `bin/` | Drift-tolerant laptop→phone SSH (5-method discovery) |
 | `uom-reverse-ssh.sh` | `bin/` | Phone→laptop reverse tunnel (autossh-backed) |
 | `uom-port-guardian.sh` | `orchestrators/` | Network drift sentinel (20s polling, SSH rewrite) |
-| `uom-trident-v2.sh` | `orchestrators/` | Topology-aware triple orchestrator |
+| `uom-trident-v2.sh` | `orchestrators/` | Topology-aware orchestrator (legacy triple, kept for N-node) |
 | `uom-reconcile.sh` | `orchestrators/` | 6-step Zen Loop (dynamic model + drift resilience) |
-| `uom-solo-orchestrator.sh` | `orchestrators/` | Phone-only fallback when laptop unreachable |
+| `uom-solo-orchestrator.sh` | `orchestrators/` | Dipper-only fallback when laptop unreachable |
 | `uom-git-sync.sh` | `orchestrators/` | Hub/spoke Git bundle sync |
 
 ### 🧠 Zen Loop Tools
