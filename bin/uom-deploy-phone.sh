@@ -25,7 +25,7 @@ elif ssh -F ~/.ssh/config -o ConnectTimeout=5 -o BatchMode=yes uom-phone-lan tru
     _log "Phone reachable via LAN"
 else
     _log "ERROR: Phone not reachable"
-    _log "Try: ssh u0_a608@192.168.40.207 -p 8022"
+    _log "Try: ssh -F ~/.ssh/config uom-phone-rev or uom-phone-lan"
     exit 1
 fi
 

@@ -65,3 +65,6 @@ secrets.env
 .uom-termux-user/
 .install-gate-evidence/
 __pycache__/
+.uom-agent/*.ip
+.uom-agent/phone.ip
+.uom-agent/laptop.ip

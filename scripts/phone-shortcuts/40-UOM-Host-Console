@@ -4,17 +4,13 @@
 # POSIX sh. Idempotent.
 
 set -u
+. "${HOME}/bin/uom-widget-lib.sh"
 
 QEMU_TMUX_SESSION="uom-qemu-host"
-QEMU_LAUNCHER="${HOME}/bin/uom-qemu-phone"
 
-if ! tmux has-session -t "${QEMU_TMUX_SESSION}" 2>/dev/null; then
-    echo "[host-console] No QEMU tmux session found."
-    echo "[host-console] Starting QEMU..."
-    "${QEMU_LAUNCHER}" start || {
-        echo "[host-console] ERROR: Failed to start QEMU"
-        exit 1
-    }
+if ! uom_ensure_qemu; then
+    echo "[host-console] ERROR: Failed to start QEMU"
+    exit 1
 fi
 
 exec tmux attach -t "${QEMU_TMUX_SESSION}"

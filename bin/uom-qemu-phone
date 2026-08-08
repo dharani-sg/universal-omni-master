@@ -24,6 +24,7 @@ FIRMWARE_VARS="${UOM_VM_DIR}/edk2-aarch64-vars.fd"
 VM_RAM="2048"
 VM_SMP="2"
 VM_SSH_FWD="2222"
+VM_SSH_USER="uom"
 VM_CONSOLE_LOG="${UOM_LOG_DIR}/${VM_NAME}-console.log"
 VM_QEMU_LOG="${UOM_LOG_DIR}/${VM_NAME}-qemu.log"
 
@@ -62,7 +63,7 @@ _find_qemu_pid() {
 _ssh_guest_probe() {
     ssh -p "$VM_SSH_FWD" -o ConnectTimeout=3 -o BatchMode=yes \
         -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-        uom@127.0.0.1 'echo UOM_PROBE_OK' 2>/dev/null | grep -q "UOM_PROBE_OK"
+        ${VM_SSH_USER}@127.0.0.1 'echo UOM_PROBE_OK' 2>/dev/null | grep -q "UOM_PROBE_OK"
 }
 
 # ── 3-tier QEMU state detection ────────────────────────────────────────
@@ -288,7 +289,7 @@ cmd_stop() {
     # Step 1: Clean guest shutdown via SSH
     ssh -p "$VM_SSH_FWD" -o ConnectTimeout=5 -o BatchMode=yes \
         -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-        uom@127.0.0.1 'doas poweroff 2>/dev/null || sudo poweroff 2>/dev/null || poweroff' 2>/dev/null || true
+        ${VM_SSH_USER}@127.0.0.1 'doas poweroff 2>/dev/null || sudo poweroff 2>/dev/null || poweroff' 2>/dev/null || true
 
     # Step 1b: QEMU monitor ACPI shutdown fallback (sends ACPI power button)
     if is_qemu_running && tmux has-session -t "$UOM_TMUX_SESSION" 2>/dev/null; then
@@ -347,7 +348,7 @@ cmd_status() {
     echo "tmux:   ${UOM_TMUX_SESSION}"
     tmux list-sessions 2>/dev/null | grep "$UOM_TMUX_SESSION" || echo "  (no session)"
     echo ""
-    echo "SSH:    ssh -p ${VM_SSH_FWD} uom@127.0.0.1"
+    echo "SSH:    ssh -p ${VM_SSH_FWD} ${VM_SSH_USER}@127.0.0.1"
 }
 
 cmd_adopt() {
@@ -377,7 +378,7 @@ cmd_ssh() {
     ssh -p "$VM_SSH_FWD" -o ConnectTimeout=10 \
         -o StrictHostKeyChecking=accept-new \
         -o UserKnownHostsFile=/dev/null \
-        uom@127.0.0.1 "$@"
+        ${VM_SSH_USER}@127.0.0.1 "$@"
 }
 
 cmd_verify() {
@@ -393,7 +394,7 @@ cmd_verify() {
     echo -n "Guest:  "
     ssh -p "$VM_SSH_FWD" -o ConnectTimeout=5 -o BatchMode=yes \
         -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-        uom@127.0.0.1 'id; uname -a' 2>/dev/null || echo "FAIL"
+        ${VM_SSH_USER}@127.0.0.1 'id; uname -a' 2>/dev/null || echo "FAIL"
     echo ""
 }
 
